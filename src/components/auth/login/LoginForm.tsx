@@ -54,8 +54,7 @@ export default function LoginForm() {
             alt="Buenavista Community College Logo" 
             className="w-20 h-20 sm:w-24 sm:h-24 object-contain mb-4"
           />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">BCC Attendance</h1>
-          <p className="text-sm text-gray-500 mt-1">ROTC / CWTS System</p>
+          <h1 className="text-2xl sm:text-2xl font-bold text-gray-900 text-center tracking-tight">NSTP ENROLLMENT & ATTENDANCE</h1>
         </div>
 
         {/* Card */}
