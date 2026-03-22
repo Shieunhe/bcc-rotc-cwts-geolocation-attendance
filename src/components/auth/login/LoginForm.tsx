@@ -7,6 +7,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
+import Footer from "@/components/common/Footer";
 
 const EmailIcon = (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,10 +114,7 @@ export default function LoginForm() {
           </p>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-6" suppressHydrationWarning>
-          Buenavista Community College &copy; {new Date().getFullYear()}
-        </p>
+        <Footer />
 
       </div>
     </div>

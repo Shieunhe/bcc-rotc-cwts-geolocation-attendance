@@ -4,19 +4,24 @@ import { useState } from "react";
 import Link from "next/link";
 import Button from "@/components/common/Button";
 import { EnrollmentFormData, defaultEnrollmentForm } from "@/types/enrollmentTypes";
+import { useEnrollment } from "@/hooks/useEnrollment";
+import { validateFileSize } from "@/utils/fileUtils";
 import PersonalInfoStep from "./steps/PersonalInfoStep";
 import AcademicInfoStep from "./steps/AcademicInfoStep";
 import PhysicalHealthStep from "./steps/PhysicalHealthStep";
 import AccountSetupStep from "./steps/AccountSetupStep";
+import Footer from "@/components/common/Footer";
+import SuccessModalStep from "./steps/successModalStep";
 
 const STEPS = ["Academic Info", "Personal Info", "Physical & Health", "Account Setup"];
 
 export default function EnrollmentForm() {
+  const { submitEnrollment, isSubmitting, isSuccess, error: submitError, clearError } = useEnrollment();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<EnrollmentFormData>(defaultEnrollmentForm);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   function updateField(field: keyof EnrollmentFormData, value: string) {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -32,8 +37,22 @@ export default function EnrollmentForm() {
 
   function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
+    setFileError(null);
+    
+    if (file) {
+      const validation = validateFileSize(file);
+      if (!validation.valid) {
+        setFileError(validation.error || "File too large");
+        e.target.value = "";
+        return;
+      }
+      setPhotoPreview(URL.createObjectURL(file));
+    }
     setFormData((prev) => ({ ...prev, photo: file }));
-    if (file) setPhotoPreview(URL.createObjectURL(file));
+  }
+
+  function handleFileError(error: string | null) {
+    setFileError(error);
   }
 
   function validateCurrentStep(): string {
@@ -95,39 +114,42 @@ export default function EnrollmentForm() {
 
   function handleNext() {
     const error = validateCurrentStep();
-    if (error) { setErrorMessage(error); return; }
-    setErrorMessage("");
+    if (error) { setValidationError(error); return; }
+    setValidationError("");
+    setFileError(null);
+    clearError();
     setCurrentStep((prev) => prev + 1);
   }
 
   function handleBack() {
-    setErrorMessage("");
+    setValidationError("");
+    setFileError(null);
+    clearError();
     setCurrentStep((prev) => prev - 1);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const error = validateCurrentStep();
-    if (error) { setErrorMessage(error); return; }
-    setErrorMessage("");
-    setIsSubmitting(true);
-    try {
-      // TODO: connect Firebase Auth + Firestore here
-      console.log("Enrollment data:", formData);
-      alert("Enrollment submitted! (Firebase not yet connected)");
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Enrollment failed.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    if (error) { setValidationError(error); return; }
+    setValidationError("");
+    clearError();
+    
+    await submitEnrollment(formData);
   }
 
   const stepComponents = [
     <AcademicInfoStep key="academic" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} />,
     <PersonalInfoStep key="personal" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} />,
     <PhysicalHealthStep key="physical" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} />,
-    <AccountSetupStep key="account" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} photoPreview={photoPreview} onPhotoUpload={handlePhotoUpload} />,
+    <AccountSetupStep key="account" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} photoPreview={photoPreview} onPhotoUpload={handlePhotoUpload} onFileError={handleFileError} />,
   ];
+
+  const displayError = fileError || validationError || submitError;
+
+  if (isSuccess) {
+    return <SuccessModalStep />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 px-4 py-10">
@@ -183,12 +205,12 @@ export default function EnrollmentForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {stepComponents[currentStep]}
             {/* Error message */}
-            {errorMessage && (
+            {displayError && (
               <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                 <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>{errorMessage}</span>
+                <span>{displayError}</span>
               </div>
             )}
             {/* Navigation buttons */}
@@ -218,10 +240,7 @@ export default function EnrollmentForm() {
             Sign in
           </Link>
         </p>
-        <p className="text-center text-xs text-gray-400 mt-3">
-          Buenavista Community College &copy; {new Date().getFullYear()}
-        </p>
-
+        <Footer />
       </div>
     </div>
   );

@@ -100,5 +100,3 @@ export interface EnrollmentStepProps {
   updateBoolean: (field: keyof EnrollmentFormData, value: boolean) => void;
   updateFile: (field: keyof EnrollmentFormData, value: File | null) => void;
 }
-
-

@@ -3,21 +3,33 @@
 import { useState } from "react";
 import Input from "@/components/common/Input";
 import { EnrollmentStepProps } from "@/types/enrollmentTypes";
+import { validateFileSize, formatFileSize } from "@/utils/fileUtils";
 
 const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
 
 interface AccountSetupStepProps extends EnrollmentStepProps {
   photoPreview: string | null;
   onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFileError: (error: string | null) => void;
 }
 
-export default function AccountSetupStep({ form, updateField, updateFile, photoPreview, onPhotoUpload }: AccountSetupStepProps) {
+export default function AccountSetupStep({ form, updateField, updateFile, photoPreview, onPhotoUpload, onFileError }: AccountSetupStepProps) {
   const [corPreview, setCorPreview] = useState<string | null>(null);
 
   function handleCorUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
+    onFileError(null);
+    
+    if (file) {
+      const validation = validateFileSize(file);
+      if (!validation.valid) {
+        onFileError(validation.error || "File too large");
+        e.target.value = "";
+        return;
+      }
+      setCorPreview(`${file.name} (${formatFileSize(file.size)})`);
+    }
     updateFile("corFile", file);
-    if (file) setCorPreview(file.name);
   }
   return (
     <>
