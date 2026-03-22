@@ -9,7 +9,7 @@ import AcademicInfoStep from "./steps/AcademicInfoStep";
 import PhysicalHealthStep from "./steps/PhysicalHealthStep";
 import AccountSetupStep from "./steps/AccountSetupStep";
 
-const STEPS = ["Personal Info", "Academic Info", "Physical & Health", "Account Setup"];
+const STEPS = ["Academic Info", "Personal Info", "Physical & Health", "Account Setup"];
 
 export default function EnrollmentForm() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -38,27 +38,48 @@ export default function EnrollmentForm() {
 
   function validateCurrentStep(): string {
     if (currentStep === 0) {
-      if (!formData.studentId) return "Student ID is required.";
-      if (!formData.fullName) return "Full name is required.";
-      if (!formData.birthdate) return "Birthdate is required.";
-      if (!formData.sex) return "Sex is required.";
-      if (!formData.contactNumber) return "Contact number is required.";
-      if (!formData.address) return "Address is required.";
-    }
-    if (currentStep === 1) {
       if (!formData.course) return "Course is required.";
       if (!formData.yearLevel) return "Year level is required.";
       if (!formData.nstpComponent) return "NSTP component is required.";
-      if (!formData.nstpLevel) return "NSTP level is required.";
+      if (!formData.msLevel) return "MS level is required.";
+    }
+    if (currentStep === 1) {    
+      if (!formData.studentId) return "Student ID is required.";
+      if (!/^\d{6}-\d{4}$/.test(formData.studentId)) return "Student ID must be in format 000000-0000 (e.g. 202020-0404).";
+      if (!formData.lastName) return "Last name is required.";
+      if (!formData.firstName) return "First name is required.";
+      if (!formData.contactNumber) return "Contact number is required.";
+      if (formData.contactNumber.length !== 11) return "Contact number must be 11 digits (e.g. 09XXXXXXXXX).";
+      if (!formData.religion) return "Religion is required.";
+      if (!formData.birthdate) return "Birth of date is required.";
+      if (!formData.sex) return "Gender is required.";
+      if (!formData.placeOfBirth) return "Place of birth is required.";
+      if (!formData.temporaryBarangay) return "Temporary No./ St / Vill / Brgy is required.";
+      if (!formData.temporaryMunicipality) return "Temporary Municipality is required.";
+      if (!formData.temporaryProvince) return "Temporary Province is required.";
+      if (!formData.permanentBarangay) return "Permanent No./ St / Vill / Brgy is required.";
+      if (!formData.permanentMunicipality) return "Permanent Municipality is required.";
+      if (!formData.permanentProvince) return "Permanent Province is required.";
+      if (!formData.fatherName) return "Father name is required.";
+      if (!formData.fatherOccupation) return "Father occupation is required.";
+      if (!formData.motherName) return "Mother name is required.";
+      if (!formData.motherOccupation) return "Mother occupation is required.";
+      if (!formData.emergencyContactName) return "Emergency contact name is required.";
+      if (!formData.emergencyContactAddress) return "Emergency contact address is required.";
+      if (!formData.emergencyContactRelationship) return "Emergency contact relationship is required.";
+      if (!formData.emergencyContactContactNumber) return "Emergency contact contact number is required.";
+      if (formData.emergencyContactContactNumber.length !== 11) return "Emergency contact number must be 11 digits (e.g. 09XXXXXXXXX).";
     }
     if (currentStep === 2) {
       if (!formData.height) return "Height is required.";
-      if (!formData.weight) return "Weight is required.";
+      if (!formData.weight) return "Weight is required."; 
       if (!formData.bloodType) return "Blood type is required.";
-      if (!formData.activityLevel) return "Activity level is required.";
-      if (!formData.trainingCapability) return "Training capability is required.";
-      if (formData.hasMedicalCondition && !formData.medicalCondition) return "Please specify your medical condition.";
-      if (formData.hasMedicalCondition && !formData.medicalCertificate) return "Medical certificate is required.";
+      if (!formData.complexion) return "Complexion is required.";
+      if (formData.hasMedicalCondition === null) return "Please select if you have a medical condition.";
+      if (formData.hasMedicalCondition === true && !formData.medicalCondition) return "Please specify your medical condition.";
+      if (formData.hasMedicalCondition === true && !formData.medicalCertificate) return "Medical certificate is required.";
+      if (formData.hasMedicalCondition === false && !formData.medicalCertificate) return "Medical certificate is required.";
+      if (formData.hasMedicalCondition === false && !formData.xrayFile) return "X-ray is required.";
     }
     if (currentStep === 3) {
       if (!formData.email) return "Email is required.";
@@ -67,6 +88,7 @@ export default function EnrollmentForm() {
       if (formData.password.length < 6) return "Password must be at least 6 characters.";
       if (formData.password !== formData.confirmPassword) return "Passwords do not match.";
       if (!formData.photo) return "2x2 photo is required.";
+      if (!formData.corFile) return "Certificate of Registration (COR) is required.";
     }
     return "";
   }
@@ -101,8 +123,8 @@ export default function EnrollmentForm() {
   }
 
   const stepComponents = [
-    <PersonalInfoStep key="personal" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} />,
     <AcademicInfoStep key="academic" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} />,
+    <PersonalInfoStep key="personal" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} />,
     <PhysicalHealthStep key="physical" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} />,
     <AccountSetupStep key="account" form={formData} updateField={updateField} updateBoolean={updateBoolean} updateFile={updateFile} photoPreview={photoPreview} onPhotoUpload={handlePhotoUpload} />,
   ];
@@ -113,11 +135,11 @@ export default function EnrollmentForm() {
 
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg mb-3">
-            <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
+          <img 
+            src="/image/feb5dc39-69af-4d8a-a3d7-66aca9aaa290.png" 
+            alt="Buenavista Community College Logo" 
+            className="w-20 h-20 sm:w-24 sm:h-24 object-contain mb-3"
+          />
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">NSTP Enrollment</h1>
           <p className="text-sm text-gray-500 mt-1">BCC ROTC / CWTS System</p>
         </div>

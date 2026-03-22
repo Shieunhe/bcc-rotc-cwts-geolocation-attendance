@@ -1,43 +1,97 @@
-import { NSTProgram, NSTLevel, Sex, BloodType, YearLevel, ActivityLevel } from "@/types";
+import { NSTProgram, MSLevel, Sex, BloodType, YearLevel } from "@/types";
 
 export interface EnrollmentFormData {
   // Step 1 — Personal Info
   studentId: string;
-  fullName: string;
+  lastName: string;
+  firstName: string;
+  middleName?: string;
+  religion: string;
   birthdate: string;
   sex: Sex | "";
   contactNumber: string;
-  address: string;
+  placeOfBirth: string;
+  temporaryBarangay: string;
+  temporaryMunicipality: string;
+  temporaryProvince: string;
+  permanentBarangay: string;
+  permanentMunicipality: string;
+  permanentProvince: string;
+  fatherName: string;
+  fatherOccupation: string;
+  motherName: string;
+  motherOccupation: string;
+  emergencyContactName: string;
+  emergencyContactAddress: string;
+  emergencyContactRelationship: string;
+  emergencyContactContactNumber: string;
+  willingToTakeAdvanceCourse: boolean;
   // Step 2 — Academic Info
   course: string;
   yearLevel: YearLevel | "";
   nstpComponent: NSTProgram | "";
-  nstpLevel: NSTLevel | "";
+  msLevel: MSLevel | "";
   // Step 3 — Physical & Health
   height: string;
   weight: string;
   bloodType: BloodType | "";
-  activityLevel: ActivityLevel | "";
-  trainingCapability: string;
-  hasMedicalCondition: boolean;
+  hasMedicalCondition: boolean | null;
   medicalCondition: string;
   medicalCertificate: File | null;
+  xrayFile: File | null;
+  complexion: string;
   // Step 4 — Account Setup
   email: string;
   username: string;
   password: string;
   confirmPassword: string;
   photo: File | null;
+  corFile: File | null;
 }
 
 export const defaultEnrollmentForm: EnrollmentFormData = {
-  studentId: "", fullName: "", birthdate: "", sex: "",
-  contactNumber: "", address: "", course: "", yearLevel: "",
-  nstpComponent: "", nstpLevel: "", height: "", weight: "",
-  bloodType: "", activityLevel: "", trainingCapability: "",
-  hasMedicalCondition: false, medicalCondition: "", medicalCertificate: null,
-  email: "", username: "", password: "",
-  confirmPassword: "", photo: null,
+  studentId: "",
+  lastName: "",
+  firstName: "",
+  middleName: "",
+  birthdate: "",
+  sex: "",
+  contactNumber: "",
+  religion: "",
+  placeOfBirth: "",
+  temporaryBarangay: "",
+  temporaryMunicipality: "",
+  temporaryProvince: "",
+  permanentBarangay: "",
+  permanentMunicipality: "",
+  permanentProvince: "",
+  fatherName: "",
+  fatherOccupation: "",
+  motherName: "",
+  motherOccupation: "",
+  emergencyContactName: "",
+  emergencyContactAddress: "",
+  emergencyContactRelationship: "",
+  emergencyContactContactNumber: "",
+  willingToTakeAdvanceCourse: false,
+  course: "",
+  yearLevel: "",
+  nstpComponent: "",
+  msLevel: "",
+  height: "",
+  weight: "",
+  bloodType: "",
+  hasMedicalCondition: null,
+  medicalCondition: "",
+  medicalCertificate: null,
+  xrayFile: null,
+  complexion: "",
+  email: "",
+  username: "",
+  password: "",
+  confirmPassword: "",
+  photo: null,
+  corFile: null,
 };
 
 export interface EnrollmentStepProps {

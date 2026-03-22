@@ -10,8 +10,20 @@ const nstpPrograms: NSTProgram[] = ["ROTC", "CWTS"];
 export default function AcademicInfoStep({ form, updateField }: EnrollmentStepProps) {
   return (
     <>
-      <Input label="Course" type="text" placeholder="e.g. BS Information Technology"
-        value={form.course} onChange={(e) => updateField("course", e.target.value.toUpperCase())}  />
+      <div>
+        <label className={labelClass}>Course</label>
+        <select value={form.course} onChange={(e) => updateField("course", e.target.value)} className={selectClass}>
+          <option value="" disabled>Select Course</option>
+          <option value="BS CRIMINOLOGY">BS CRIMINOLOGY</option>
+          <option value="BS HOSPITALITY MANAGEMENT">BS HOSPITALITY MANAGEMENT</option>
+          <option value="BS INFORMATION TECHNOLOGY">BS INFORMATION TECHNOLOGY</option>
+          <option disabled>Education:</option>
+          <option value="BEED">&nbsp;&nbsp;&nbsp;BEED</option>
+          <option value="BEED ENGLISH">&nbsp;&nbsp;&nbsp;BEED ENGLISH</option>
+          <option value="BEED MATH">&nbsp;&nbsp;&nbsp;BEED MATH</option>
+          
+        </select>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -25,11 +37,11 @@ export default function AcademicInfoStep({ form, updateField }: EnrollmentStepPr
           </select>
         </div>
         <div>
-          <label className={labelClass}>NSTP Level</label>
-          <select value={form.nstpLevel} onChange={(e) => updateField("nstpLevel", e.target.value)} className={selectClass}>
-            <option value="" disabled>Select NSTP level</option>
-            <option>NSTP 1</option>
-            <option>NSTP 2</option>
+          <label className={labelClass}>MS Level</label>
+          <select value={form.msLevel} onChange={(e) => updateField("msLevel", e.target.value)} className={selectClass}>
+            <option value="" disabled>Select MS level</option>
+            <option value="1">MS 1</option>
+            <option value="2">MS 2</option>
           </select>
         </div>
       </div>

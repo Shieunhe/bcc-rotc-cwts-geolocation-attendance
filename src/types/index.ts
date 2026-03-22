@@ -1,31 +1,49 @@
 export type NSTProgram = "ROTC" | "CWTS";
-export type NSTLevel = "NSTP 1" | "NSTP 2";
+export type MSLevel = "1" | "2";
 export type Sex = "Male" | "Female";
-export type BloodType = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
+export type BloodType = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-" | "N/A";
 export type YearLevel = "1st Year" | "2nd Year" | "3rd Year" | "4th Year";
-export type ActivityLevel = "Sedentary" | "Lightly Active" | "Moderately Active" | "Very Active";
 
 export interface StudentProfile {
   uid: string;
   // Personal
   studentId: string;
-  fullName: string;
+  lastName: string;
+  firstName: string;
+  religion: string;
   birthdate: string;
+  middleName: string;
   sex: Sex;
   contactNumber: string;
-  address: string;
+  placeOfBirth: string;
+  temporaryBarangay: string;
+  temporaryMunicipality: string;
+  temporaryProvince: string;
+  permanentBarangay: string;
+  permanentMunicipality: string;
+  permanentProvince: string;
+  fatherName: string;
+  fatherOccupation: string;
+  motherName: string;
+  motherOccupation: string;
+  emergencyContactName: string;
+  emergencyContactAddress: string;
+  emergencyContactRelationship: string;
+  emergencyContactContactNumber: string;
   // Academic
   course: string;
   yearLevel: YearLevel;
-  nstpComponent: NSTProgram;
-  nstpLevel: NSTLevel;
+  nstpProgram: NSTProgram;
+  msLevel: MSLevel;
   // Physical & Health
   height: string;
   weight: string;
   bloodType: BloodType;
-  activityLevel: ActivityLevel;
-  trainingCapability: string;
+  hasMedicalCondition: boolean | null;
   medicalCondition: string;
+  medicalCertificate: File | null;
+  xrayFile: File | null;
+  complexion: string;
   // Account
   email: string;
   username: string;
