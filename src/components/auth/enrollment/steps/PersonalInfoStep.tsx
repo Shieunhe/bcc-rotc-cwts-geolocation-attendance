@@ -32,7 +32,7 @@ export default function PersonalInfoStep({ form, updateField, updateBoolean }: E
           onChange={(e) => updateField("firstName", e.target.value.toUpperCase())} />
       </div>
       <div>
-        <Input label="Middle Name (Optional)" type="text" placeholder="Middle Name"
+        <Input label="Middle Name" type="text" placeholder="Middle Name"
           value={form.middleName ?? ""}
           onChange={(e) => updateField("middleName", e.target.value.toUpperCase())} />
       </div>

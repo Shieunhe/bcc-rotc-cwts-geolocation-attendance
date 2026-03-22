@@ -141,7 +141,6 @@ export default function EnrollmentForm() {
             className="w-20 h-20 sm:w-24 sm:h-24 object-contain mb-3"
           />
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">NSTP Enrollment</h1>
-          <p className="text-sm text-gray-500 mt-1">BCC ROTC / CWTS System</p>
         </div>
 
         {/* Progress Steps */}
