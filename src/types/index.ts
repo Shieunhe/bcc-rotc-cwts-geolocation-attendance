@@ -3,17 +3,18 @@ export type MSLevel = "1" | "2";
 export type Sex = "Male" | "Female";
 export type BloodType = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-" | "N/A";
 export type YearLevel = "1st Year" | "2nd Year" | "3rd Year" | "4th Year";
+export type EnrollmentStatus = "pending" | "approved" | "rejected";
 
-export interface StudentProfile {
+export interface EnrollmentDocument {
   uid: string;
-  // Personal
+  // Personal Info
   studentId: string;
   lastName: string;
   firstName: string;
+  middleName: string;
   religion: string;
   birthdate: string;
-  middleName: string;
-  sex: Sex;
+  sex: Sex | "";
   contactNumber: string;
   placeOfBirth: string;
   temporaryBarangay: string;
@@ -30,24 +31,29 @@ export interface StudentProfile {
   emergencyContactAddress: string;
   emergencyContactRelationship: string;
   emergencyContactContactNumber: string;
-  // Academic
+  willingToTakeAdvanceCourse: boolean;
+  // Academic Info
   course: string;
-  yearLevel: YearLevel;
-  nstpProgram: NSTProgram;
-  msLevel: MSLevel;
+  yearLevel: YearLevel | "";
+  nstpComponent: NSTProgram | "";
+  msLevel: MSLevel | "";
   // Physical & Health
   height: string;
   weight: string;
-  bloodType: BloodType;
+  bloodType: BloodType | "";
+  complexion: string;
   hasMedicalCondition: boolean | null;
   medicalCondition: string;
-  medicalCertificate: File | null;
-  xrayFile: File | null;
-  complexion: string;
-  // Account
+  medicalCertificate: string | null;
+  xrayFile: string | null;
+  // Account Info
   email: string;
   username: string;
   password: string;
-  photoUrl?: string;
+  photo: string | null;
+  corFile: string | null;
+  // Metadata
   createdAt: string;
+  updatedAt: string;
+  status: EnrollmentStatus;
 }

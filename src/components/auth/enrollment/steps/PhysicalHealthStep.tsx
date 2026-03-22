@@ -4,6 +4,7 @@ import { useState } from "react";
 import Input from "@/components/common/Input";
 import { BloodType } from "@/types";
 import { EnrollmentStepProps } from "@/types/enrollmentTypes";
+import { validateFileSize, formatFileSize } from "@/utils/fileUtils";
 
 const bloodTypes: BloodType[] = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "N/A"];
 
@@ -13,17 +14,38 @@ const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
 export default function PhysicalHealthStep({ form, updateField, updateBoolean, updateFile }: EnrollmentStepProps) {
   const [certPreview, setCertPreview] = useState<string | null>(null);
   const [xrayPreview, setXrayPreview] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   function handleCertificateUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
+    setFileError(null);
+    
+    if (file) {
+      const validation = validateFileSize(file);
+      if (!validation.valid) {
+        setFileError(validation.error || "File too large");
+        e.target.value = "";
+        return;
+      }
+      setCertPreview(`${file.name} (${formatFileSize(file.size)})`);
+    }
     updateFile("medicalCertificate", file);
-    if (file) setCertPreview(file.name);
   }
 
   function handleXrayUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
+    setFileError(null);
+    
+    if (file) {
+      const validation = validateFileSize(file);
+      if (!validation.valid) {
+        setFileError(validation.error || "File too large");
+        e.target.value = "";
+        return;
+      }
+      setXrayPreview(`${file.name} (${formatFileSize(file.size)})`);
+    }
     updateFile("xrayFile", file);
-    if (file) setXrayPreview(file.name);
   }
 
   function handleMedicalConditionChange(value: boolean) {
@@ -134,6 +156,15 @@ export default function PhysicalHealthStep({ form, updateField, updateBoolean, u
                 <input type="file" accept=".pdf,image/*" className="hidden" onChange={handleXrayUpload} />
               </label>
             </div>
+          </div>
+        )}
+
+        {fileError && (
+          <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{fileError}</span>
           </div>
         )}
       </div>
