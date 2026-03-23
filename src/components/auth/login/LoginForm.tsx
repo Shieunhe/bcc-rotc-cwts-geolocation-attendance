@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Footer from "@/components/common/Footer";
+import Logo from "@/components/common/Logo";
 
 const EmailIcon = (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,10 +36,32 @@ export default function LoginForm() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard");
+
+      if (email === "admin@email.com") {
+        router.push("/admin/dashboard");
+      } else if (email === "officer@email.com") {
+        router.push("/officer/dashboard");
+      } else {
+        router.push("/student/dashboard");
+      }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Login failed.";
-      setError(message);
+      if (err instanceof Error) {
+        if (err.message.includes("user-not-found") || err.message.includes("invalid-credential")) {
+          setError("No account found with this email.");
+        } else if (err.message.includes("wrong-password")) {
+          setError("Incorrect password. Please try again.");
+        } else if (err.message.includes("too-many-requests")) {
+          setError("Too many failed attempts. Please try again later.");
+        } else if (err.message.includes("user-disabled")) {
+          setError("This account has been disabled. Contact support.");
+        } else if (err.message.includes("invalid-email")) {
+          setError("Invalid email address.");
+        } else {
+          setError("Login failed. Please check your credentials.");
+        }
+      } else {
+        setError("Login failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -50,17 +73,13 @@ export default function LoginForm() {
 
         {/* Logo / Badge */}
         <div className="flex flex-col items-center mb-8">
-          <img 
-            src="/image/feb5dc39-69af-4d8a-a3d7-66aca9aaa290.png" 
-            alt="Buenavista Community College Logo" 
-            className="w-20 h-20 sm:w-24 sm:h-24 object-contain mb-4"
-          />
+          <Logo className="w-20 h-20 sm:w-24 sm:h-24 object-contain mb-4" />
           <h1 className="text-2xl sm:text-2xl font-bold text-gray-900 text-center tracking-tight">NSTP ENROLLMENT & ATTENDANCE</h1>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-6">Sign in to your account</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-6 text-center">Sign in to your account</h2>
           <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
             <Input
               label="Email address"
@@ -113,9 +132,7 @@ export default function LoginForm() {
             </Link>
           </p>
         </div>
-
         <Footer />
-
       </div>
     </div>
   );
