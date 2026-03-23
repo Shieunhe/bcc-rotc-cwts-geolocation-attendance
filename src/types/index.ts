@@ -56,4 +56,8 @@ export interface EnrollmentDocument {
   createdAt: string;
   updatedAt: string;
   status: EnrollmentStatus;
+  // Assigned by admin
+  platoon?: string;
+  grades?: number;
+  serialNumber?: string;
 }
