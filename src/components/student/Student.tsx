@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import StudentSidebarItems from "@/components/student/StudentSidebarItems";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import EnrollmentStatus from "./dashboard/EnrollmentStatus";
 import AssignedPlatoon from "./dashboard/AssignedPlatoon";
@@ -35,15 +34,8 @@ const statusConfig = {
 
 export default function Student() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const router = useRouter();
   const { profile, authLoading, dataLoading, error, uid } = useStudentProfile();
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && uid === null) {
-      router.replace("/login");
-    }
-  }, [authLoading, uid, router]);
+  useAuthGuard({ authLoading, uid });
 
   const isLoading = authLoading || dataLoading;
 
