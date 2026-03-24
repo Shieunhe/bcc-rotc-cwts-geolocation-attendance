@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { EnrollmentDocument, NSTProgram } from "@/types";
 
@@ -6,10 +6,13 @@ export const adminService = {
   async getEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentDocument[]> {
     const q = query(
       collection(db, "account_reservations"),
-      where("nstpComponent", "==", program),
-      orderBy("createdAt", "desc")
+      where("nstpComponent", "==", program)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => doc.data() as EnrollmentDocument);
+    const enrollments = snapshot.docs.map((doc) => doc.data() as EnrollmentDocument);
+    
+    return enrollments.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   },
 };

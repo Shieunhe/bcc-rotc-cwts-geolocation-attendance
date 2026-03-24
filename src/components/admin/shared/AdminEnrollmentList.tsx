@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import AdminPageLayout from "@/components/admin/shared/AdminPageLayout";
+import Input from "@/components/common/Input";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { EnrollmentStatus, NSTProgram } from "@/types";
 
-const statusBadge: Record<EnrollmentStatus, { label: string; className: string }> = {
+const SearchIcon = (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+
+const STATUS_BADGE: Record<EnrollmentStatus, { label: string; className: string }> = {
   pending: {
     label: "Pending",
     className: "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -22,6 +29,16 @@ const statusBadge: Record<EnrollmentStatus, { label: string; className: string }
 
 type FilterStatus = "all" | EnrollmentStatus;
 
+const FILTER_OPTIONS: FilterStatus[] = ["all", "pending", "approved", "rejected"];
+
+const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+};
+
+const DATE_LOCALE = "en-PH";
+
 interface AdminEnrollmentListProps {
   program: NSTProgram;
 }
@@ -37,7 +54,9 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
       search === "" ||
       `${e.firstName} ${e.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
       e.studentId.toLowerCase().includes(search.toLowerCase()) ||
-      e.email.toLowerCase().includes(search.toLowerCase());
+      e.email.toLowerCase().includes(search.toLowerCase()) ||
+      e.course.toLowerCase().includes(search.toLowerCase()) ||
+      e.yearLevel.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -76,21 +95,18 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
+          <div className="flex-1">
+            <Input
               type="text"
-              placeholder="Search by name, ID, or email..."
+              placeholder="Search by name, Student ID, or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              icon={SearchIcon}
             />
           </div>
 
           <div className="flex gap-1.5 bg-white rounded-xl border border-gray-200 p-1">
-            {(["all", "pending", "approved", "rejected"] as FilterStatus[]).map((s) => (
+            {FILTER_OPTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => setFilter(s)}
@@ -131,7 +147,7 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
                 </thead>
                 <tbody>
                   {filtered.map((e) => {
-                    const badge = statusBadge[e.status] ?? statusBadge.pending;
+                    const badge = STATUS_BADGE[e.status] ?? STATUS_BADGE.pending;
                     return (
                       <tr key={e.uid} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition">
                         <td className="px-5 py-3.5">
@@ -152,7 +168,7 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
                         <td className="px-5 py-3.5 text-gray-600">{e.studentId}</td>
                         <td className="px-5 py-3.5 text-gray-600">{e.course} • {e.yearLevel}</td>
                         <td className="px-5 py-3.5 text-gray-500 text-xs">
-                          {e.createdAt ? new Date(e.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                          {e.createdAt ? new Date(e.createdAt).toLocaleDateString(DATE_LOCALE, DATE_FORMAT_OPTIONS) : "—"}
                         </td>
                         <td className="px-5 py-3.5">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-semibold ${badge.className}`}>
@@ -168,7 +184,7 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
 
             <div className="sm:hidden divide-y divide-gray-100">
               {filtered.map((e) => {
-                const badge = statusBadge[e.status] ?? statusBadge.pending;
+                const badge = STATUS_BADGE[e.status] ?? STATUS_BADGE.pending;
                 return (
                   <div key={e.uid} className="px-4 py-4 space-y-2">
                     <div className="flex items-center justify-between">
@@ -192,7 +208,7 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
                     <div className="flex items-center gap-4 text-xs text-gray-500">
                       <span>{e.course} • {e.yearLevel}</span>
                       <span>
-                        {e.createdAt ? new Date(e.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                        {e.createdAt ? new Date(e.createdAt).toLocaleDateString(DATE_LOCALE, DATE_FORMAT_OPTIONS) : "—"}
                       </span>
                     </div>
                   </div>
