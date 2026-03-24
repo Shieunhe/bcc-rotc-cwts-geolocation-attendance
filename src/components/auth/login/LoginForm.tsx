@@ -37,14 +37,17 @@ export default function LoginForm() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
 
-      if (email === "admin@email.com") {
-        router.push("/admin/dashboard");
+      if (email === "rotc@admin.com") {
+        router.push("/admin/rotc/dashboard");
+      } else if (email === "cwts@admin.com") {
+        router.push("/admin/cwts/dashboard");
       } else if (email === "officer@email.com") {
         router.push("/officer/dashboard");
       } else {
         router.push("/student/dashboard");
       }
     } catch (err: unknown) {
+      setLoading(false);
       if (err instanceof Error) {
         if (err.message.includes("user-not-found") || err.message.includes("invalid-credential")) {
           setError("No account found with this email.");
@@ -62,8 +65,6 @@ export default function LoginForm() {
       } else {
         setError("Login failed. Please try again.");
       }
-    } finally {
-      setLoading(false);
     }
   }
 
