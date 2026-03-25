@@ -6,6 +6,8 @@ import Button from "@/components/common/Button";
 import { EnrollmentFormData, defaultEnrollmentForm } from "@/types/enrollmentTypes";
 import { useEnrollment } from "@/hooks/useEnrollment";
 import { validateFileSize } from "@/utils/fileUtils";
+import { adminService } from "@/services/admin.service";
+import { NSTProgram } from "@/types";
 import PersonalInfoStep from "./steps/PersonalInfoStep";
 import AcademicInfoStep from "./steps/AcademicInfoStep";
 import PhysicalHealthStep from "./steps/PhysicalHealthStep";
@@ -112,9 +114,42 @@ export default function EnrollmentForm() {
     return "";
   }
 
-  function handleNext() {
+  const [isCheckingSchedule, setIsCheckingSchedule] = useState(false);
+
+  async function handleNext() {
     const error = validateCurrentStep();
     if (error) { setValidationError(error); return; }
+
+    if (currentStep === 0 && formData.nstpComponent) {
+      setIsCheckingSchedule(true);
+      try {
+        const schedule = await adminService.getEnrollmentSchedule(formData.nstpComponent as NSTProgram);
+        if (!schedule) {
+          setValidationError(`${formData.nstpComponent} is not yet open for enrollment.`);
+          setIsCheckingSchedule(false);
+          return;
+        }
+        const now = new Date();
+        const open = new Date(schedule.openDate);
+        const end = new Date(schedule.deadline);
+        if (now < open) {
+          setValidationError(`${formData.nstpComponent} enrollment is not yet open. It opens on ${schedule.openDate}.`);
+          setIsCheckingSchedule(false);
+          return;
+        }
+        if (now > end) {
+          setValidationError(`${formData.nstpComponent} enrollment is already closed. The deadline was ${schedule.deadline}.`);
+          setIsCheckingSchedule(false);
+          return;
+        }
+      } catch {
+        setValidationError("Unable to verify enrollment schedule. Please try again.");
+        setIsCheckingSchedule(false);
+        return;
+      }
+      setIsCheckingSchedule(false);
+    }
+
     setValidationError("");
     setFileError(null);
     clearError();
@@ -221,7 +256,7 @@ export default function EnrollmentForm() {
                 </Button>
               )}
               {currentStep < STEPS.length - 1 ? (
-                <Button type="button" fullWidth onClick={handleNext}>
+                <Button type="button" fullWidth onClick={handleNext} loading={isCheckingSchedule}>
                   Next
                 </Button>
               ) : (

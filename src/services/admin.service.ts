@@ -1,6 +1,6 @@
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { EnrollmentDocument, NSTProgram } from "@/types";
+import { EnrollmentDocument, EnrollmentSchedule, NSTProgram } from "@/types";
 
 export const adminService = {
   async getEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentDocument[]> {
@@ -14,5 +14,17 @@ export const adminService = {
     return enrollments.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+  },
+
+  async getEnrollmentSchedule(program: NSTProgram): Promise<EnrollmentSchedule | null> {
+    const ref = doc(db, "enrollment_schedules", program);
+    const snapshot = await getDoc(ref);
+    if (!snapshot.exists()) return null;
+    return snapshot.data() as EnrollmentSchedule;
+  },
+
+  async saveEnrollmentSchedule(schedule: EnrollmentSchedule): Promise<void> {
+    const ref = doc(db, "enrollment_schedules", schedule.program);
+    await setDoc(ref, { ...schedule, updatedAt: new Date().toISOString() });
   },
 };
