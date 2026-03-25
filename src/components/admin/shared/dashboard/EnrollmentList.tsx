@@ -1,6 +1,5 @@
 import React from 'react'
 import { NSTProgram } from '@/types';
-import { Enrollment } from '@/types';
 import Link from "next/link";
 
 interface EnrollmentListProps {

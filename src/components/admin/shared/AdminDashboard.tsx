@@ -5,7 +5,7 @@ import Link from "next/link";
 import AdminSidebarItems from "@/components/admin/shared/AdminSidebarItems";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { NSTProgram } from "@/types";
-import EnrollmentList from "./enrollment-list/EnrollmentList";
+import EnrollmentList from "./dashboard/EnrollmentList";
 
 interface AdminDashboardProps {
   program: NSTProgram;
