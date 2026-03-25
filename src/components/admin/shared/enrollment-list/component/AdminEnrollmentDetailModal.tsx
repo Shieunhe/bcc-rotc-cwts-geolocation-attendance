@@ -223,7 +223,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose }: Admi
         <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 rounded-b-2xl">
           <div className="flex gap-3">
             <Button variant="success" fullWidth className="!py-2 !text-sm">Approve</Button>
-            <Button variant="danger" fullWidth className="!py-2 !text-sm">Reject</Button>
+            <Button variant="danger" fullWidth className="!py-2 !text-sm">Dissapprove</Button>
           </div>
         </div>
       </div>

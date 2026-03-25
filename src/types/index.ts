@@ -5,6 +5,13 @@ export type BloodType = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-" 
 export type YearLevel = "1st Year" | "2nd Year" | "3rd Year" | "4th Year";
 export type EnrollmentStatus = "pending" | "approved" | "rejected";
 
+export interface EnrollmentSchedule {
+  program: NSTProgram;
+  openDate: string;
+  deadline: string;
+  updatedAt: string;
+}
+
 export interface EnrollmentDocument {
   uid: string;
   // Personal Info

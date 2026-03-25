@@ -5,6 +5,7 @@ import Link from "next/link";
 import AdminSidebarItems from "@/components/admin/shared/AdminSidebarItems";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { NSTProgram } from "@/types";
+import EnrollmentScheduleCard from "./dashboard/EnrollmentScheduleCard";
 import EnrollmentList from "./dashboard/EnrollmentList";
 
 interface AdminDashboardProps {
@@ -45,7 +46,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {/* Enrollment List Card */}
+            <EnrollmentScheduleCard base={base} program={program} />
             <EnrollmentList base={base} program={program} isLoading={isLoading} total={total} pending={pending} approved={approved} />
           </div>
         </main>
