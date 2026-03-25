@@ -33,9 +33,10 @@ function formatDate(date: string | undefined) {
 
 interface AdminEnrollmentTableProps {
   enrollments: EnrollmentDocument[];
+  onStatusChange?: () => void;
 }
 
-export default function AdminEnrollmentTable({ enrollments }: AdminEnrollmentTableProps) {
+export default function AdminEnrollmentTable({ enrollments, onStatusChange }: AdminEnrollmentTableProps) {
   const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentDocument | null>(null);
 
   return (
@@ -137,6 +138,7 @@ export default function AdminEnrollmentTable({ enrollments }: AdminEnrollmentTab
       <AdminEnrollmentDetailModal
         enrollment={selectedEnrollment}
         onClose={() => setSelectedEnrollment(null)}
+        onStatusChange={onStatusChange}
       />
     )}
     </>

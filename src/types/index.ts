@@ -63,6 +63,7 @@ export interface EnrollmentDocument {
   createdAt: string;
   updatedAt: string;
   status: EnrollmentStatus;
+  rejectionReason?: string;
   // Assigned by admin
   platoon?: string;
   grades?: number;
