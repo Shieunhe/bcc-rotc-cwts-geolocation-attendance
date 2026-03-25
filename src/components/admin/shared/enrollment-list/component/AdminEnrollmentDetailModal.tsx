@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { EnrollmentDocument, EnrollmentStatus } from "@/types";
+import { adminService } from "@/services/admin.service";
 import FilePreview from "@/components/common/FilePreview";
 import Button from "@/components/common/Button";
 
@@ -19,6 +21,7 @@ const STATUS_CONFIG: Record<EnrollmentStatus, { label: string; className: string
 interface AdminEnrollmentDetailModalProps {
   enrollment: EnrollmentDocument;
   onClose: () => void;
+  onStatusChange?: () => void;
 }
 
 function toTitleCase(text: string) {
@@ -92,8 +95,34 @@ const ICONS = {
   ),
 };
 
-export default function AdminEnrollmentDetailModal({ enrollment, onClose }: AdminEnrollmentDetailModalProps) {
+export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStatusChange }: AdminEnrollmentDetailModalProps) {
   const statusConfig = STATUS_CONFIG[enrollment.status] ?? STATUS_CONFIG.pending;
+  const [showDisapprove, setShowDisapprove] = useState(false);
+  const [disapproveReason, setDisapproveReason] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  async function handleApprove() {
+    setIsUpdating(true);
+    try {
+      await adminService.updateEnrollmentStatus(enrollment.uid, "approved");
+      onStatusChange?.();
+      onClose();
+    } catch {
+      setIsUpdating(false);
+    }
+  }
+
+  async function handleDisapprove() {
+    if (!disapproveReason.trim()) return;
+    setIsUpdating(true);
+    try {
+      await adminService.updateEnrollmentStatus(enrollment.uid, "rejected", disapproveReason.trim());
+      onStatusChange?.();
+      onClose();
+    } catch {
+      setIsUpdating(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -221,10 +250,47 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose }: Admi
 
         {/* Sticky footer */}
         <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 rounded-b-2xl">
-          <div className="flex gap-3">
-            <Button variant="success" fullWidth className="!py-2 !text-sm">Approve</Button>
-            <Button variant="danger" fullWidth className="!py-2 !text-sm">Dissapprove</Button>
-          </div>
+          {enrollment.status !== "pending" ? (
+            <Button variant="secondary" fullWidth className="!py-2 !text-sm" onClick={onClose}>Close</Button>
+          ) : showDisapprove ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Reason for disapproval</label>
+                <textarea
+                  value={disapproveReason}
+                  onChange={(e) => setDisapproveReason(e.target.value)}
+                  placeholder="Enter the reason for disapproving this enrollment..."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition resize-none"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="danger"
+                  fullWidth
+                  className="!py-2 !text-sm"
+                  disabled={!disapproveReason.trim()}
+                  loading={isUpdating}
+                  onClick={handleDisapprove}
+                >
+                  Confirm Disapproval
+                </Button>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  className="!py-2 !text-sm"
+                  onClick={() => { setShowDisapprove(false); setDisapproveReason(""); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <Button variant="success" fullWidth className="!py-2 !text-sm" onClick={handleApprove} loading={isUpdating}>Approve</Button>
+              <Button variant="danger" fullWidth className="!py-2 !text-sm" onClick={() => setShowDisapprove(true)}>Disapprove</Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

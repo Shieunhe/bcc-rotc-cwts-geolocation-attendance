@@ -9,9 +9,10 @@ interface EnrollmentListProps {
     total: number;
     pending: number;
     approved: number;
+    rejected: number;
 }
 
-export default function EnrollmentList({ base, program, isLoading, total, pending, approved }: EnrollmentListProps) {
+export default function EnrollmentList({ base, program, isLoading, total, pending, approved, rejected }: EnrollmentListProps) {
   return (
     <Link href={`${base}/enrollment`} className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
         <div className="flex items-center justify-between mb-3">
@@ -44,6 +45,12 @@ export default function EnrollmentList({ base, program, isLoading, total, pendin
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-green-100 text-green-700 border-green-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                 {approved} Approved
+            </span>
+            )}
+            {rejected > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-red-100 text-red-700 border-red-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                {rejected} Rejected
             </span>
             )}
         </div>

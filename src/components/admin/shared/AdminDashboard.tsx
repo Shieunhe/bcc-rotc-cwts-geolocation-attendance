@@ -19,6 +19,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
   const base = `/admin/${program.toLowerCase()}`;
   const pending = enrollments.filter((e) => e.status === "pending").length;
   const approved = enrollments.filter((e) => e.status === "approved").length;
+  const rejected = enrollments.filter((e) => e.status === "rejected").length;
   const total = enrollments.length;
 
   return (
@@ -47,7 +48,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             <EnrollmentScheduleCard base={base} program={program} />
-            <EnrollmentList base={base} program={program} isLoading={isLoading} total={total} pending={pending} approved={approved} />
+            <EnrollmentList base={base} program={program} isLoading={isLoading} total={total} pending={pending} approved={approved} rejected={rejected} />
           </div>
         </main>
       </div>

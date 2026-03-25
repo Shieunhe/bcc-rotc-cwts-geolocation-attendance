@@ -13,7 +13,7 @@ interface AdminEnrollmentListProps {
 }
 
 export default function AdminEnrollmentList({ program }: AdminEnrollmentListProps) {
-  const { enrollments, isLoading, error } = useAdminEnrollments(program);
+  const { enrollments, isLoading, error, refetch } = useAdminEnrollments(program);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
 
@@ -69,7 +69,7 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
             </p>
           </div>
         ) : (
-          <AdminEnrollmentTable enrollments={filtered} />
+          <AdminEnrollmentTable enrollments={filtered} onStatusChange={refetch} />
         )}
       </div>
     </AdminPageLayout>

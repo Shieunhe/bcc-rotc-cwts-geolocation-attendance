@@ -25,7 +25,7 @@ const statusConfig = {
     color: "bg-green-50 border-green-200",
     badgeColor: "bg-green-100 text-green-700 border-green-300",
     dot: "bg-green-500",
-    timelineStep: 2,
+    timelineStep: 3,
   },
   rejected: {
     label: "Rejected",
@@ -33,7 +33,7 @@ const statusConfig = {
     color: "bg-red-50 border-red-200",
     badgeColor: "bg-red-100 text-red-700 border-red-300",
     dot: "bg-red-500",
-    timelineStep: 2,
+    timelineStep: 3,
   },
 };
 
@@ -84,7 +84,7 @@ export default function EnrollmentStatus() {
         </div>
 
         {/* Status banner */}
-        <EnrollmentStatusBanner status={status} />
+        <EnrollmentStatusBanner status={status} rejectionReason={profile.rejectionReason} />
 
         {/* Timeline */}
         <EnrollmentTimeline timelineSteps={timelineSteps} status={status} profileStatus={profile.status} />
