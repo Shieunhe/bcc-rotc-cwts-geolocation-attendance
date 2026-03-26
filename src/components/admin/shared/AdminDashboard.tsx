@@ -7,6 +7,7 @@ import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { NSTProgram } from "@/types";
 import EnrollmentScheduleCard from "./dashboard/EnrollmentScheduleCard";
 import EnrollmentList from "./dashboard/EnrollmentList";
+import CWTSCompanyRosterCard from "@/components/admin/cwts/dashboard/CWTSCompanyRosterCard";
 
 interface AdminDashboardProps {
   program: NSTProgram;
@@ -49,6 +50,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             <EnrollmentScheduleCard base={base} program={program} />
             <EnrollmentList base={base} program={program} isLoading={isLoading} total={total} pending={pending} approved={approved} rejected={rejected} />
+            {program === "CWTS" && <CWTSCompanyRosterCard base={base} />}
           </div>
         </main>
       </div>

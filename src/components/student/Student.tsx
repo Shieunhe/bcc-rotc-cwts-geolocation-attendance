@@ -99,7 +99,7 @@ export default function Student() {
             {/* Enrollment Status */}
             <EnrollmentStatus status={status} />
             {/* Assigned Platoon */}
-            <AssignedPlatoon platoon={profile.platoon}/>
+            <AssignedPlatoon platoon={profile.platoon} company={profile.company} program={profile.nstpComponent} status={profile.status} />
             {/* Attendance */}
             <Attendance/>
             {/* <Link href="/student/attendance" className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
