@@ -104,7 +104,16 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
   async function handleApprove() {
     setIsUpdating(true);
     try {
-      await adminService.updateEnrollmentStatus(enrollment.uid, "approved");
+      if (enrollment.nstpComponent === "CWTS") {
+        const company = await adminService.approveCWTSEnrollment(enrollment.uid);
+        if (!company) {
+          alert("All companies are full. Cannot approve more CWTS enrollments.");
+          setIsUpdating(false);
+          return;
+        }
+      } else {
+        await adminService.updateEnrollmentStatus(enrollment.uid, "approved");
+      }
       onStatusChange?.();
       onClose();
     } catch {
@@ -207,6 +216,13 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
             <Field label="NSTP Component" value={enrollment.nstpComponent} />
             <Field label="MS Level" value={enrollment.msLevel} />
             <Field label="Advance Course" value={enrollment.willingToTakeAdvanceCourse ? "Yes" : "No"} />
+            {enrollment.company && (
+              <Field label="Company" value={
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold">
+                  {enrollment.company}
+                </span>
+              } />
+            )}
           </Section>
 
           <Section title="Physical & Health" icon={ICONS.health}>

@@ -4,6 +4,10 @@ export type Sex = "Male" | "Female";
 export type BloodType = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-" | "N/A";
 export type YearLevel = "1st Year" | "2nd Year" | "3rd Year" | "4th Year";
 export type EnrollmentStatus = "pending" | "approved" | "rejected";
+export type CWTSCompany = "Alpha" | "Bravo" | "Charlie" | "Delta" | "Echo" | "Foxtrot";
+
+export const CWTS_COMPANIES: CWTSCompany[] = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"];
+export const CWTS_COMPANY_SLOT_LIMIT = 60;
 
 export interface EnrollmentSchedule {
   program: NSTProgram;
@@ -64,6 +68,7 @@ export interface EnrollmentDocument {
   updatedAt: string;
   status: EnrollmentStatus;
   rejectionReason?: string;
+  company?: CWTSCompany;
   // Assigned by admin
   platoon?: string;
   grades?: number;
