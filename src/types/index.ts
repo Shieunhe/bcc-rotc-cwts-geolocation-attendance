@@ -9,6 +9,16 @@ export type CWTSCompany = "Alpha" | "Bravo" | "Charlie" | "Delta" | "Echo" | "Fo
 export const CWTS_COMPANIES: CWTSCompany[] = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"];
 export const CWTS_COMPANY_SLOT_LIMIT = 60;
 
+// ROTC
+export type ROTCBattalion = 1 | 2;
+export type ROTCCompany = "Alpha" | "Bravo" | "Charlie" | "Delta" | "Echo" | "Foxtrot" | "Golf" | "Hotel";
+export type ROTCPlatoon = 1 | 2 | 3 | 4;
+
+export const ROTC_BATTALION_1_COMPANIES: ROTCCompany[] = ["Alpha", "Bravo", "Charlie", "Delta"];
+export const ROTC_BATTALION_2_COMPANIES: ROTCCompany[] = ["Echo", "Foxtrot", "Golf", "Hotel"];
+export const ROTC_PLATOONS_PER_COMPANY = 4;
+export const ROTC_PLATOON_SLOT_LIMIT = 38;
+
 export interface EnrollmentSchedule {
   program: NSTProgram;
   openDate: string;
@@ -69,6 +79,10 @@ export interface EnrollmentDocument {
   status: EnrollmentStatus;
   rejectionReason?: string;
   company?: CWTSCompany;
+  // ROTC assignment
+  battalion?: ROTCBattalion;
+  rotcCompany?: ROTCCompany;
+  rotcPlatoon?: ROTCPlatoon;
   // Assigned by admin
   platoon?: string;
   grades?: number;

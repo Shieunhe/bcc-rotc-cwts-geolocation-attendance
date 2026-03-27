@@ -1,6 +1,12 @@
-import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { CWTSCompany, CWTS_COMPANIES, CWTS_COMPANY_SLOT_LIMIT, EnrollmentDocument, EnrollmentSchedule, EnrollmentStatus, NSTProgram } from "@/types";
+import {
+  CWTSCompany, CWTS_COMPANIES, CWTS_COMPANY_SLOT_LIMIT,
+  EnrollmentDocument, EnrollmentSchedule, EnrollmentStatus, NSTProgram,
+  ROTCBattalion, ROTCCompany, ROTCPlatoon,
+  ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
+  ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
+} from "@/types";
 
 export const adminService = {
   async getEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentDocument[]> {
@@ -92,5 +98,152 @@ export const adminService = {
       updatedAt: new Date().toISOString(),
     });
     return company;
+  },
+
+  // ─── ROTC ───
+
+  async getROTCApprovedEnrollments(): Promise<EnrollmentDocument[]> {
+    const q = query(
+      collection(db, "account_reservations"),
+      where("nstpComponent", "==", "ROTC"),
+      where("status", "==", "approved")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => d.data() as EnrollmentDocument);
+  },
+
+  async assignROTCPlatoons(): Promise<{ assigned: number; alreadyAssigned: number }> {
+    const enrollments = await this.getROTCApprovedEnrollments();
+
+    const unassigned = enrollments.filter((e) => !e.rotcCompany);
+    const alreadyAssigned = enrollments.length - unassigned.length;
+    if (unassigned.length === 0) return { assigned: 0, alreadyAssigned };
+
+    const males = unassigned
+      .filter((e) => e.sex === "Male")
+      .sort((a, b) => a.lastName.localeCompare(b.lastName));
+    const females = unassigned
+      .filter((e) => e.sex === "Female")
+      .sort((a, b) => a.lastName.localeCompare(b.lastName));
+
+    const existingMaleCounts = this.buildROTCSlotCounts(enrollments.filter((e) => e.sex === "Male" && e.rotcCompany), ROTC_BATTALION_1_COMPANIES);
+    const existingFemaleCounts = this.buildROTCSlotCounts(enrollments.filter((e) => e.sex === "Female" && e.rotcCompany), ROTC_BATTALION_2_COMPANIES);
+
+    const maleAssignments = this.computeROTCAssignments(males, 1, ROTC_BATTALION_1_COMPANIES, existingMaleCounts);
+    const femaleAssignments = this.computeROTCAssignments(females, 2, ROTC_BATTALION_2_COMPANIES, existingFemaleCounts);
+
+    const all = [...maleAssignments, ...femaleAssignments];
+
+    const batchSize = 500;
+    for (let i = 0; i < all.length; i += batchSize) {
+      const batch = writeBatch(db);
+      const chunk = all.slice(i, i + batchSize);
+      for (const a of chunk) {
+        const ref = doc(db, "account_reservations", a.uid);
+        batch.update(ref, {
+          battalion: a.battalion,
+          rotcCompany: a.rotcCompany,
+          rotcPlatoon: a.rotcPlatoon,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      await batch.commit();
+    }
+
+    return { assigned: all.length, alreadyAssigned };
+  },
+
+  buildROTCSlotCounts(
+    assigned: EnrollmentDocument[],
+    companies: ROTCCompany[]
+  ): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const c of companies) {
+      for (let p = 1; p <= ROTC_PLATOONS_PER_COMPANY; p++) {
+        counts[`${c}-${p}`] = 0;
+      }
+    }
+    for (const e of assigned) {
+      const key = `${e.rotcCompany}-${e.rotcPlatoon}`;
+      if (counts[key] !== undefined) counts[key]++;
+    }
+    return counts;
+  },
+
+  computeROTCAssignments(
+    cadets: EnrollmentDocument[],
+    battalion: ROTCBattalion,
+    companies: ROTCCompany[],
+    slotCounts: Record<string, number>
+  ): { uid: string; battalion: ROTCBattalion; rotcCompany: ROTCCompany; rotcPlatoon: ROTCPlatoon }[] {
+    const results: { uid: string; battalion: ROTCBattalion; rotcCompany: ROTCCompany; rotcPlatoon: ROTCPlatoon }[] = [];
+    let companyIdx = 0;
+    let platoonNum = 1;
+
+    // Fast-forward to the first slot with available space
+    while (companyIdx < companies.length) {
+      const key = `${companies[companyIdx]}-${platoonNum}`;
+      if ((slotCounts[key] ?? 0) < ROTC_PLATOON_SLOT_LIMIT) break;
+      platoonNum++;
+      if (platoonNum > ROTC_PLATOONS_PER_COMPANY) {
+        platoonNum = 1;
+        companyIdx++;
+      }
+    }
+
+    for (const cadet of cadets) {
+      if (companyIdx >= companies.length) break;
+
+      results.push({
+        uid: cadet.uid,
+        battalion,
+        rotcCompany: companies[companyIdx],
+        rotcPlatoon: platoonNum as ROTCPlatoon,
+      });
+
+      const key = `${companies[companyIdx]}-${platoonNum}`;
+      slotCounts[key] = (slotCounts[key] ?? 0) + 1;
+
+      if (slotCounts[key] >= ROTC_PLATOON_SLOT_LIMIT) {
+        platoonNum++;
+        if (platoonNum > ROTC_PLATOONS_PER_COMPANY) {
+          platoonNum = 1;
+          companyIdx++;
+        }
+      }
+    }
+
+    return results;
+  },
+
+  async getROTCRosterGrouped(): Promise<{
+    battalion1: Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
+    battalion2: Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
+  }> {
+    const enrollments = await this.getROTCApprovedEnrollments();
+
+    const buildEmpty = (companies: ROTCCompany[]) => {
+      const result: Record<string, Record<number, EnrollmentDocument[]>> = {};
+      for (const c of companies) {
+        result[c] = {};
+        for (let p = 1; p <= ROTC_PLATOONS_PER_COMPANY; p++) {
+          result[c][p] = [];
+        }
+      }
+      return result as Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
+    };
+
+    const battalion1 = buildEmpty(ROTC_BATTALION_1_COMPANIES);
+    const battalion2 = buildEmpty(ROTC_BATTALION_2_COMPANIES);
+
+    for (const e of enrollments) {
+      if (!e.rotcCompany || !e.rotcPlatoon) continue;
+      const target = e.battalion === 1 ? battalion1 : battalion2;
+      if (target[e.rotcCompany]?.[e.rotcPlatoon]) {
+        target[e.rotcCompany][e.rotcPlatoon].push(e);
+      }
+    }
+
+    return { battalion1, battalion2 };
   },
 };
