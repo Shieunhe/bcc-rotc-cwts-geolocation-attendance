@@ -1,34 +1,19 @@
 import Link from "next/link";
-import { CWTSCompany, EnrollmentStatus, NSTProgram } from "@/types";
+import { CWTSCompany, NSTProgram, ROTCBattalion, ROTCCompany, ROTCPlatoon } from "@/types";
 
 interface AssignedPlatoonProps {
-    platoon: string | undefined;
     company: CWTSCompany | undefined;
+    rotcCompany: ROTCCompany | undefined;
+    battalion: ROTCBattalion | undefined;
+    rotcPlatoon: ROTCPlatoon | undefined;
     program: NSTProgram | "";
-    status: EnrollmentStatus;
 }
 
-export default function AssignedPlatoon({ platoon, company, program, status }: AssignedPlatoonProps) {
-  const assignment = program === "CWTS" ? company : platoon;
-  const label = program === "CWTS" ? "Assigned Company" : "Assigned Platoon";
-  const groupWord = program === "CWTS" ? "company" : "platoon";
-  const statusConfig = {
-    pending: {
-      label: "Pending Approval",
-      color: "bg-yellow-100 text-yellow-700 border-yellow-200",
-      dot: "bg-yellow-400",
-    },
-    approved: {
-      label: "Approved",
-      color: "bg-green-100 text-green-700 border-green-200",
-      dot: "bg-green-500",
-    },
-    rejected: {
-      label: "Rejected",
-      color: "bg-red-100 text-red-700 border-red-200",
-      dot: "bg-red-500",
-    },
-  };
+export default function AssignedPlatoon({ company, rotcCompany, battalion, rotcPlatoon, program }: AssignedPlatoonProps) {
+  const isCWTS = program === "CWTS";
+  const isAssigned = isCWTS ? !!company : !!rotcCompany;
+  const label = isCWTS ? "Assigned Company" : "Assigned Platoon";
+  const groupWord = isCWTS ? "company" : "platoon";
 
   return (
     <Link href="/student/assigned-platoon" className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
@@ -43,17 +28,34 @@ export default function AssignedPlatoon({ platoon, company, program, status }: A
         </svg>
       </div>
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">{label}</p>
-      {assignment ? (
+      {isAssigned ? (
         <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-sm">
+            <span className="text-sm font-bold text-white">{isCWTS ? company![0] : rotcCompany![0]}</span>
+          </div>
           <div>
-            <p className="text-base font-bold text-gray-800 uppercase leading-tight">{assignment}</p>
+            {isCWTS ? (
+              <>
+                <p className="text-base font-bold text-gray-800 leading-tight">{company}</p>
+                <p className="text-[11px] text-indigo-500 font-medium">CWTS</p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-bold text-gray-800 leading-tight">{rotcCompany} — Platoon {rotcPlatoon}</p>
+                <p className="text-[11px] text-indigo-500 font-medium">Battalion {battalion}</p>
+              </>
+            )}
           </div>
         </div>
       ) : (
         <div className="flex items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-gray-100 text-gray-500 border-gray-200">
-                Not yet assigned
-            </span>
+          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+            <span className="text-sm text-gray-300">?</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-400">Not yet assigned</p>
+            <p className="text-[11px] text-gray-300">Pending assignment</p>
+          </div>
         </div>
       )}
       <p className="text-xs text-gray-400 mt-3">Tap to view your {groupWord} details.</p>
