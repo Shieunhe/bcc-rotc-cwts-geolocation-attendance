@@ -3,8 +3,9 @@
 import { useState } from "react";
 import OfficerSidebarItems from "@/components/officer/OfficerSidebarItems";
 import ROTCBattalionOne from "@/components/officer/dashboard/ROTCBattalionOne";
-import CWTSCard from "@/components/officer/dashboard/CWTSCard";
 import ROTCBattalionTwo from "@/components/officer/dashboard/ROTCBattalionTwo";
+import CWTSCard from "@/components/officer/dashboard/CWTSCard";
+import CreateAttendanceCard from "@/components/officer/dashboard/CreateAttendanceCard";
 
 export default function Officer() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -38,6 +39,7 @@ export default function Officer() {
             <ROTCBattalionOne />
             <ROTCBattalionTwo />
             <CWTSCard />
+            <CreateAttendanceCard />
           </div>
         </main>
       </div>

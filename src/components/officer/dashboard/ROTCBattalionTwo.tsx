@@ -1,6 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { ROTC_BATTALION_2_COMPANIES, ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT } from "@/types";
+import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
+import { countBattalionMembers } from "@/components/admin/rotc/platoon-roster/components/ROTCBattalionSection";
 
 export default function ROTCBattalionTwo() {
+  const { roster, isLoading } = useROTCPlatoonRoster();
+
+  const total = roster ? countBattalionMembers(roster.battalion2, ROTC_BATTALION_2_COMPANIES) : 0;
+  const capacity = ROTC_BATTALION_2_COMPANIES.length * ROTC_PLATOONS_PER_COMPANY * ROTC_PLATOON_SLOT_LIMIT;
+  const pct = capacity > 0 ? Math.round((total / capacity) * 100) : 0;
+
   return (
     <Link
       href="/officer/rotc/battalion-2"
@@ -14,25 +25,24 @@ export default function ROTCBattalionTwo() {
         </div>
         <div>
           <h3 className="text-sm font-bold text-gray-800">ROTC — Battalion 2</h3>
-          <p className="text-xs text-gray-400">Female cadettes battalion management</p>
+          <p className="text-xs text-gray-400">Female cadettes battalion</p>
         </div>
       </div>
 
-      <div className="flex items-center justify-center py-6 rounded-xl bg-gray-50 border border-dashed border-gray-200">
-        <div className="text-center">
-          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-2">
-            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-          </div>
-          <p className="text-xs font-semibold text-gray-500">Coming Soon</p>
+      <div className="space-y-3">
+        <div className="flex items-end justify-between">
+          <p className="text-2xl font-bold text-purple-600">{isLoading ? "—" : total}</p>
+          <p className="text-xs text-gray-400 font-medium tabular-nums">/ {capacity} slots</p>
         </div>
-      </div>
-
-      <div className="flex items-center justify-end mt-3">
-        <span className="text-xs text-gray-400 group-hover:text-purple-500 transition-colors font-medium">
-          View details →
-        </span>
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-full rounded-full bg-purple-500 transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-gray-400">{ROTC_BATTALION_2_COMPANIES.length} companies • {ROTC_PLATOONS_PER_COMPANY} platoons each</p>
+          <span className="text-xs text-gray-400 group-hover:text-purple-500 transition-colors font-medium">
+            View →
+          </span>
+        </div>
       </div>
     </Link>
   );
