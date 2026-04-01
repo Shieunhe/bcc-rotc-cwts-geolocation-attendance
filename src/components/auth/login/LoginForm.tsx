@@ -41,7 +41,7 @@ export default function LoginForm() {
         router.push("/admin/rotc/dashboard");
       } else if (email === "cwts@admin.com") {
         router.push("/admin/cwts/dashboard");
-      } else if (email === "officer@email.com") {
+      } else if (email === "officer@admin.com") {
         router.push("/officer/dashboard");
       } else {
         router.push("/student/dashboard");
