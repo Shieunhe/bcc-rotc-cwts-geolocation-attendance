@@ -170,8 +170,9 @@ export default function OfficerCreateAttendance() {
                 type="datetime-local"
                 value={closeDate}
                 onChange={(e) => {
-                  const datePart = e.target.value.split("T")[0];
-                  setCloseDate(`${datePart}T23:59`);
+                  const [datePart, timePart] = e.target.value.split("T");
+                  const hours = timePart?.split(":")[0] ?? "23";
+                  setCloseDate(`${datePart}T${hours}:59`);
                 }}
                 disabled={!program}
                 min={openDate}
