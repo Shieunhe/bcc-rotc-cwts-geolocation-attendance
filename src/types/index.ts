@@ -88,3 +88,25 @@ export interface EnrollmentDocument {
   grades?: number;
   serialNumber?: string;
 }
+
+// Attendance
+export type AttendanceStatus = "open" | "closed" | "scheduled";
+
+export interface AttendanceLocation {
+  latitude: number;
+  longitude: number;
+}
+
+export const ATTENDANCE_RADIUS_METERS = 100;
+
+export interface AttendanceSession {
+  id: string;
+  program: NSTProgram;
+  openDate: string;
+  closeDate: string;
+  location: AttendanceLocation;
+  radiusMeters: number;
+  status: AttendanceStatus;
+  createdAt: string;
+  createdBy: string;
+}

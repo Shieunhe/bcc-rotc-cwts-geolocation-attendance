@@ -6,6 +6,7 @@ import {
   ROTCBattalion, ROTCCompany, ROTCPlatoon,
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
+  AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
 } from "@/types";
 
 export const adminService = {
@@ -245,5 +246,40 @@ export const adminService = {
     }
 
     return { battalion1, battalion2 };
+  },
+
+  // ─── Attendance ────────────────────────────────────────────────
+
+  async createAttendanceSession(data: {
+    program: NSTProgram;
+    openDate: string;
+    closeDate: string;
+    location: AttendanceLocation;
+    createdBy: string;
+  }): Promise<string> {
+    const ref = doc(collection(db, "create_attendance"));
+
+    const now = new Date();
+    const open = new Date(data.openDate);
+    const close = new Date(data.closeDate);
+
+    let status: AttendanceStatus = "scheduled";
+    if (now >= open && now < close) status = "open";
+    else if (now >= close) status = "closed";
+
+    const session: AttendanceSession = {
+      id: ref.id,
+      program: data.program,
+      openDate: data.openDate,
+      closeDate: data.closeDate,
+      location: data.location,
+      radiusMeters: ATTENDANCE_RADIUS_METERS,
+      status,
+      createdAt: now.toISOString(),
+      createdBy: data.createdBy,
+    };
+
+    await setDoc(ref, session);
+    return ref.id;
   },
 };

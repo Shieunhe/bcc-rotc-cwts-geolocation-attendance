@@ -27,7 +27,7 @@ export default function OfficerPageLayout({ children }: OfficerPageLayoutProps) 
           <span className="text-sm font-semibold text-gray-700">BCC NSTP — Officer</span>
         </header>
 
-        <main className="flex-1 overflow-y-auto flex flex-col p-4 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {children}
         </main>
       </div>
