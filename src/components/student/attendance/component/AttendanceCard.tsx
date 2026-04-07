@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, lazy, Suspense } from "react";
-import { AttendanceSession } from "@/types";
+import { AttendanceSession, AttendanceRecord } from "@/types";
+import { studentService } from "@/services/student.service";
+import { auth } from "@/lib/firebase";
 
 const LocationMap = lazy(() => import("@/components/common/LocationMap"));
 
@@ -100,6 +102,20 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
   const [locLoading, setLocLoading] = useState(true);
   const [locError, setLocError] = useState<string | null>(null);
 
+  const [existingRecord, setExistingRecord] = useState<AttendanceRecord | null>(null);
+  const [checkingRecord, setCheckingRecord] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [justMarked, setJustMarked] = useState(false);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) { setCheckingRecord(false); return; }
+    studentService.getAttendanceRecord(uid, session.id).then((record) => {
+      setExistingRecord(record);
+      setCheckingRecord(false);
+    }).catch(() => setCheckingRecord(false));
+  }, [session.id]);
+
   function captureLocation() {
     if (!navigator.geolocation) {
       setLocError("Geolocation is not supported by your browser.");
@@ -137,15 +153,52 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
 
   const isWithinRadius = distance !== null && distance <= session.radiusMeters;
   const isClosed = status === "closed";
-  const canMark = !isClosed && isWithinRadius && !locLoading;
+  const alreadyMarked = !!existingRecord || justMarked;
+  const canMark = !isClosed && isWithinRadius && !locLoading && !alreadyMarked && !checkingRecord;
 
-  const buttonClass = isClosed
-    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-    : canMark
-      ? status === "open"
-        ? "bg-green-600 text-white hover:bg-green-700 shadow-sm shadow-green-200"
-        : "bg-amber-500 text-white hover:bg-amber-600 shadow-sm shadow-amber-200"
-      : "bg-gray-100 text-gray-400 cursor-not-allowed";
+  async function handleMarkAttendance() {
+    const uid = auth.currentUser?.uid;
+    if (!uid || !canMark) return;
+
+    setSubmitting(true);
+    try {
+      const attendanceStatus = status === "late" ? "late" : "present";
+      await studentService.markAttendance(uid, session.id, attendanceStatus);
+      setJustMarked(true);
+      setExistingRecord({
+        id: "",
+        studentUid: uid,
+        attendanceSessionId: session.id,
+        status: attendanceStatus,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const markedStatus = existingRecord?.status;
+
+  const buttonClass = alreadyMarked
+    ? "bg-green-50 text-green-600 border border-green-200 cursor-default"
+    : isClosed
+      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+      : canMark
+        ? status === "open"
+          ? "bg-green-600 text-white hover:bg-green-700 shadow-sm shadow-green-200"
+          : "bg-amber-500 text-white hover:bg-amber-600 shadow-sm shadow-amber-200"
+        : "bg-gray-100 text-gray-400 cursor-not-allowed";
+
+  const buttonLabel = submitting
+    ? "Marking..."
+    : alreadyMarked
+      ? markedStatus === "late"
+        ? "Marked as Late"
+        : markedStatus === "absent"
+          ? "Marked as Absent"
+          : "Attendance Marked"
+      : config.buttonLabel;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -217,8 +270,41 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
           </div>
         )}
 
+        {/* Already marked banner */}
+        {alreadyMarked && (
+          <div className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border ${
+            markedStatus === "late"
+              ? "bg-amber-50 border-amber-200"
+              : markedStatus === "absent"
+                ? "bg-red-50 border-red-200"
+                : "bg-green-50 border-green-200"
+          }`}>
+            <svg className={`w-4 h-4 shrink-0 ${
+              markedStatus === "late" ? "text-amber-500" : markedStatus === "absent" ? "text-red-500" : "text-green-500"
+            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <div>
+              <p className={`text-[11px] font-semibold ${
+                markedStatus === "late" ? "text-amber-700" : markedStatus === "absent" ? "text-red-700" : "text-green-700"
+              }`}>
+                {markedStatus === "late"
+                  ? "You were marked as late for this session."
+                  : markedStatus === "absent"
+                    ? "You were marked as absent for this session."
+                    : "Your attendance has been recorded successfully!"}
+              </p>
+              {existingRecord?.createdAt && (
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  Recorded at {new Date(existingRecord.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Location status */}
-        {!isClosed && (
+        {!isClosed && !alreadyMarked && (
           <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -330,14 +416,23 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
       {/* Action */}
       <div className="px-5 pb-5">
         <button
-          disabled={!canMark}
+          onClick={handleMarkAttendance}
+          disabled={!canMark || submitting}
           className={`w-full py-3.5 rounded-xl text-sm font-semibold active:scale-[0.98] transition flex items-center justify-center gap-2 ${buttonClass}`}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          {config.buttonLabel}
+          {submitting ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : alreadyMarked ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          )}
+          {buttonLabel}
         </button>
       </div>
     </div>

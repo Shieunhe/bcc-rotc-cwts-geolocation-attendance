@@ -7,6 +7,7 @@ import {
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
   AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
+  AttendanceRecord,
 } from "@/types";
 
 export const adminService = {
@@ -249,6 +250,109 @@ export const adminService = {
   },
 
   // ─── Attendance ────────────────────────────────────────────────
+
+  async getAllAttendanceSessions(): Promise<AttendanceSession[]> {
+    const snap = await getDocs(collection(db, "create_attendance"));
+    const now = new Date();
+    const sessions = snap.docs.map((d) => d.data() as AttendanceSession);
+
+    const LATE_THRESHOLD_MINUTES = 15;
+    const expiredSessions = sessions.filter((s) => {
+      if (s.status === "closed") return false;
+      const lateDeadline = new Date(
+        new Date(s.closeDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000
+      );
+      return now >= lateDeadline;
+    });
+
+    for (const s of expiredSessions) {
+      await updateDoc(doc(db, "create_attendance", s.id), { status: "closed" });
+      s.status = "closed";
+      await this.markAbsentStudents(s.id, s.program);
+    }
+
+    return sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  async markAbsentStudents(sessionId: string, program: string): Promise<void> {
+    const enrolledSnap = await getDocs(
+      query(collection(db, "account_reservations"), where("nstpComponent", "==", program), where("status", "==", "approved"))
+    );
+    if (enrolledSnap.empty) return;
+
+    const recordsSnap = await getDocs(
+      query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))
+    );
+    const markedUids = new Set(recordsSnap.docs.map((d) => d.data().studentUid as string));
+
+    const now = new Date().toISOString();
+    const batch = writeBatch(db);
+    let count = 0;
+
+    for (const enrolled of enrolledSnap.docs) {
+      const uid = enrolled.data().uid as string;
+      if (markedUids.has(uid)) continue;
+      const ref = doc(collection(db, "attendance_list"));
+      batch.set(ref, {
+        id: ref.id,
+        studentUid: uid,
+        attendanceSessionId: sessionId,
+        status: "absent",
+        createdAt: now,
+        updatedAt: now,
+      } satisfies AttendanceRecord);
+      count++;
+    }
+
+    if (count > 0) await batch.commit();
+  },
+
+  async getSessionAttendanceRecords(sessionId: string): Promise<(AttendanceRecord & { student?: EnrollmentDocument })[]> {
+    const recordsSnap = await getDocs(
+      query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))
+    );
+    const records = recordsSnap.docs.map((d) => d.data() as AttendanceRecord);
+
+    const studentUids = [...new Set(records.map((r) => r.studentUid))];
+    const studentMap = new Map<string, EnrollmentDocument>();
+
+    for (const uid of studentUids) {
+      const snap = await getDoc(doc(db, "account_reservations", uid));
+      if (snap.exists()) studentMap.set(uid, snap.data() as EnrollmentDocument);
+    }
+
+    return records.map((r) => ({ ...r, student: studentMap.get(r.studentUid) }));
+  },
+
+  async getAttendanceSessionsByDate(program: string, date: string): Promise<AttendanceSession[]> {
+    const snap = await getDocs(
+      query(collection(db, "create_attendance"), where("program", "==", program))
+    );
+    return snap.docs
+      .map((d) => d.data() as AttendanceSession)
+      .filter((s) => s.openDate.startsWith(date))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  async getAttendanceSummary(sessionId: string, program: string): Promise<{
+    records: (AttendanceRecord & { student?: EnrollmentDocument })[];
+    enrolledStudents: EnrollmentDocument[];
+  }> {
+    const [recordsSnap, enrolledSnap] = await Promise.all([
+      getDocs(query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))),
+      getDocs(query(collection(db, "account_reservations"), where("nstpComponent", "==", program), where("status", "==", "approved"))),
+    ]);
+
+    const enrolledStudents = enrolledSnap.docs.map((d) => d.data() as EnrollmentDocument);
+    const studentMap = new Map(enrolledStudents.map((s) => [s.uid, s]));
+
+    const records = recordsSnap.docs.map((d) => {
+      const record = d.data() as AttendanceRecord;
+      return { ...record, student: studentMap.get(record.studentUid) };
+    });
+
+    return { records, enrolledStudents };
+  },
 
   async createAttendanceSession(data: {
     program: NSTProgram;
