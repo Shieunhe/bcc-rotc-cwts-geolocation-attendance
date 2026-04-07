@@ -110,3 +110,14 @@ export interface AttendanceSession {
   createdAt: string;
   createdBy: string;
 }
+
+export type AttendanceRecordStatus = "present" | "late" | "absent";
+
+export interface AttendanceRecord {
+  id: string;
+  studentUid: string;
+  attendanceSessionId: string;
+  status: AttendanceRecordStatus;
+  createdAt: string;
+  updatedAt: string;
+}

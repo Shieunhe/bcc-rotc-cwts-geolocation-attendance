@@ -9,6 +9,7 @@ import EnrollmentScheduleCard from "./dashboard/EnrollmentScheduleCard";
 import EnrollmentList from "./dashboard/EnrollmentList";
 import CWTSCompanyRosterCard from "@/components/admin/cwts/dashboard/CWTSCompanyRosterCard";
 import ROTCPlatoonRosterCard from "@/components/admin/rotc/dashboard/ROTCPlatoonRosterCard";
+import AttendanceSummaryCard from "./dashboard/AttendanceSummaryCard";
 
 interface AdminDashboardProps {
   program: NSTProgram;
@@ -53,6 +54,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
             <EnrollmentList base={base} program={program} isLoading={isLoading} total={total} pending={pending} approved={approved} rejected={rejected} />
             {program === "CWTS" && <CWTSCompanyRosterCard base={base} />}
             {program === "ROTC" && <ROTCPlatoonRosterCard base={base} />}
+            <AttendanceSummaryCard base={base} />
           </div>
         </main>
       </div>
