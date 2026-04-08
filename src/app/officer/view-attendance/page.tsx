@@ -1,10 +1,5 @@
-import OfficerPageLayout from "@/components/layout/OfficerPageLayout";
-import OfficerViewAttendance from "@/components/officer/view-attendance/OfficerViewAttendance";
+import { redirect } from "next/navigation";
 
 export default function ViewAttendancePage() {
-  return (
-    <OfficerPageLayout>
-      <OfficerViewAttendance />
-    </OfficerPageLayout>
-  );
+  redirect("/officer/view-attendance/rotc");
 }

@@ -7,6 +7,7 @@ import ROTCBattalionTwo from "@/components/officer/dashboard/ROTCBattalionTwo";
 import CWTSCard from "@/components/officer/dashboard/CWTSCard";
 import CreateAttendanceCard from "@/components/officer/dashboard/CreateAttendanceCard";
 import ViewAttendanceCard from "@/components/officer/dashboard/ViewAttendanceCard";
+import AdvanceCourseCard from "@/components/officer/dashboard/AdvanceCourseCard";
 
 export default function Officer() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -39,6 +40,7 @@ export default function Officer() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             <ROTCBattalionOne />
             <ROTCBattalionTwo />
+            <AdvanceCourseCard />
             <CWTSCard />
             <CreateAttendanceCard />
             <ViewAttendanceCard />

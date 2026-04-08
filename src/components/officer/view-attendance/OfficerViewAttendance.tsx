@@ -4,9 +4,23 @@ import { useEffect, useState } from "react";
 import { adminService } from "@/services/admin.service";
 import { AttendanceSession } from "@/types";
 import ROTCAttendanceBox from "./component/ROTCAttendanceBox";
+import AdvanceCourseAttendanceBox from "./component/AdvanceCourseAttendanceBox";
 import CWTSAttendanceBox from "./component/CWTSAttendanceBox";
 
-export default function OfficerViewAttendance() {
+export type ViewAttendanceSection = "rotc" | "cwts" | "advance-course";
+
+const SECTION_META: Record<ViewAttendanceSection, { title: string; subtitle: string }> = {
+  rotc:            { title: "ROTC Attendance", subtitle: "Review ROTC attendance sessions and student records." },
+  cwts:            { title: "CWTS Attendance", subtitle: "Review CWTS attendance sessions and student records." },
+  "advance-course": { title: "Advance Course Attendance", subtitle: "Review advance course attendance sessions and student records." },
+};
+
+interface Props {
+  section: ViewAttendanceSection;
+}
+
+export default function OfficerViewAttendance({ section }: Props) {
+  const meta = SECTION_META[section];
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,8 +45,8 @@ export default function OfficerViewAttendance() {
             </svg>
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">View Attendance</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Review ROTC and CWTS attendance sessions and student records.</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{meta.title}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{meta.subtitle}</p>
           </div>
         </div>
       </div>
@@ -46,8 +60,9 @@ export default function OfficerViewAttendance() {
         </div>
       ) : (
         <div className="space-y-6">
-          <ROTCAttendanceBox sessions={rotcSessions} />
-          <CWTSAttendanceBox sessions={cwtsSessions} />
+          {section === "rotc" && <ROTCAttendanceBox sessions={rotcSessions} />}
+          {section === "advance-course" && <AdvanceCourseAttendanceBox sessions={rotcSessions} />}
+          {section === "cwts" && <CWTSAttendanceBox sessions={cwtsSessions} />}
         </div>
       )}
     </>
