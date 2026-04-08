@@ -133,24 +133,6 @@ export default function AdvanceCourseAttendanceBox({
               )}
             </div>
 
-            {/* Attendance bar */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] font-semibold text-gray-600">Attendance Rate</span>
-                <span className="text-[11px] font-bold text-amber-600">{pct}%</span>
-              </div>
-              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden flex">
-                {total > 0 && (
-                  <>
-                    <div className="h-full bg-green-500" style={{ width: `${(counts.present / total) * 100}%` }} />
-                    <div className="h-full bg-amber-400" style={{ width: `${(counts.late / total) * 100}%` }} />
-                    <div className="h-full bg-red-400" style={{ width: `${(counts.absent / total) * 100}%` }} />
-                    {hasUnmarked && <div className="h-full bg-gray-300" style={{ width: `${(counts.unmarked / total) * 100}%` }} />}
-                  </>
-                )}
-              </div>
-            </div>
-
             {/* Filters */}
             <div className="space-y-2">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Filters</p>
@@ -158,9 +140,9 @@ export default function AdvanceCourseAttendanceBox({
                 <div className="relative">
                   <select value={filterGender} onChange={(e) => setFilterGender(e.target.value as "" | "Male" | "Female")}
                     className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-400 transition">
-                    <option value="">All Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
+                    <option value="">All Battalion</option>
+                    <option value="Male">Battalion 1</option>
+                    <option value="Female">Battalion 2</option>
                   </select>
                   <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </div>
