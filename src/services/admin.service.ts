@@ -117,7 +117,7 @@ export const adminService = {
   async assignROTCPlatoons(): Promise<{ assigned: number; alreadyAssigned: number }> {
     const enrollments = await this.getROTCApprovedEnrollments();
 
-    const unassigned = enrollments.filter((e) => !e.rotcCompany);
+    const unassigned = enrollments.filter((e) => !e.rotcCompany && !e.willingToTakeAdvanceCourse);
     const alreadyAssigned = enrollments.length - unassigned.length;
     if (unassigned.length === 0) return { assigned: 0, alreadyAssigned };
 
@@ -221,6 +221,8 @@ export const adminService = {
   async getROTCRosterGrouped(): Promise<{
     battalion1: Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
     battalion2: Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
+    advanceCourseMale: EnrollmentDocument[];
+    advanceCourseFemale: EnrollmentDocument[];
   }> {
     const enrollments = await this.getROTCApprovedEnrollments();
 
@@ -237,8 +239,15 @@ export const adminService = {
 
     const battalion1 = buildEmpty(ROTC_BATTALION_1_COMPANIES);
     const battalion2 = buildEmpty(ROTC_BATTALION_2_COMPANIES);
+    const advanceCourseMale: EnrollmentDocument[] = [];
+    const advanceCourseFemale: EnrollmentDocument[] = [];
 
     for (const e of enrollments) {
+      if (e.willingToTakeAdvanceCourse) {
+        if (e.sex === "Male") advanceCourseMale.push(e);
+        else advanceCourseFemale.push(e);
+        continue;
+      }
       if (!e.rotcCompany || !e.rotcPlatoon) continue;
       const target = e.battalion === 1 ? battalion1 : battalion2;
       if (target[e.rotcCompany]?.[e.rotcPlatoon]) {
@@ -246,7 +255,7 @@ export const adminService = {
       }
     }
 
-    return { battalion1, battalion2 };
+    return { battalion1, battalion2, advanceCourseMale, advanceCourseFemale };
   },
 
   // ─── Attendance ────────────────────────────────────────────────

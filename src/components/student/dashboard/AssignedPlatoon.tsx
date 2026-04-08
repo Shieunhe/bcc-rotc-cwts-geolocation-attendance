@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CWTSCompany, NSTProgram, ROTCBattalion, ROTCCompany, ROTCPlatoon } from "@/types";
+import { CWTSCompany, EnrollmentStatus, NSTProgram, ROTCBattalion, ROTCCompany, ROTCPlatoon } from "@/types";
 
 interface AssignedPlatoonProps {
     company: CWTSCompany | undefined;
@@ -7,13 +7,16 @@ interface AssignedPlatoonProps {
     battalion: ROTCBattalion | undefined;
     rotcPlatoon: ROTCPlatoon | undefined;
     program: NSTProgram | "";
+    status: EnrollmentStatus;
+    willingToTakeAdvanceCourse?: boolean;
 }
 
-export default function AssignedPlatoon({ company, rotcCompany, battalion, rotcPlatoon, program }: AssignedPlatoonProps) {
+export default function AssignedPlatoon({ company, rotcCompany, battalion, rotcPlatoon, program, status, willingToTakeAdvanceCourse }: AssignedPlatoonProps) {
   const isCWTS = program === "CWTS";
+  const isAdvanceCourse = !isCWTS && status === "approved" && !!willingToTakeAdvanceCourse;
   const isAssigned = isCWTS ? !!company : !!rotcCompany;
-  const label = isCWTS ? "Assigned Company" : "Assigned Platoon";
-  const groupWord = isCWTS ? "company" : "platoon";
+  const label = isAdvanceCourse ? "Advance Course" : isCWTS ? "Assigned Company" : "Assigned Platoon";
+  const groupWord = isAdvanceCourse ? "advance course" : isCWTS ? "company" : "platoon";
 
   return (
     <Link href="/student/assigned-platoon" className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
@@ -45,6 +48,18 @@ export default function AssignedPlatoon({ company, rotcCompany, battalion, rotcP
                 <p className="text-[11px] text-indigo-500 font-medium">Battalion {battalion}</p>
               </>
             )}
+          </div>
+        </div>
+      ) : isAdvanceCourse ? (
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-sm">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-base font-bold text-gray-800 leading-tight">Advance Course</p>
+            <p className="text-[11px] text-amber-500 font-medium">ROTC — Advance</p>
           </div>
         </div>
       ) : (

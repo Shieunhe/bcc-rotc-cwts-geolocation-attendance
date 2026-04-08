@@ -73,6 +73,12 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
   const attended = counts.present + counts.late;
   const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
 
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId);
+  const LATE_THRESHOLD_MINUTES = 15;
+  const lateDeadlineStr = selectedSession
+    ? new Date(new Date(selectedSession.closeDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000).toISOString()
+    : null;
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       {/* Header */}
@@ -240,7 +246,11 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
                             </div>
                             <span className="text-[10px] text-gray-400 font-medium w-20 text-center truncate">{s?.company ?? "—"}</span>
                             <span className="text-[10px] text-gray-400 font-medium w-16 text-center">
-                              {new Date(record.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                              {record.status === "present" || record.status === "late"
+                                ? formatTime(record.createdAt)
+                                : record.status === "absent" && lateDeadlineStr
+                                  ? formatTime(lateDeadlineStr)
+                                  : "—"}
                             </span>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border w-16 text-center ${cfg.bg} ${cfg.text}`}>
                               {cfg.label}

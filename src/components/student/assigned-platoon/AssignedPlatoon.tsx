@@ -15,8 +15,9 @@ export default function AssignedPlatoon() {
   const isLoading = authLoading || dataLoading;
 
   const isCWTS = profile?.nstpComponent === "CWTS";
+  const isAdvanceCourse = !isCWTS && profile?.status === "approved" && !!profile?.willingToTakeAdvanceCourse;
   const isAssigned = isCWTS ? !!profile?.company : !!profile?.rotcCompany;
-  const groupLabel = isCWTS ? "Company" : "Platoon";
+  const groupLabel = isAdvanceCourse ? "Assignment" : isCWTS ? "Company" : "Platoon";
   const statusConfig = STATUS_CONFIG[profile?.status ?? "pending"];
 
   return (
@@ -36,7 +37,13 @@ export default function AssignedPlatoon() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Assignment header */}
           <div className="p-6 flex items-center gap-4">
-            {isAssigned ? (
+            {isAdvanceCourse ? (
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-sm shrink-0">
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+            ) : isAssigned ? (
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
                 <span className="text-xl font-bold text-white">
                   {isCWTS ? profile!.company![0] : profile!.rotcCompany![0]}
@@ -50,7 +57,13 @@ export default function AssignedPlatoon() {
               </div>
             )}
             <div>
-              {isAssigned ? (
+              {isAdvanceCourse ? (
+                <>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Assignment</p>
+                  <h2 className="text-xl font-bold text-gray-800">Advance Course</h2>
+                  <p className="text-xs text-amber-500 font-medium">ROTC — Advance</p>
+                </>
+              ) : isAssigned ? (
                 isCWTS ? (
                   <>
                     <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Company</p>
@@ -94,7 +107,16 @@ export default function AssignedPlatoon() {
                 <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium mb-1">Year Level</p>
                 <p className="text-sm font-semibold text-gray-700">{profile?.yearLevel}</p>
               </div>
-              {!isCWTS && isAssigned && (
+              {isAdvanceCourse && (
+                <div className="col-span-2">
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium mb-1">Designation</p>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-semibold bg-amber-50 text-amber-700 border-amber-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Advance Course Cadet
+                  </span>
+                </div>
+              )}
+              {!isCWTS && !isAdvanceCourse && isAssigned && (
                 <>
                   <div>
                     <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium mb-1">Battalion</p>

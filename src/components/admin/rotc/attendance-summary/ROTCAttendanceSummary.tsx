@@ -11,6 +11,7 @@ import {
   ROTCCompany, EnrollmentDocument,
 } from "@/types";
 import BattalionAttendanceBox from "./components/BattalionAttendanceBox";
+import AdvanceCourseAttendanceBox from "./components/AdvanceCourseAttendanceBox";
 
 const LATE_THRESHOLD_MINUTES = 15;
 
@@ -39,7 +40,20 @@ function flattenRoster(
   return list;
 }
 
-export default function ROTCAttendanceSummary() {
+export type AttendanceSummarySection = "battalion-1" | "battalion-2" | "advance-course";
+
+const SECTION_META: Record<AttendanceSummarySection, { title: string; subtitle: string }> = {
+  "battalion-1":    { title: "Battalion 1 — Male", subtitle: "View attendance for Battalion 1 (Male) cadets." },
+  "battalion-2":    { title: "Battalion 2 — Female", subtitle: "View attendance for Battalion 2 (Female) cadets." },
+  "advance-course": { title: "Advance Course", subtitle: "View attendance for advance course cadets." },
+};
+
+interface Props {
+  section: AttendanceSummarySection;
+}
+
+export default function ROTCAttendanceSummary({ section }: Props) {
+  const meta = SECTION_META[section];
   const [selectedDate, setSelectedDate] = useState(formatDateInput(new Date()));
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -77,6 +91,7 @@ export default function ROTCAttendanceSummary() {
 
   const b1Students = roster ? flattenRoster(ROTC_BATTALION_1_COMPANIES, roster.battalion1) : [];
   const b2Students = roster ? flattenRoster(ROTC_BATTALION_2_COMPANIES, roster.battalion2) : [];
+  const advanceCourseStudents = roster ? [...roster.advanceCourseMale, ...roster.advanceCourseFemale] : [];
 
   return (
     <AdminPageLayout program="ROTC">
@@ -88,8 +103,8 @@ export default function ROTCAttendanceSummary() {
             </svg>
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">ROTC Attendance Summary</h1>
-            <p className="text-sm text-gray-500 mt-0.5">View attendance by battalion with filters.</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{meta.title}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{meta.subtitle}</p>
           </div>
         </div>
       </div>
@@ -151,30 +166,42 @@ export default function ROTCAttendanceSummary() {
         </div>
       ) : (
         <div className="space-y-6">
-          <BattalionAttendanceBox
-            battalionNum={1}
-            label="Male"
-            companies={ROTC_BATTALION_1_COMPANIES}
-            students={b1Students}
-            recordMap={recordMap}
-            graceOver={graceOver}
-            sessionCloseDate={selectedSession?.closeDate ?? null}
-            accentFrom="from-blue-600"
-            accentTo="to-indigo-700"
-            accentRing="focus:ring-blue-500"
-          />
-          <BattalionAttendanceBox
-            battalionNum={2}
-            label="Female"
-            companies={ROTC_BATTALION_2_COMPANIES}
-            students={b2Students}
-            recordMap={recordMap}
-            graceOver={graceOver}
-            sessionCloseDate={selectedSession?.closeDate ?? null}
-            accentFrom="from-violet-600"
-            accentTo="to-purple-700"
-            accentRing="focus:ring-violet-500"
-          />
+          {section === "battalion-1" && (
+            <BattalionAttendanceBox
+              battalionNum={1}
+              label="Male"
+              companies={ROTC_BATTALION_1_COMPANIES}
+              students={b1Students}
+              recordMap={recordMap}
+              graceOver={graceOver}
+              sessionCloseDate={selectedSession?.closeDate ?? null}
+              accentFrom="from-blue-600"
+              accentTo="to-indigo-700"
+              accentRing="focus:ring-blue-500"
+            />
+          )}
+          {section === "battalion-2" && (
+            <BattalionAttendanceBox
+              battalionNum={2}
+              label="Female"
+              companies={ROTC_BATTALION_2_COMPANIES}
+              students={b2Students}
+              recordMap={recordMap}
+              graceOver={graceOver}
+              sessionCloseDate={selectedSession?.closeDate ?? null}
+              accentFrom="from-violet-600"
+              accentTo="to-purple-700"
+              accentRing="focus:ring-violet-500"
+            />
+          )}
+          {section === "advance-course" && (
+            <AdvanceCourseAttendanceBox
+              students={advanceCourseStudents}
+              recordMap={recordMap}
+              graceOver={graceOver}
+              sessionCloseDate={selectedSession?.closeDate ?? null}
+            />
+          )}
         </div>
       )}
     </AdminPageLayout>

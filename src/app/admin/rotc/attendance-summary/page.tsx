@@ -1,5 +1,5 @@
-import ROTCAttendanceSummary from "@/components/admin/rotc/attendance-summary/ROTCAttendanceSummary";
+import { redirect } from "next/navigation";
 
 export default function RotcAttendanceSummaryPage() {
-  return <ROTCAttendanceSummary />;
+  redirect("/admin/rotc/attendance-summary/battalion-1");
 }

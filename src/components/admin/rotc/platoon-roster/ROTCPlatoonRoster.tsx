@@ -11,6 +11,7 @@ import { adminService } from "@/services/admin.service";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 import Button from "@/components/common/Button";
 import ROTCBattalionSection, { countBattalionMembers } from "./components/ROTCBattalionSection";
+import AdvanceCourseSection from "./components/AdvanceCourseSection";
 import ROTCheader from "./components/ROTCheader";
 import ROTCAssignSummary from "./components/ROTCAssignSummary";
 import ROTCAssignAssignment from "./components/ROTCAssignAssignment";
@@ -46,7 +47,8 @@ export default function ROTCPlatoonRoster() {
 
   const b1Total = roster ? countBattalionMembers(roster.battalion1, ROTC_BATTALION_1_COMPANIES) : 0;
   const b2Total = roster ? countBattalionMembers(roster.battalion2, ROTC_BATTALION_2_COMPANIES) : 0;
-  const grandTotal = b1Total + b2Total;
+  const advanceTotal = roster ? (roster.advanceCourseMale.length + roster.advanceCourseFemale.length) : 0;
+  const grandTotal = b1Total + b2Total + advanceTotal;
   const b1Capacity = ROTC_BATTALION_1_COMPANIES.length * ROTC_PLATOONS_PER_COMPANY * ROTC_PLATOON_SLOT_LIMIT;
   const b2Capacity = ROTC_BATTALION_2_COMPANIES.length * ROTC_PLATOONS_PER_COMPANY * ROTC_PLATOON_SLOT_LIMIT;
 
@@ -60,6 +62,7 @@ export default function ROTCPlatoonRoster() {
         b2Total={b2Total} 
         b1Capacity={b1Capacity}
         b2Capacity={b2Capacity}
+        advanceTotal={advanceTotal}
         closed={closed}
       />
       <ROTCAssignAssignment 
@@ -89,6 +92,10 @@ export default function ROTCPlatoonRoster() {
             data={roster.battalion2}
             expanded={expanded}
             onToggle={toggle}
+          />
+          <AdvanceCourseSection
+            maleStudents={roster.advanceCourseMale}
+            femaleStudents={roster.advanceCourseFemale}
           />
         </div>
       )}

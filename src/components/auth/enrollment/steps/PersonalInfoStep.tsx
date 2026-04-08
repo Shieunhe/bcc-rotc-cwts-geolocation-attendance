@@ -105,18 +105,20 @@ export default function PersonalInfoStep({ form, updateField, updateBoolean }: E
             updateField("emergencyContactContactNumber", digitsOnly);
           }} />
       </div>
-      <div className="flex items-center gap-3 mt-8">
-        <input
-          type="checkbox"
-          id="willingToTakeAdvanceCourse"
-          checked={form.willingToTakeAdvanceCourse}
-          onChange={(e) => updateBoolean("willingToTakeAdvanceCourse", e.target.checked)}
-          className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <label htmlFor="willingToTakeAdvanceCourse" className={labelClass + " mb-0 cursor-pointer"}>
-          Are you willing to take the advance course?
-        </label>
-      </div>
+      {form.nstpComponent !== "CWTS" && (
+        <div className="flex items-center gap-3 mt-8">
+          <input
+            type="checkbox"
+            id="willingToTakeAdvanceCourse"
+            checked={form.willingToTakeAdvanceCourse}
+            onChange={(e) => updateBoolean("willingToTakeAdvanceCourse", e.target.checked)}
+            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="willingToTakeAdvanceCourse" className={labelClass + " mb-0 cursor-pointer"}>
+            Are you willing to take the advance course?
+          </label>
+        </div>
+      )}
     </>
   );
 }

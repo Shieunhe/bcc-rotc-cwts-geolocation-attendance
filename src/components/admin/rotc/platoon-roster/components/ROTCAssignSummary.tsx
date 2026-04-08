@@ -7,14 +7,15 @@ interface ROTCAssignSummaryProps {
     b2Total: number;
     b1Capacity: number;
     b2Capacity: number;
+    advanceTotal: number;
     closed: boolean;
 }
 
-export default function ROTCAssignSummary({ isLoading, grandTotal, b1Total, b2Total, b1Capacity, b2Capacity, closed }: ROTCAssignSummaryProps) {
+export default function ROTCAssignSummary({ isLoading, grandTotal, b1Total, b2Total, b1Capacity, b2Capacity, advanceTotal, closed }: ROTCAssignSummaryProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Total Assigned</p>
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Total Cadets</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{isLoading ? "—" : grandTotal}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -24,6 +25,10 @@ export default function ROTCAssignSummary({ isLoading, grandTotal, b1Total, b2To
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Battalion 2 (F)</p>
             <p className="text-2xl font-bold text-rose-600 mt-1">{isLoading ? "—" : b2Total}<span className="text-sm text-gray-400 font-medium">/{b2Capacity}</span></p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Advance Course</p>
+            <p className="text-2xl font-bold text-amber-600 mt-1">{isLoading ? "—" : advanceTotal}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Schedule</p>
