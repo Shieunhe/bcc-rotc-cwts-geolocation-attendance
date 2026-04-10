@@ -96,11 +96,14 @@ export default function EnrollmentForm() {
       if (!formData.weight) return "Weight is required."; 
       if (!formData.bloodType) return "Blood type is required.";
       if (!formData.complexion) return "Complexion is required.";
-      if (formData.hasMedicalCondition === null) return "Please select if you have a medical condition.";
-      if (formData.hasMedicalCondition === true && !formData.medicalCondition) return "Please specify your medical condition.";
-      if (formData.hasMedicalCondition === true && !formData.medicalCertificate) return "Medical certificate is required.";
-      if (formData.hasMedicalCondition === false && !formData.medicalCertificate) return "Medical certificate is required.";
-      if (formData.hasMedicalCondition === false && !formData.xrayFile) return "X-ray is required.";
+      const isCWTS = formData.nstpComponent === "CWTS";
+      const isMedicalNA = isCWTS || formData.course === "BS CRIMINOLOGY";
+      if (!formData.medicalCertificate) return "Medical certificate is required.";
+      if (!isMedicalNA) {
+        if (formData.hasMedicalCondition === null) return "Please select if you have a medical condition.";
+        if (formData.hasMedicalCondition === true && !formData.medicalCondition) return "Please specify your medical condition.";
+      }
+      if (!isCWTS && !formData.xrayFile) return "X-ray is required.";
     }
     if (currentStep === 3) {
       if (!formData.email) return "Email is required.";

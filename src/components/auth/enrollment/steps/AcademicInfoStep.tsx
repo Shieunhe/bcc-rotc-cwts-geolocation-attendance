@@ -9,13 +9,30 @@ const nstpPrograms: NSTProgram[] = ["ROTC", "CWTS"];
 
 const ROTC_ONLY_COURSES = ["BS CRIMINOLOGY"];
 
-export default function AcademicInfoStep({ form, updateField }: EnrollmentStepProps) {
+const MEDICAL_NA_COURSES = ["BS CRIMINOLOGY"];
+
+export default function AcademicInfoStep({ form, updateField, updateBoolean }: EnrollmentStepProps) {
   const isRotcOnly = ROTC_ONLY_COURSES.includes(form.course);
+
+  function resetMedicalFields() {
+    updateBoolean("hasMedicalCondition", null as unknown as boolean);
+    updateField("medicalCondition", "");
+  }
 
   function handleCourseChange(course: string) {
     updateField("course", course);
     if (ROTC_ONLY_COURSES.includes(course)) {
       updateField("nstpComponent", "ROTC");
+    }
+    if (MEDICAL_NA_COURSES.includes(course)) {
+      resetMedicalFields();
+    }
+  }
+
+  function handleNstpChange(program: string) {
+    updateField("nstpComponent", program);
+    if (program === "CWTS") {
+      resetMedicalFields();
     }
   }
 
@@ -28,6 +45,7 @@ export default function AcademicInfoStep({ form, updateField }: EnrollmentStepPr
           <option value="BS CRIMINOLOGY">BS CRIMINOLOGY</option>
           <option value="BS HOSPITALITY MANAGEMENT">BS HOSPITALITY MANAGEMENT</option>
           <option value="BS INFORMATION TECHNOLOGY">BS INFORMATION TECHNOLOGY</option>
+          <option value="BS TOURISM MANAGEMENT">BS TOURISM MANAGEMENT</option>
           <option disabled>Education:</option>
           <option value="BEED">&nbsp;&nbsp;&nbsp;BEED</option>
           <option value="BEED ENGLISH">&nbsp;&nbsp;&nbsp;BEED ENGLISH</option>
@@ -63,7 +81,7 @@ export default function AcademicInfoStep({ form, updateField }: EnrollmentStepPr
             const isDisabled = isRotcOnly && program === "CWTS";
             return (
               <button key={program} type="button"
-                onClick={() => !isDisabled && updateField("nstpComponent", program)}
+                onClick={() => !isDisabled && handleNstpChange(program)}
                 disabled={isDisabled}
                 className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all
                   ${isDisabled
