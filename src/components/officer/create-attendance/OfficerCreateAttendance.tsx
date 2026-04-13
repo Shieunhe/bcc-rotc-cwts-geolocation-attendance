@@ -7,7 +7,7 @@ import { AttendanceLocation, ATTENDANCE_RADIUS_METERS } from "@/types";
 
 const LocationMap = lazy(() => import("@/components/common/LocationMap"));
 
-type Program = "ROTC" | "CWTS" | "";
+type Program = "ROTC" | "CWTS" | "ADVANCE_COURSE" | "";
 
 export default function OfficerCreateAttendance() {
   const [program, setProgram] = useState<Program>("");
@@ -47,13 +47,17 @@ export default function OfficerCreateAttendance() {
 
   const isReady = program && openDate && closeDate && location;
 
+  const isAdvanceCourse = program === "ADVANCE_COURSE";
+  const actualProgram = isAdvanceCourse ? "ROTC" : program;
+
   async function handleSubmit() {
     if (!isReady) return;
     setSubmitting(true);
     setSuccess(false);
     try {
       await adminService.createAttendanceSession({
-        program: program as "ROTC" | "CWTS",
+        program: actualProgram as "ROTC" | "CWTS",
+        ...(isAdvanceCourse ? { isAdvanceCourse: true } : {}),
         openDate,
         closeDate,
         location: location!,
@@ -80,7 +84,7 @@ export default function OfficerCreateAttendance() {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Create Attendance</h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              Set up an attendance session for ROTC or CWTS.
+              Set up an attendance session for ROTC, CWTS, or Advance Course.
             </p>
           </div>
         </div>
@@ -114,6 +118,7 @@ export default function OfficerCreateAttendance() {
               <option value="">Select a program...</option>
               <option value="ROTC">ROTC — Reserve Officers&apos; Training Corps</option>
               <option value="CWTS">CWTS — Civic Welfare Training Service</option>
+              <option value="ADVANCE_COURSE">Advance Course — ROTC Advanced Training</option>
             </select>
             <svg className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -124,12 +129,14 @@ export default function OfficerCreateAttendance() {
             <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
               program === "ROTC"
                 ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : program === "ADVANCE_COURSE"
+                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
             }`}>
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              {program} selected
+              {program === "ADVANCE_COURSE" ? "Advance Course" : program} selected
             </div>
           )}
         </div>

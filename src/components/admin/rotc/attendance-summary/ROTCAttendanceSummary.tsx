@@ -80,11 +80,16 @@ export default function ROTCAttendanceSummary({ section }: Props) {
     setSelectedSessionId(null);
     setRecordMap(new Map());
     adminService.getAttendanceSessionsByDate("ROTC", selectedDate).then((data) => {
-      setSessions(data);
-      if (data.length > 0) setSelectedSessionId(data[0].id);
+      const filtered = section === "advance-course"
+        ? data.filter((s) => s.isAdvanceCourse)
+        : section === "battalion-1" || section === "battalion-2"
+          ? data.filter((s) => !s.isAdvanceCourse)
+          : data;
+      setSessions(filtered);
+      if (filtered.length > 0) setSelectedSessionId(filtered[0].id);
       setLoadingSessions(false);
     }).catch(() => setLoadingSessions(false));
-  }, [selectedDate]);
+  }, [selectedDate, section]);
 
   useEffect(() => {
     if (!selectedSessionId) { setRecordMap(new Map()); return; }

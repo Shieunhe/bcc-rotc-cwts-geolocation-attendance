@@ -331,13 +331,13 @@ export const adminService = {
     for (const s of expiredSessions) {
       await updateDoc(doc(db, "create_attendance", s.id), { status: "closed" });
       s.status = "closed";
-      await this.markAbsentStudents(s.id, s.program);
+      await this.markAbsentStudents(s.id, s.program, s.isAdvanceCourse);
     }
 
     return sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
-  async markAbsentStudents(sessionId: string, program: string): Promise<void> {
+  async markAbsentStudents(sessionId: string, program: string, isAdvanceCourse?: boolean): Promise<void> {
     const enrolledSnap = await getDocs(
       query(collection(db, "account_reservations"), where("nstpComponent", "==", program), where("status", "==", "approved"))
     );
@@ -353,12 +353,19 @@ export const adminService = {
     let count = 0;
 
     for (const enrolled of enrolledSnap.docs) {
-      const uid = enrolled.data().uid as string;
-      if (markedUids.has(uid)) continue;
+      const data = enrolled.data() as EnrollmentDocument;
+      if (markedUids.has(data.uid)) continue;
+
+      if (program === "ROTC") {
+        const studentIsAdvance = !!data.willingToTakeAdvanceCourse;
+        if (isAdvanceCourse && !studentIsAdvance) continue;
+        if (!isAdvanceCourse && studentIsAdvance) continue;
+      }
+
       const ref = doc(collection(db, "attendance_list"));
       batch.set(ref, {
         id: ref.id,
-        studentUid: uid,
+        studentUid: data.uid,
         attendanceSessionId: sessionId,
         status: "absent",
         createdAt: now,
@@ -419,6 +426,7 @@ export const adminService = {
 
   async createAttendanceSession(data: {
     program: NSTProgram;
+    isAdvanceCourse?: boolean;
     openDate: string;
     closeDate: string;
     location: AttendanceLocation;
@@ -437,6 +445,7 @@ export const adminService = {
     const session: AttendanceSession = {
       id: ref.id,
       program: data.program,
+      ...(data.isAdvanceCourse ? { isAdvanceCourse: true } : {}),
       openDate: data.openDate,
       closeDate: data.closeDate,
       location: data.location,

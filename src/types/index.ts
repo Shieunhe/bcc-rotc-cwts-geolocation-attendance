@@ -108,6 +108,7 @@ export const ATTENDANCE_RADIUS_METERS = 100;
 export interface AttendanceSession {
   id: string;
   program: NSTProgram;
+  isAdvanceCourse?: boolean;
   openDate: string;
   closeDate: string;
   location: AttendanceLocation;

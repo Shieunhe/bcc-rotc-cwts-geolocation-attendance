@@ -45,9 +45,10 @@ export interface EnrollmentFilters {
 interface AdminEnrollmentSearchProps {
   filters: EnrollmentFilters;
   onFiltersChange: (filters: EnrollmentFilters) => void;
+  program?: "ROTC" | "CWTS";
 }
 
-export default function AdminEnrollmentSearch({ filters, onFiltersChange }: AdminEnrollmentSearchProps) {
+export default function AdminEnrollmentSearch({ filters, onFiltersChange, program }: AdminEnrollmentSearchProps) {
   function update(partial: Partial<EnrollmentFilters>) {
     onFiltersChange({ ...filters, ...partial });
   }
@@ -88,15 +89,17 @@ export default function AdminEnrollmentSearch({ filters, onFiltersChange }: Admi
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Filters:</span>
 
-        <div className="relative">
-          <select value={filters.msLevel} onChange={(e) => update({ msLevel: e.target.value })} className={selectClass}>
-            <option value="">All MS Level</option>
-            {MS_LEVELS.map((ms) => (
-              <option key={ms} value={ms}>MS {ms}</option>
-            ))}
-          </select>
-          {ChevronIcon}
-        </div>
+        {program !== "CWTS" && (
+          <div className="relative">
+            <select value={filters.msLevel} onChange={(e) => update({ msLevel: e.target.value })} className={selectClass}>
+              <option value="">All MS Level</option>
+              {MS_LEVELS.map((ms) => (
+                <option key={ms} value={ms}>MS {ms}</option>
+              ))}
+            </select>
+            {ChevronIcon}
+          </div>
+        )}
 
         <div className="relative">
           <select value={filters.yearLevel} onChange={(e) => update({ yearLevel: e.target.value })} className={selectClass}>
@@ -118,14 +121,16 @@ export default function AdminEnrollmentSearch({ filters, onFiltersChange }: Admi
           {ChevronIcon}
         </div>
 
-        <div className="relative">
-          <select value={filters.medicalCondition} onChange={(e) => update({ medicalCondition: e.target.value })} className={selectClass}>
-            <option value="">Medical Condition</option>
-            <option value="yes">With Medical Condition</option>
-            <option value="no">No Medical Condition</option>
-          </select>
-          {ChevronIcon}
-        </div>
+        {program !== "CWTS" && (
+          <div className="relative">
+            <select value={filters.medicalCondition} onChange={(e) => update({ medicalCondition: e.target.value })} className={selectClass}>
+              <option value="">Medical Condition</option>
+              <option value="yes">With Medical Condition</option>
+              <option value="no">No Medical Condition</option>
+            </select>
+            {ChevronIcon}
+          </div>
+        )}
 
         {hasActiveFilters && (
           <button

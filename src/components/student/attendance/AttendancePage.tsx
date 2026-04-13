@@ -28,9 +28,17 @@ export default function AttendancePage() {
   const studentProgram = profile?.nstpComponent || "";
   const hasProgram = studentProgram === "ROTC" || studentProgram === "CWTS";
 
+  const isAdvanceCourse = studentProgram === "ROTC" && !!profile?.willingToTakeAdvanceCourse;
+
   const matchingSession = hasProgram
     ? sessions
-        .filter((s) => s.program === studentProgram)
+        .filter((s) => {
+          if (s.program !== studentProgram) return false;
+          if (studentProgram === "ROTC") {
+            return isAdvanceCourse ? !!s.isAdvanceCourse : !s.isAdvanceCourse;
+          }
+          return true;
+        })
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null
     : null;
 

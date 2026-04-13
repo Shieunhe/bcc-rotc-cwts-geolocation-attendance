@@ -68,7 +68,7 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
     <AdminPageLayout program={program}>
       <div className="max-w-5xl w-full mx-auto space-y-4">
         <AdminEnrollmentHeader program={program} />
-        <AdminEnrollmentSearch filters={filters} onFiltersChange={setFilters} />
+        <AdminEnrollmentSearch filters={filters} onFiltersChange={setFilters} program={program} />
         {filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
             <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
