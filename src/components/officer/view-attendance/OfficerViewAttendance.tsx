@@ -33,7 +33,8 @@ export default function OfficerViewAttendance({ section }: Props) {
     }).catch(() => setLoading(false));
   }, []);
 
-  const rotcSessions = sessions.filter((s) => s.program === "ROTC");
+  const rotcSessions = sessions.filter((s) => s.program === "ROTC" && !s.isAdvanceCourse);
+  const advanceCourseSessions = sessions.filter((s) => s.program === "ROTC" && s.isAdvanceCourse);
   const cwtsSessions = sessions.filter((s) => s.program === "CWTS");
 
   return (
@@ -63,7 +64,7 @@ export default function OfficerViewAttendance({ section }: Props) {
       ) : (
         <div className="space-y-6">
           {section === "rotc" && <ROTCAttendanceBox sessions={rotcSessions} />}
-          {section === "advance-course" && <AdvanceCourseAttendanceBox sessions={rotcSessions} />}
+          {section === "advance-course" && <AdvanceCourseAttendanceBox sessions={advanceCourseSessions} />}
           {section === "special-platoon" && <SpecialPlatoonAttendanceBox sessions={rotcSessions} />}
           {section === "cwts" && <CWTSAttendanceBox sessions={cwtsSessions} />}
         </div>
