@@ -6,8 +6,8 @@ export function useEnrollmentSchedule(program: NSTProgram) {
   const queryClient = useQueryClient();
 
   const query_ = useQuery({
-    queryKey: ["enrollmentSchedule", program],
-    queryFn: () => adminService.getEnrollmentSchedule(program),
+    queryKey: ["enrollmentSchedules", program],
+    queryFn: () => adminService.getEnrollmentSchedules(program),
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   });
@@ -16,12 +16,12 @@ export function useEnrollmentSchedule(program: NSTProgram) {
     mutationFn: (schedule: EnrollmentSchedule) =>
       adminService.saveEnrollmentSchedule(schedule),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["enrollmentSchedule", program] });
+      queryClient.invalidateQueries({ queryKey: ["enrollmentSchedules", program] });
     },
   });
 
   return {
-    schedule: query_.data ?? null,
+    schedules: query_.data ?? [],
     isLoading: query_.isPending,
     error: query_.error,
     save: mutation.mutateAsync,

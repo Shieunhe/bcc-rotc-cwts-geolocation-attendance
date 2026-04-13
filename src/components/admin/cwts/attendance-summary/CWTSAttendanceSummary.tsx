@@ -240,7 +240,7 @@ export default function CWTSAttendanceSummary() {
             </div>
 
             {/* Attendance bar */}
-            <div>
+            {/* <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-semibold text-gray-600">Attendance Rate</span>
                 <span className="text-[11px] font-bold text-gray-600">{pct}%</span>
@@ -255,7 +255,7 @@ export default function CWTSAttendanceSummary() {
                   </>
                 )}
               </div>
-            </div>
+            </div> */}
 
             {/* Filters */}
             <div className="space-y-2">

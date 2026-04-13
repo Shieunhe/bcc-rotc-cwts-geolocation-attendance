@@ -19,8 +19,13 @@ export const ROTC_BATTALION_2_COMPANIES: ROTCCompany[] = ["Echo", "Foxtrot", "Go
 export const ROTC_PLATOONS_PER_COMPANY = 4;
 export const ROTC_PLATOON_SLOT_LIMIT = 38;
 
+export type SpecialUnit = "Medics" | "HQ" | "MP";
+export const SPECIAL_UNITS: SpecialUnit[] = ["Medics", "HQ", "MP"];
+export const SPECIAL_UNIT_SLOT_LIMITS: Record<SpecialUnit, number> = { Medics: 38, HQ: 50, MP: 38 };
+
 export interface EnrollmentSchedule {
   program: NSTProgram;
+  msLevel: MSLevel;
   openDate: string;
   deadline: string;
   updatedAt: string;
@@ -84,6 +89,7 @@ export interface EnrollmentDocument {
   rotcCompany?: ROTCCompany;
   rotcPlatoon?: ROTCPlatoon;
   // Assigned by admin
+  specialUnit?: SpecialUnit;
   platoon?: string;
   grades?: number;
   serialNumber?: string;

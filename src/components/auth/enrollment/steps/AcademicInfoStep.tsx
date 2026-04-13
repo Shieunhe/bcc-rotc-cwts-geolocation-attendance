@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import Input from "@/components/common/Input";
-import { NSTProgram } from "@/types";
+import { EnrollmentSchedule, MSLevel, NSTProgram } from "@/types";
 import { EnrollmentStepProps } from "@/types/enrollmentTypes";
+import { adminService } from "@/services/admin.service";
 
 const selectClass = "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white";
 const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
@@ -11,8 +13,34 @@ const ROTC_ONLY_COURSES = ["BS CRIMINOLOGY"];
 
 const MEDICAL_NA_COURSES = ["BS CRIMINOLOGY"];
 
+function isScheduleOpen(s: EnrollmentSchedule): boolean {
+  const now = new Date();
+  return now >= new Date(s.openDate) && now <= new Date(s.deadline);
+}
+
 export default function AcademicInfoStep({ form, updateField, updateBoolean }: EnrollmentStepProps) {
   const isRotcOnly = ROTC_ONLY_COURSES.includes(form.course);
+  const [openMsLevels, setOpenMsLevels] = useState<MSLevel[]>([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
+
+  useEffect(() => {
+    if (!form.nstpComponent) {
+      setOpenMsLevels([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingSchedules(true);
+    adminService.getEnrollmentSchedules(form.nstpComponent as NSTProgram).then((schedules) => {
+      if (cancelled) return;
+      const open = schedules.filter(isScheduleOpen).map((s) => s.msLevel);
+      setOpenMsLevels(open);
+      if (form.msLevel && !open.includes(form.msLevel as MSLevel)) {
+        updateField("msLevel", "");
+      }
+      setLoadingSchedules(false);
+    });
+    return () => { cancelled = true; };
+  }, [form.nstpComponent]);
 
   function resetMedicalFields() {
     updateBoolean("hasMedicalCondition", null as unknown as boolean);
@@ -31,6 +59,7 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
 
   function handleNstpChange(program: string) {
     updateField("nstpComponent", program);
+    updateField("msLevel", "");
     if (program === "CWTS") {
       resetMedicalFields();
     }
@@ -66,11 +95,33 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
         </div>
         <div>
           <label className={labelClass}>MS Level</label>
-          <select value={form.msLevel} onChange={(e) => updateField("msLevel", e.target.value)} className={selectClass}>
-            <option value="" disabled>Select MS level</option>
-            <option value="1">MS 1</option>
-            <option value="2">MS 2</option>
+          <select
+            value={form.msLevel}
+            onChange={(e) => updateField("msLevel", e.target.value)}
+            disabled={!form.nstpComponent || loadingSchedules}
+            className={selectClass + (!form.nstpComponent ? " opacity-50 cursor-not-allowed" : "")}
+          >
+            <option value="" disabled>
+              {!form.nstpComponent
+                ? "Select NSTP first"
+                : loadingSchedules
+                  ? "Loading..."
+                  : openMsLevels.length === 0
+                    ? "No open enrollment"
+                    : "Select MS level"}
+            </option>
+            {(["1", "2"] as MSLevel[]).map((ms) => {
+              const isOpen = openMsLevels.includes(ms);
+              return (
+                <option key={ms} value={ms} disabled={!isOpen}>
+                  MS {ms}{!isOpen && form.nstpComponent ? " (not open)" : ""}
+                </option>
+              );
+            })}
           </select>
+          {form.nstpComponent && !loadingSchedules && openMsLevels.length === 0 && (
+            <p className="text-xs text-amber-600 mt-1">No enrollment schedule is currently open for {form.nstpComponent}.</p>
+          )}
         </div>
       </div>
 

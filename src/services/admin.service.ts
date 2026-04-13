@@ -6,6 +6,7 @@ import {
   ROTCBattalion, ROTCCompany, ROTCPlatoon,
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
+  SpecialUnit, SPECIAL_UNIT_SLOT_LIMITS,
   AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
   AttendanceRecord,
 } from "@/types";
@@ -24,16 +25,29 @@ export const adminService = {
     );
   },
 
-  async getEnrollmentSchedule(program: NSTProgram): Promise<EnrollmentSchedule | null> {
-    const ref = doc(db, "enrollment_schedules", program);
+  async getEnrollmentSchedule(program: NSTProgram, msLevel: string): Promise<EnrollmentSchedule | null> {
+    const ref = doc(db, "enrollment_schedules", `${program}_${msLevel}`);
     const snapshot = await getDoc(ref);
     if (!snapshot.exists()) return null;
     return snapshot.data() as EnrollmentSchedule;
   },
 
+  async getEnrollmentSchedules(program: NSTProgram): Promise<EnrollmentSchedule[]> {
+    const results: EnrollmentSchedule[] = [];
+    for (const ms of ["1", "2"] as const) {
+      const ref = doc(db, "enrollment_schedules", `${program}_${ms}`);
+      const snapshot = await getDoc(ref);
+      if (snapshot.exists()) results.push(snapshot.data() as EnrollmentSchedule);
+    }
+    return results;
+  },
+
   async saveEnrollmentSchedule(schedule: EnrollmentSchedule): Promise<void> {
-    const ref = doc(db, "enrollment_schedules", schedule.program);
-    await setDoc(ref, { ...schedule, updatedAt: new Date().toISOString() });
+    const ref = doc(db, "enrollment_schedules", `${schedule.program}_${schedule.msLevel}`);
+    const deadline = schedule.deadline.includes("T")
+      ? schedule.deadline
+      : `${schedule.deadline}T23:59:59`;
+    await setDoc(ref, { ...schedule, deadline, updatedAt: new Date().toISOString() });
   },
 
   async updateEnrollmentStatus(uid: string, status: EnrollmentStatus, rejectionReason?: string): Promise<void> {
@@ -46,6 +60,46 @@ export const adminService = {
       data.rejectionReason = rejectionReason;
     }
     await updateDoc(ref, data);
+  },
+
+  async getSpecialUnitEnrollments(): Promise<Record<SpecialUnit, EnrollmentDocument[]>> {
+    const q = query(
+      collection(db, "account_reservations"),
+      where("status", "==", "approved"),
+      where("nstpComponent", "==", "ROTC")
+    );
+    const snapshot = await getDocs(q);
+    const result: Record<SpecialUnit, EnrollmentDocument[]> = { Medics: [], HQ: [], MP: [] };
+    for (const d of snapshot.docs) {
+      const enrollment = d.data() as EnrollmentDocument;
+      if (enrollment.specialUnit && result[enrollment.specialUnit]) {
+        result[enrollment.specialUnit].push(enrollment);
+      }
+    }
+    return result;
+  },
+
+  async getSpecialUnitCount(unit: SpecialUnit): Promise<number> {
+    const q = query(
+      collection(db, "account_reservations"),
+      where("status", "==", "approved"),
+      where("specialUnit", "==", unit)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.size;
+  },
+
+  async approveWithSpecialUnit(uid: string, specialUnit: SpecialUnit): Promise<string | null> {
+    const count = await this.getSpecialUnitCount(specialUnit);
+    if (count >= SPECIAL_UNIT_SLOT_LIMITS[specialUnit]) return null;
+
+    const ref = doc(db, "account_reservations", uid);
+    await updateDoc(ref, {
+      status: "approved",
+      specialUnit,
+      updatedAt: new Date().toISOString(),
+    });
+    return specialUnit;
   },
 
   async getNextAvailableCWTSCompany(): Promise<CWTSCompany | null> {
