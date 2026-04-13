@@ -99,7 +99,7 @@ export default function Student() {
             {/* Enrollment Status */}
             <EnrollmentStatus status={status} />
             {/* Assigned Platoon */}
-            <AssignedPlatoon company={profile.company} rotcCompany={profile.rotcCompany} battalion={profile.battalion} rotcPlatoon={profile.rotcPlatoon} program={profile.nstpComponent} status={profile.status} willingToTakeAdvanceCourse={profile.willingToTakeAdvanceCourse} />
+            <AssignedPlatoon company={profile.company} rotcCompany={profile.rotcCompany} battalion={profile.battalion} rotcPlatoon={profile.rotcPlatoon} program={profile.nstpComponent} status={profile.status} willingToTakeAdvanceCourse={profile.willingToTakeAdvanceCourse} specialUnit={profile.specialUnit} />
             {/* Attendance */}
             <Attendance/>
             {/* <Link href="/student/attendance" className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">

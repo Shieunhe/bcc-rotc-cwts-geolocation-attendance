@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { EnrollmentDocument, EnrollmentStatus } from "@/types";
+import { useEffect } from "react";
+import { EnrollmentDocument, EnrollmentStatus, SpecialUnit, SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS } from "@/types";
 import { adminService } from "@/services/admin.service";
 import FilePreview from "@/components/common/FilePreview";
 import Button from "@/components/common/Button";
@@ -101,10 +102,35 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
   const [disapproveReason, setDisapproveReason] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const hasMedical = enrollment.hasMedicalCondition === true && enrollment.nstpComponent === "ROTC";
+  const [showMedicalAssign, setShowMedicalAssign] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState<SpecialUnit | "">("");
+  const [unitCounts, setUnitCounts] = useState<Record<SpecialUnit, number>>({ Medics: 0, HQ: 0, MP: 0 });
+  const [loadingCounts, setLoadingCounts] = useState(false);
+
+  useEffect(() => {
+    if (!showMedicalAssign) return;
+    setLoadingCounts(true);
+    Promise.all(SPECIAL_UNITS.map((u) => adminService.getSpecialUnitCount(u)))
+      .then(([medics, hq, mp]) => setUnitCounts({ Medics: medics, HQ: hq, MP: mp }))
+      .finally(() => setLoadingCounts(false));
+  }, [showMedicalAssign]);
+
   async function handleApprove() {
+    if (hasMedical && !showMedicalAssign) {
+      setShowMedicalAssign(true);
+      return;
+    }
     setIsUpdating(true);
     try {
-      if (enrollment.nstpComponent === "CWTS") {
+      if (hasMedical && selectedUnit) {
+        const result = await adminService.approveWithSpecialUnit(enrollment.uid, selectedUnit);
+        if (!result) {
+          alert(`${selectedUnit} unit is full (${SPECIAL_UNIT_SLOT_LIMITS[selectedUnit]}/${SPECIAL_UNIT_SLOT_LIMITS[selectedUnit]}). Please select a different unit.`);
+          setIsUpdating(false);
+          return;
+        }
+      } else if (enrollment.nstpComponent === "CWTS") {
         const company = await adminService.approveCWTSEnrollment(enrollment.uid);
         if (!company) {
           alert("All companies are full. Cannot approve more CWTS enrollments.");
@@ -223,6 +249,26 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
                 </span>
               } />
             )}
+            {enrollment.specialUnit && (
+              <Field label="Special Unit" value={
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${enrollment.specialUnit === "Medics" ? "bg-red-50 text-red-700 border-red-200" : enrollment.specialUnit === "HQ" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                  {enrollment.specialUnit === "Medics" ? (
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M10 2v4H6a2 2 0 00-2 2v4h4v4a2 2 0 002 2h4v-4h4a2 2 0 002-2V8h-4V4a2 2 0 00-2-2h-4z" />
+                    </svg>
+                  ) : enrollment.specialUnit === "HQ" ? (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  )}
+                  {enrollment.specialUnit}
+                </span>
+              } />
+            )}
           </Section>
 
           <Section title="Physical & Health" icon={ICONS.health}>
@@ -268,6 +314,64 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
         <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 rounded-b-2xl">
           {enrollment.status !== "pending" ? (
             <Button variant="secondary" fullWidth className="!py-2 !text-sm" onClick={onClose}>Close</Button>
+          ) : showMedicalAssign ? (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
+                <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-red-700">Medical Condition Detected</p>
+                  <p className="text-xs text-red-600 mt-0.5">
+                    This student has a medical condition: <span className="font-semibold">{enrollment.medicalCondition}</span>.
+                    Please assign them to a special unit.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Select Assignment</label>
+                {loadingCounts ? (
+                  <div className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-400 bg-gray-50">Loading slots...</div>
+                ) : (
+                  <select
+                    value={selectedUnit}
+                    onChange={(e) => setSelectedUnit(e.target.value as SpecialUnit)}
+                    className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
+                  >
+                    <option value="" disabled>Select a special unit...</option>
+                    {SPECIAL_UNITS.map((unit) => {
+                      const limit = SPECIAL_UNIT_SLOT_LIMITS[unit];
+                      const isFull = unitCounts[unit] >= limit;
+                      return (
+                        <option key={unit} value={unit} disabled={isFull}>
+                          {unit} ({unitCounts[unit]}/{limit}){isFull ? " — FULL" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="success"
+                  fullWidth
+                  className="!py-2 !text-sm"
+                  disabled={!selectedUnit}
+                  loading={isUpdating}
+                  onClick={handleApprove}
+                >
+                  {selectedUnit ? `Approve & Assign to ${selectedUnit}` : "Select a special unit to approve"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  className="!py-2 !text-sm"
+                  onClick={() => { setShowMedicalAssign(false); setSelectedUnit(""); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
           ) : showDisapprove ? (
             <div className="space-y-3">
               <div>

@@ -33,6 +33,18 @@ function getNavItems(program: NSTProgram): NavItem[] {
     },
   ];
 
+  if (program === "ROTC") {
+    items.push({
+      label: "Special Platoon List",
+      href: `${base}/special-platoon`,
+      icon: (
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M10 2v4H6a2 2 0 00-2 2v4h4v4a2 2 0 002 2h4v-4h4a2 2 0 002-2V8h-4V4a2 2 0 00-2-2h-4z" />
+        </svg>
+      ),
+    });
+  }
+
   if (program === "CWTS") {
     items.push({
       label: "Company List",
@@ -91,6 +103,15 @@ function getNavItems(program: NSTProgram): NavItem[] {
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          ),
+        },
+        {
+          label: "Special Platoon",
+          href: `${base}/attendance-summary/special-platoon`,
+          icon: (
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M10 2v4H6a2 2 0 00-2 2v4h4v4a2 2 0 002 2h4v-4h4a2 2 0 002-2V8h-4V4a2 2 0 00-2-2h-4z" />
             </svg>
           ),
         },

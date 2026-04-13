@@ -9,7 +9,7 @@ export default function Logo({
 }: LogoProps) {
   return (
     <img
-      src="/image/feb5dc39-69af-4d8a-a3d7-66aca9aaa290.png"
+      src="/image/bcclogo-removebg-preview.png"
       alt={alt}
       className={className}
     />

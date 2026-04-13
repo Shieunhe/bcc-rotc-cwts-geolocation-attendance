@@ -8,10 +8,11 @@ import {
   AttendanceSession, AttendanceRecord,
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
   ROTC_PLATOONS_PER_COMPANY,
-  ROTCCompany, EnrollmentDocument,
+  ROTCCompany, EnrollmentDocument, SpecialUnit, SPECIAL_UNITS,
 } from "@/types";
 import BattalionAttendanceBox from "./components/BattalionAttendanceBox";
 import AdvanceCourseAttendanceBox from "./components/AdvanceCourseAttendanceBox";
+import SpecialPlatoonAttendanceBox from "./components/SpecialPlatoonAttendanceBox";
 
 const LATE_THRESHOLD_MINUTES = 15;
 
@@ -40,12 +41,13 @@ function flattenRoster(
   return list;
 }
 
-export type AttendanceSummarySection = "battalion-1" | "battalion-2" | "advance-course";
+export type AttendanceSummarySection = "battalion-1" | "battalion-2" | "advance-course" | "special-platoon";
 
 const SECTION_META: Record<AttendanceSummarySection, { title: string; subtitle: string }> = {
-  "battalion-1":    { title: "Battalion 1 — Male", subtitle: "View attendance for Battalion 1 (Male) cadets." },
-  "battalion-2":    { title: "Battalion 2 — Female", subtitle: "View attendance for Battalion 2 (Female) cadets." },
-  "advance-course": { title: "Advance Course", subtitle: "View attendance for advance course cadets." },
+  "battalion-1":      { title: "Battalion 1 — Male", subtitle: "View attendance for Battalion 1 (Male) cadets." },
+  "battalion-2":      { title: "Battalion 2 — Female", subtitle: "View attendance for Battalion 2 (Female) cadets." },
+  "advance-course":   { title: "Advance Course", subtitle: "View attendance for advance course cadets." },
+  "special-platoon":  { title: "Special Platoon", subtitle: "View attendance for special unit cadets (Medics, HQ, MP)." },
 };
 
 interface Props {
@@ -62,6 +64,16 @@ export default function ROTCAttendanceSummary({ section }: Props) {
   const [loadingRecords, setLoadingRecords] = useState(false);
 
   const { roster, isLoading: rosterLoading } = useROTCPlatoonRoster();
+  const [specialUnitStudents, setSpecialUnitStudents] = useState<Record<SpecialUnit, EnrollmentDocument[]>>({ Medics: [], HQ: [], MP: [] });
+  const [loadingSpecial, setLoadingSpecial] = useState(false);
+
+  useEffect(() => {
+    if (section !== "special-platoon") return;
+    setLoadingSpecial(true);
+    adminService.getSpecialUnitEnrollments()
+      .then(setSpecialUnitStudents)
+      .finally(() => setLoadingSpecial(false));
+  }, [section]);
 
   useEffect(() => {
     setLoadingSessions(true);
@@ -85,7 +97,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
     }).catch(() => setLoadingRecords(false));
   }, [selectedSessionId]);
 
-  const isLoading = rosterLoading || loadingSessions || loadingRecords;
+  const isLoading = rosterLoading || loadingSessions || loadingRecords || loadingSpecial;
   const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
   const graceOver = isGracePeriodOver(selectedSession);
 
@@ -197,6 +209,14 @@ export default function ROTCAttendanceSummary({ section }: Props) {
           {section === "advance-course" && (
             <AdvanceCourseAttendanceBox
               students={advanceCourseStudents}
+              recordMap={recordMap}
+              graceOver={graceOver}
+              sessionCloseDate={selectedSession?.closeDate ?? null}
+            />
+          )}
+          {section === "special-platoon" && (
+            <SpecialPlatoonAttendanceBox
+              unitStudents={specialUnitStudents}
               recordMap={recordMap}
               graceOver={graceOver}
               sessionCloseDate={selectedSession?.closeDate ?? null}

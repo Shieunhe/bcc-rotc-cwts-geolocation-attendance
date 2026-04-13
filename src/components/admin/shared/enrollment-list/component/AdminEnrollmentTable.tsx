@@ -57,19 +57,30 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
           <tbody>
             {enrollments.map((enrollment) => {
               const badge = getBadge(enrollment.status);
+              const hasMedical = enrollment.hasMedicalCondition === true;
               return (
-                <tr key={enrollment.uid} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition">
-                  <td className="px-5 py-3.5">
+                <tr key={enrollment.uid} className={`border-b last:border-0 transition ${hasMedical ? "bg-red-50 border-b-red-100 hover:bg-red-100/70" : "border-b-gray-50 hover:bg-gray-50/50"}`}>
+                  <td className={`px-5 py-3.5 ${hasMedical ? "border-l-4 border-l-red-500" : ""}`}>
                     <div className="flex items-center gap-3">
                       {enrollment.photo ? (
-                        <img src={enrollment.photo} alt="" className="w-9 h-9 rounded-full object-cover border border-gray-200" />
+                        <img src={enrollment.photo} alt="" className={`w-9 h-9 rounded-full object-cover border-2 ${hasMedical ? "border-red-300" : "border-gray-200"}`} />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-xs">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold text-xs ${hasMedical ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}>
                           {enrollment.firstName?.[0]}{enrollment.lastName?.[0]}
                         </div>
                       )}
                       <div>
-                        <p className="font-medium text-gray-800">{enrollment.lastName}, {enrollment.firstName}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-gray-800">{enrollment.lastName}, {enrollment.firstName}</p>
+                          {hasMedical && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500 text-[9px] font-bold text-white uppercase tracking-wide shadow-sm">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Medical
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-400">{enrollment.email}</p>
                       </div>
                     </div>
@@ -100,11 +111,12 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
       <div className="sm:hidden divide-y divide-gray-100">
         {enrollments.map((enrollment) => {
           const badge = getBadge(enrollment.status);
+          const hasMedical = enrollment.hasMedicalCondition === true;
           return (
-            <div key={enrollment.uid} className="px-4 py-4 space-y-2">
+            <div key={enrollment.uid} className={`px-4 py-4 space-y-2 ${hasMedical ? "bg-red-50 border-l-4 border-l-red-500" : ""}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-xs">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold text-xs ${hasMedical ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}>
                     {enrollment.firstName?.[0]}{enrollment.lastName?.[0]}
                   </div>
                   <div>
@@ -116,6 +128,17 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
                   {badge.label}
                 </span>
               </div>
+              {hasMedical && (
+                <div className="flex items-center gap-1.5 pl-12">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500 text-[9px] font-bold text-white uppercase tracking-wide shadow-sm">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Medical Condition
+                  </span>
+                  <span className="text-[10px] text-red-600 font-medium">{enrollment.medicalCondition}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span>{enrollment.course} • {enrollment.yearLevel}</span>
