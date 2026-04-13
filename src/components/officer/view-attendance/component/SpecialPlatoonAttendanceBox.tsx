@@ -55,6 +55,7 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
 
   const [filterUnit, setFilterUnit] = useState<SpecialUnit | "">("");
   const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterYear, setFilterYear] = useState<string>("");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -76,6 +77,7 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
     const s = r.student;
     if (filterUnit && s?.specialUnit !== filterUnit) return false;
     if (filterStatus && r.status !== filterStatus) return false;
+    if (filterYear && s?.yearLevel !== filterYear) return false;
     if (search) {
       const q = search.toLowerCase();
       const haystack = s
@@ -181,11 +183,12 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
 
                 {/* Filters */}
                 <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Filters</p>
                   <div className="flex flex-wrap gap-2">
                     <div className="relative">
                       <select value={filterUnit} onChange={(e) => setFilterUnit(e.target.value as SpecialUnit | "")}
                         className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-red-400 transition">
-                        <option value="">All Units</option>
+                        <option value="">All Platoon</option>
                         {SPECIAL_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                       </select>
                       <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -197,6 +200,17 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
                         <option value="present">Present</option>
                         <option value="late">Late</option>
                         <option value="absent">Absent</option>
+                      </select>
+                      <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                    <div className="relative">
+                      <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
+                        className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+                        <option value="">All Years</option>
+                        <option value="1st Year">1st Year</option>
+                        <option value="2nd Year">2nd Year</option>
+                        <option value="3rd Year">3rd Year</option>
+                        <option value="4th Year">4th Year</option>
                       </select>
                       <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </div>
