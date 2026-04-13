@@ -26,7 +26,11 @@ interface EnrollmentScheduleCardProps {
 }
 
 export default function EnrollmentScheduleCard({ base, program }: EnrollmentScheduleCardProps) {
-  const { schedule, isLoading } = useEnrollmentSchedule(program);
+  const { schedules, isLoading } = useEnrollmentSchedule(program);
+  const schedule = schedules.find((s) => {
+    const st = getStatus(s.openDate, s.deadline);
+    return st.label === "Open";
+  }) ?? schedules[0] ?? null;
   const status = getStatus(schedule?.openDate ?? "", schedule?.deadline ?? "");
 
   return (
