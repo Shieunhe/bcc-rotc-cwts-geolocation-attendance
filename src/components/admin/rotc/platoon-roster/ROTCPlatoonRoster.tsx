@@ -24,12 +24,12 @@ function isScheduleClosed(deadline: string | undefined): boolean {
 
 export default function ROTCPlatoonRoster() {
   const { roster, isLoading, refetch } = useROTCPlatoonRoster();
-  const { schedule } = useEnrollmentSchedule("ROTC");
+  const { schedules } = useEnrollmentSchedule("ROTC");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [result, setResult] = useState<{ assigned: number; alreadyAssigned: number } | null>(null);
 
-  const closed = isScheduleClosed(schedule?.deadline);
+  const closed = schedules.length > 0 && schedules.every((s) => isScheduleClosed(s.deadline));
 
   async function handleAssign() {
     setIsAssigning(true);
