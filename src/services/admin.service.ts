@@ -171,7 +171,7 @@ export const adminService = {
   async assignROTCPlatoons(): Promise<{ assigned: number; alreadyAssigned: number }> {
     const enrollments = await this.getROTCApprovedEnrollments();
 
-    const unassigned = enrollments.filter((e) => !e.rotcCompany && !e.willingToTakeAdvanceCourse);
+    const unassigned = enrollments.filter((e) => !e.rotcCompany && !e.willingToTakeAdvanceCourse && !e.specialUnit && !e.medicalCondition);
     const alreadyAssigned = enrollments.length - unassigned.length;
     if (unassigned.length === 0) return { assigned: 0, alreadyAssigned };
 
@@ -182,8 +182,8 @@ export const adminService = {
       .filter((e) => e.sex === "Female")
       .sort((a, b) => a.lastName.localeCompare(b.lastName));
 
-    const existingMaleCounts = this.buildROTCSlotCounts(enrollments.filter((e) => e.sex === "Male" && e.rotcCompany), ROTC_BATTALION_1_COMPANIES);
-    const existingFemaleCounts = this.buildROTCSlotCounts(enrollments.filter((e) => e.sex === "Female" && e.rotcCompany), ROTC_BATTALION_2_COMPANIES);
+    const existingMaleCounts = this.buildROTCSlotCounts(enrollments.filter((e) => e.sex === "Male" && e.rotcCompany && !e.specialUnit && !e.medicalCondition), ROTC_BATTALION_1_COMPANIES);
+    const existingFemaleCounts = this.buildROTCSlotCounts(enrollments.filter((e) => e.sex === "Female" && e.rotcCompany && !e.specialUnit && !e.medicalCondition), ROTC_BATTALION_2_COMPANIES);
 
     const maleAssignments = this.computeROTCAssignments(males, 1, ROTC_BATTALION_1_COMPANIES, existingMaleCounts);
     const femaleAssignments = this.computeROTCAssignments(females, 2, ROTC_BATTALION_2_COMPANIES, existingFemaleCounts);
@@ -297,6 +297,7 @@ export const adminService = {
     const advanceCourseFemale: EnrollmentDocument[] = [];
 
     for (const e of enrollments) {
+      if (e.specialUnit || e.medicalCondition) continue;
       if (e.willingToTakeAdvanceCourse) {
         if (e.sex === "Male") advanceCourseMale.push(e);
         else advanceCourseFemale.push(e);

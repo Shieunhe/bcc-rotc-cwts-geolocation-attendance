@@ -5,7 +5,6 @@ import { adminService } from "@/services/admin.service";
 import { AttendanceSession } from "@/types";
 import ROTCAttendanceBox from "./component/ROTCAttendanceBox";
 import AdvanceCourseAttendanceBox from "./component/AdvanceCourseAttendanceBox";
-import SpecialPlatoonAttendanceBox from "./component/SpecialPlatoonAttendanceBox";
 import CWTSAttendanceBox from "./component/CWTSAttendanceBox";
 
 export type ViewAttendanceSection = "rotc" | "cwts" | "advance-course" | "special-platoon";
@@ -14,7 +13,7 @@ const SECTION_META: Record<ViewAttendanceSection, { title: string; subtitle: str
   rotc:              { title: "ROTC Attendance", subtitle: "Review ROTC attendance sessions and student records." },
   cwts:              { title: "CWTS Attendance", subtitle: "Review CWTS attendance sessions and student records." },
   "advance-course":  { title: "Advance Course Attendance", subtitle: "Review advance course attendance sessions and student records." },
-  "special-platoon": { title: "Special Platoon Attendance", subtitle: "Review special unit (Medics, HQ, MP) attendance records." },
+  "special-platoon": { title: "ROTC Attendance", subtitle: "Review ROTC attendance sessions and student records." },
 };
 
 interface Props {
@@ -63,9 +62,8 @@ export default function OfficerViewAttendance({ section }: Props) {
         </div>
       ) : (
         <div className="space-y-6">
-          {section === "rotc" && <ROTCAttendanceBox sessions={rotcSessions} />}
+          {(section === "rotc" || section === "special-platoon") && <ROTCAttendanceBox sessions={rotcSessions} />}
           {section === "advance-course" && <AdvanceCourseAttendanceBox sessions={advanceCourseSessions} />}
-          {section === "special-platoon" && <SpecialPlatoonAttendanceBox sessions={rotcSessions} />}
           {section === "cwts" && <CWTSAttendanceBox sessions={cwtsSessions} />}
         </div>
       )}

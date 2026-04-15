@@ -13,6 +13,7 @@ import {
 import BattalionAttendanceBox from "./components/BattalionAttendanceBox";
 import AdvanceCourseAttendanceBox from "./components/AdvanceCourseAttendanceBox";
 import SpecialPlatoonAttendanceBox from "./components/SpecialPlatoonAttendanceBox";
+import OverallAttendanceBox from "./components/OverallAttendanceBox";
 
 const LATE_THRESHOLD_MINUTES = 15;
 
@@ -41,13 +42,14 @@ function flattenRoster(
   return list;
 }
 
-export type AttendanceSummarySection = "battalion-1" | "battalion-2" | "advance-course" | "special-platoon";
+export type AttendanceSummarySection = "battalion-1" | "battalion-2" | "advance-course" | "special-platoon" | "overall";
 
 const SECTION_META: Record<AttendanceSummarySection, { title: string; subtitle: string }> = {
   "battalion-1":      { title: "Battalion 1 — Male", subtitle: "View attendance for Battalion 1 (Male) cadets." },
   "battalion-2":      { title: "Battalion 2 — Female", subtitle: "View attendance for Battalion 2 (Female) cadets." },
   "advance-course":   { title: "Advance Course", subtitle: "View attendance for advance course cadets." },
   "special-platoon":  { title: "Special Platoon", subtitle: "View attendance for special unit cadets (Medics, HQ, MP)." },
+  "overall":          { title: "Overall Summary", subtitle: "Combined attendance for Battalion 1, Battalion 2, and Special Platoon." },
 };
 
 interface Props {
@@ -68,7 +70,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
   const [loadingSpecial, setLoadingSpecial] = useState(false);
 
   useEffect(() => {
-    if (section !== "special-platoon") return;
+    if (section !== "special-platoon" && section !== "overall") return;
     setLoadingSpecial(true);
     adminService.getSpecialUnitEnrollments()
       .then(setSpecialUnitStudents)
@@ -82,7 +84,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
     adminService.getAttendanceSessionsByDate("ROTC", selectedDate).then((data) => {
       const filtered = section === "advance-course"
         ? data.filter((s) => s.isAdvanceCourse)
-        : section === "battalion-1" || section === "battalion-2"
+        : section === "battalion-1" || section === "battalion-2" || section === "overall"
           ? data.filter((s) => !s.isAdvanceCourse)
           : data;
       setSessions(filtered);
@@ -222,6 +224,16 @@ export default function ROTCAttendanceSummary({ section }: Props) {
           {section === "special-platoon" && (
             <SpecialPlatoonAttendanceBox
               unitStudents={specialUnitStudents}
+              recordMap={recordMap}
+              graceOver={graceOver}
+              sessionCloseDate={selectedSession?.closeDate ?? null}
+            />
+          )}
+          {section === "overall" && (
+            <OverallAttendanceBox
+              b1Students={b1Students}
+              b2Students={b2Students}
+              specialUnitStudents={specialUnitStudents}
               recordMap={recordMap}
               graceOver={graceOver}
               sessionCloseDate={selectedSession?.closeDate ?? null}

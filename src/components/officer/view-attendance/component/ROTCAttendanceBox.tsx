@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { adminService } from "@/services/admin.service";
 import {
   AttendanceSession, AttendanceRecord, EnrollmentDocument,
-  ROTCBattalion, ROTCCompany,
+  ROTCCompany, SpecialUnit, SPECIAL_UNITS,
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
 } from "@/types";
 
 type RecordWithStudent = AttendanceRecord & { student?: EnrollmentDocument };
+type BattalionFilter = "" | "1" | "2" | "special";
 
 function formatTime(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -24,6 +25,12 @@ const statusConfig: Record<string, { bg: string; text: string; border: string; l
   absent:  { bg: "bg-red-50 border-red-200",     text: "text-red-700",   border: "border-l-red-400",   label: "Absent" },
 };
 
+const UNIT_THEME: Record<SpecialUnit, { bg: string; text: string; border: string }> = {
+  Medics: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200" },
+  HQ: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
+  MP: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
+};
+
 interface Props {
   sessions: AttendanceSession[];
 }
@@ -33,12 +40,15 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
   const [records, setRecords] = useState<RecordWithStudent[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
-  const [filterBattalion, setFilterBattalion] = useState<"" | "1" | "2">("");
-  const [filterCompany, setFilterCompany] = useState<ROTCCompany | "">("");
+  const [filterBattalion, setFilterBattalion] = useState<BattalionFilter>("");
+  const [filterCompany, setFilterCompany] = useState<ROTCCompany | SpecialUnit | "">("");
   const [filterPlatoon, setFilterPlatoon] = useState<"" | "1" | "2" | "3" | "4">("");
+  const [filterSpecialUnit, setFilterSpecialUnit] = useState<SpecialUnit | "">("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterYear, setFilterYear] = useState<string>("");
   const [search, setSearch] = useState("");
+
+  const isSpecialFilter = filterBattalion === "special";
 
   useEffect(() => {
     if (!selectedSessionId) { setRecords([]); return; }
@@ -59,16 +69,37 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
       : [...ROTC_BATTALION_1_COMPANIES, ...ROTC_BATTALION_2_COMPANIES];
 
   useEffect(() => {
-    if (filterCompany && !companyOptions.includes(filterCompany)) setFilterCompany("");
+    setFilterCompany("");
+    setFilterPlatoon("");
+    setFilterSpecialUnit("");
   }, [filterBattalion]);
 
   const regularRecords = records.filter((r) => !r.student?.willingToTakeAdvanceCourse);
 
+  const isSpecialUnitSelected = SPECIAL_UNITS.includes(filterCompany as SpecialUnit);
+
   const filtered = regularRecords.filter((r) => {
     const s = r.student;
-    if (filterBattalion && String(s?.battalion) !== filterBattalion) return false;
-    if (filterCompany && s?.rotcCompany !== filterCompany) return false;
-    if (filterPlatoon && String(s?.rotcPlatoon) !== filterPlatoon) return false;
+    const hasSpecialUnit = !!s?.specialUnit;
+    if (isSpecialFilter) {
+      if (!hasSpecialUnit) return false;
+      if (filterSpecialUnit && s?.specialUnit !== filterSpecialUnit) return false;
+    } else if (filterBattalion) {
+      if (hasSpecialUnit) return false;
+      if (String(s?.battalion) !== filterBattalion) return false;
+      if (filterCompany && s?.rotcCompany !== filterCompany) return false;
+      if (filterPlatoon && String(s?.rotcPlatoon) !== filterPlatoon) return false;
+    } else {
+      if (filterCompany) {
+        if (isSpecialUnitSelected) {
+          if (s?.specialUnit !== filterCompany) return false;
+        } else {
+          if (hasSpecialUnit) return false;
+          if (s?.rotcCompany !== filterCompany) return false;
+        }
+      }
+      if (!isSpecialUnitSelected && filterPlatoon && String(s?.rotcPlatoon) !== filterPlatoon) return false;
+    }
     if (filterStatus && r.status !== filterStatus) return false;
     if (filterYear && s?.yearLevel !== filterYear) return false;
     if (search) {
@@ -175,33 +206,49 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
                   <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Filters</p>
                   <div className="flex flex-wrap gap-2">
                     <div className="relative">
-                      <select value={filterBattalion} onChange={(e) => setFilterBattalion(e.target.value as "" | "1" | "2")}
+                      <select value={filterBattalion} onChange={(e) => setFilterBattalion(e.target.value as BattalionFilter)}
                         className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                         <option value="">All Battalions</option>
                         <option value="1">Battalion 1</option>
                         <option value="2">Battalion 2</option>
+                        <option value="special">Special Battalion</option>
                       </select>
                       <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </div>
                     <div className="relative">
-                      <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value as ROTCCompany | "")}
+                      <select
+                        value={isSpecialFilter ? filterSpecialUnit : filterCompany}
+                        onChange={(e) => {
+                          if (isSpecialFilter) setFilterSpecialUnit(e.target.value as SpecialUnit | "");
+                          else setFilterCompany(e.target.value as ROTCCompany | "");
+                        }}
                         className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                         <option value="">All Companies</option>
-                        {companyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                        {isSpecialFilter
+                          ? SPECIAL_UNITS.map((u) => <option key={u} value={u}>{u}</option>)
+                          : (
+                            <>
+                              {companyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                              {!filterBattalion && SPECIAL_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                            </>
+                          )
+                        }
                       </select>
                       <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </div>
-                    <div className="relative">
-                      <select value={filterPlatoon} onChange={(e) => setFilterPlatoon(e.target.value as "" | "1" | "2" | "3" | "4")}
-                        className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-                        <option value="">All Platoons</option>
-                        <option value="1">Platoon 1</option>
-                        <option value="2">Platoon 2</option>
-                        <option value="3">Platoon 3</option>
-                        <option value="4">Platoon 4</option>
-                      </select>
-                      <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </div>
+                    {!isSpecialFilter && !isSpecialUnitSelected && (
+                      <div className="relative">
+                        <select value={filterPlatoon} onChange={(e) => setFilterPlatoon(e.target.value as "" | "1" | "2" | "3" | "4")}
+                          className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                          <option value="">All Platoons</option>
+                          <option value="1">Platoon 1</option>
+                          <option value="2">Platoon 2</option>
+                          <option value="3">Platoon 3</option>
+                          <option value="4">Platoon 4</option>
+                        </select>
+                        <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    )}
                     <div className="relative">
                       <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
                         className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
@@ -262,9 +309,13 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
                           const name = s
                             ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`
                             : record.studentUid;
-                          const info = s
-                            ? `B${s.battalion ?? "?"} · ${s.rotcCompany ?? "?"} · P${s.rotcPlatoon ?? "?"}`
-                            : "";
+                          const unit = s?.specialUnit as SpecialUnit | undefined;
+                          const unitTheme = unit ? UNIT_THEME[unit] : null;
+                          const info = unit
+                            ? unit
+                            : s
+                              ? `B${s.battalion ?? "?"} · ${s.rotcCompany ?? "?"} · P${s.rotcPlatoon ?? "?"}`
+                              : "";
 
                           return (
                             <div key={record.id} className={`grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-l-3 ${cfg.border}`}>
@@ -286,7 +337,13 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
                                   )}
                                 </div>
                               </div>
-                              <span className="text-[10px] text-gray-400 font-medium w-20 text-center truncate">{info}</span>
+                              {unitTheme && unit ? (
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border w-20 text-center ${unitTheme.bg} ${unitTheme.text} ${unitTheme.border}`}>
+                                  {unit}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-gray-400 font-medium w-20 text-center truncate">{info}</span>
+                              )}
                               <span className="text-[10px] text-gray-400 font-medium w-16 text-center">
                                 {record.status === "present" || record.status === "late"
                                   ? formatTime(record.createdAt)
@@ -310,9 +367,13 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
                           const name = s
                             ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`
                             : record.studentUid;
-                          const info = s
-                            ? `B${s.battalion ?? "?"} · ${s.rotcCompany ?? "?"} · P${s.rotcPlatoon ?? "?"}`
-                            : "";
+                          const unit = s?.specialUnit as SpecialUnit | undefined;
+                          const unitTheme = unit ? UNIT_THEME[unit] : null;
+                          const info = unit
+                            ? unit
+                            : s
+                              ? `B${s.battalion ?? "?"} · ${s.rotcCompany ?? "?"} · P${s.rotcPlatoon ?? "?"}`
+                              : "";
                           const timeStr = record.status === "present" || record.status === "late"
                             ? formatTime(record.createdAt)
                             : record.status === "absent" && lateDeadlineStr
@@ -333,7 +394,13 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-[10px] text-gray-400 font-medium">{info}</span>
+                                {unitTheme && unit ? (
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${unitTheme.bg} ${unitTheme.text} ${unitTheme.border}`}>
+                                    {unit}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-gray-400 font-medium">{info}</span>
+                                )}
                                 <span className="text-gray-300">·</span>
                                 <span className="text-[10px] text-gray-400">{timeStr}</span>
                               </div>
