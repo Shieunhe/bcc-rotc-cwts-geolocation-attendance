@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
+  SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, SpecialUnit, EnrollmentDocument,
 } from "@/types";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
 import { useEnrollmentSchedule } from "@/hooks/useEnrollmentSchedule";
 import { adminService } from "@/services/admin.service";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
-import Button from "@/components/common/Button";
 import ROTCBattalionSection, { countBattalionMembers } from "./components/ROTCBattalionSection";
 import AdvanceCourseSection from "./components/AdvanceCourseSection";
+import SpecialBattalionSection from "./components/SpecialBattalionSection";
 import ROTCheader from "./components/ROTCheader";
 import ROTCAssignSummary from "./components/ROTCAssignSummary";
 import ROTCAssignAssignment from "./components/ROTCAssignAssignment";
@@ -28,6 +29,11 @@ export default function ROTCPlatoonRoster() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [result, setResult] = useState<{ assigned: number; alreadyAssigned: number } | null>(null);
+  const [specialData, setSpecialData] = useState<Record<SpecialUnit, EnrollmentDocument[]> | null>(null);
+
+  useEffect(() => {
+    adminService.getSpecialUnitEnrollments().then(setSpecialData);
+  }, []);
 
   const closed = schedules.length > 0 && schedules.every((s) => isScheduleClosed(s.deadline));
 
@@ -38,6 +44,7 @@ export default function ROTCPlatoonRoster() {
       const res = await adminService.assignROTCPlatoons();
       setResult(res);
       refetch();
+      adminService.getSpecialUnitEnrollments().then(setSpecialData);
     } finally {
       setIsAssigning(false);
     }
@@ -48,7 +55,9 @@ export default function ROTCPlatoonRoster() {
   const b1Total = roster ? countBattalionMembers(roster.battalion1, ROTC_BATTALION_1_COMPANIES) : 0;
   const b2Total = roster ? countBattalionMembers(roster.battalion2, ROTC_BATTALION_2_COMPANIES) : 0;
   const advanceTotal = roster ? (roster.advanceCourseMale.length + roster.advanceCourseFemale.length) : 0;
-  const grandTotal = b1Total + b2Total + advanceTotal;
+  const specialTotal = specialData ? SPECIAL_UNITS.reduce((sum, u) => sum + specialData[u].length, 0) : 0;
+  const specialCapacity = SPECIAL_UNITS.reduce((sum, u) => sum + SPECIAL_UNIT_SLOT_LIMITS[u], 0);
+  const grandTotal = b1Total + b2Total + advanceTotal + specialTotal;
   const b1Capacity = ROTC_BATTALION_1_COMPANIES.length * ROTC_PLATOONS_PER_COMPANY * ROTC_PLATOON_SLOT_LIMIT;
   const b2Capacity = ROTC_BATTALION_2_COMPANIES.length * ROTC_PLATOONS_PER_COMPANY * ROTC_PLATOON_SLOT_LIMIT;
 
@@ -63,6 +72,8 @@ export default function ROTCPlatoonRoster() {
         b1Capacity={b1Capacity}
         b2Capacity={b2Capacity}
         advanceTotal={advanceTotal}
+        specialTotal={specialTotal}
+        specialCapacity={specialCapacity}
         closed={closed}
       />
       <ROTCAssignAssignment 
@@ -97,6 +108,9 @@ export default function ROTCPlatoonRoster() {
             maleStudents={roster.advanceCourseMale}
             femaleStudents={roster.advanceCourseFemale}
           />
+          {specialData && (
+            <SpecialBattalionSection unitData={specialData} />
+          )}
         </div>
       )}
     </AdminPageLayout>

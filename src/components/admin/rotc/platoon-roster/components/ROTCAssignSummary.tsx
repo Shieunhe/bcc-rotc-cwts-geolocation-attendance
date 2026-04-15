@@ -8,12 +8,14 @@ interface ROTCAssignSummaryProps {
     b1Capacity: number;
     b2Capacity: number;
     advanceTotal: number;
+    specialTotal: number;
+    specialCapacity: number;
     closed: boolean;
 }
 
-export default function ROTCAssignSummary({ isLoading, grandTotal, b1Total, b2Total, b1Capacity, b2Capacity, advanceTotal, closed }: ROTCAssignSummaryProps) {
+export default function ROTCAssignSummary({ isLoading, grandTotal, b1Total, b2Total, b1Capacity, b2Capacity, advanceTotal, specialTotal, specialCapacity, closed }: ROTCAssignSummaryProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Total Cadets</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{isLoading ? "—" : grandTotal}</p>
@@ -29,6 +31,10 @@ export default function ROTCAssignSummary({ isLoading, grandTotal, b1Total, b2To
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Advance Course</p>
             <p className="text-2xl font-bold text-amber-600 mt-1">{isLoading ? "—" : advanceTotal}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Special Battalion</p>
+            <p className="text-2xl font-bold text-red-600 mt-1">{isLoading ? "—" : specialTotal}<span className="text-sm text-gray-400 font-medium">/{specialCapacity}</span></p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Schedule</p>

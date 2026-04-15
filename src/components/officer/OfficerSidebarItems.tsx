@@ -114,11 +114,6 @@ const navItems: NavItem[] = [
         href: `${BASE}/view-attendance/advance-course`,
         icon: AdvanceCourseIcon,
       },
-      {
-        label: "Special Platoon",
-        href: `${BASE}/view-attendance/special-platoon`,
-        icon: SpecialPlatoonIcon,
-      },
     ],
   },
 ];
