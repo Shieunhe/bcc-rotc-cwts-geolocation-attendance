@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { adminService } from "@/services/admin.service";
-import { AttendanceSession, AttendanceRecord, EnrollmentDocument } from "@/types";
+import { AttendanceSession, AttendanceRecord, AttendanceRecordStatus, EnrollmentDocument } from "@/types";
+import UpdateStatusModal from "./UpdateStatusModal";
 
 type RecordWithStudent = AttendanceRecord & { student?: EnrollmentDocument };
 
@@ -28,6 +29,12 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(sessions[0]?.id ?? null);
   const [records, setRecords] = useState<RecordWithStudent[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
+
+  const [editingRecord, setEditingRecord] = useState<RecordWithStudent | null>(null);
+
+  const handleStatusUpdated = (recordId: string, newStatus: AttendanceRecordStatus) => {
+    setRecords((prev) => prev.map((r) => r.id === recordId ? { ...r, status: newStatus } : r));
+  };
 
   const [filterGender, setFilterGender] = useState<"" | "Male" | "Female">("");
   const [filterStatus, setFilterStatus] = useState<string>("");
@@ -214,11 +221,12 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
                     <>
                       {/* Desktop table */}
                       <div className="hidden sm:block divide-y divide-gray-100">
-                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
                           <span>Student</span>
                           <span className="w-16 text-center">Gender</span>
                           <span className="w-16 text-center">Time</span>
                           <span className="w-16 text-center">Status</span>
+                          <span className="w-24 text-center">Update Status</span>
                         </div>
                         {filtered.map((record) => {
                           const cfg = statusConfig[record.status] ?? statusConfig.absent;
@@ -228,7 +236,7 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
                             : record.studentUid;
 
                           return (
-                            <div key={record.id} className={`grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-l-3 ${cfg.border}`}>
+                            <div key={record.id} className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-l-3 ${cfg.border}`}>
                               <div className="min-w-0">
                                 <p className="text-xs font-semibold text-gray-700 truncate">{name}</p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -264,6 +272,15 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border w-16 text-center ${cfg.bg} ${cfg.text}`}>
                                 {cfg.label}
                               </span>
+                              <button
+                                onClick={() => setEditingRecord(record)}
+                                className="w-24 flex items-center justify-center gap-1 px-2 py-1 rounded-lg border border-amber-200 bg-amber-50 text-[10px] font-semibold text-amber-700 hover:bg-amber-100 transition cursor-pointer"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                Update
+                              </button>
                             </div>
                           );
                         })}
@@ -296,15 +313,26 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
                                   {cfg.label}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                  s?.sex === "Male"
-                                    ? "bg-indigo-50 text-indigo-600 border-indigo-200"
-                                    : "bg-pink-50 text-pink-600 border-pink-200"
-                                }`}>
-                                  {s?.sex ?? "—"}
-                                </span>
-                                <span className="text-[10px] text-gray-400">{timeStr}</span>
+                              <div className="flex items-center justify-between mt-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    s?.sex === "Male"
+                                      ? "bg-indigo-50 text-indigo-600 border-indigo-200"
+                                      : "bg-pink-50 text-pink-600 border-pink-200"
+                                  }`}>
+                                    {s?.sex ?? "—"}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400">{timeStr}</span>
+                                </div>
+                                <button
+                                  onClick={() => setEditingRecord(record)}
+                                  className="flex items-center gap-1 px-2 py-1 rounded-lg border border-amber-200 bg-amber-50 text-[10px] font-semibold text-amber-700 hover:bg-amber-100 transition"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                  Update
+                                </button>
                               </div>
                             </div>
                           );
@@ -320,6 +348,17 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
           </>
         )}
       </div>
+
+      {editingRecord && (
+        <UpdateStatusModal
+          recordId={editingRecord.id}
+          currentStatus={editingRecord.status}
+          student={editingRecord.student}
+          studentUid={editingRecord.studentUid}
+          onClose={() => setEditingRecord(null)}
+          onUpdated={handleStatusUpdated}
+        />
+      )}
     </div>
   );
 }

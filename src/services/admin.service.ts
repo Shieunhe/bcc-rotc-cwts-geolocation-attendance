@@ -8,7 +8,7 @@ import {
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
   SpecialUnit, SPECIAL_UNIT_SLOT_LIMITS,
   AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
-  AttendanceRecord, StudentGrade,
+  AttendanceRecord, AttendanceRecordStatus, StudentGrade,
 } from "@/types";
 
 export const adminService = {
@@ -513,5 +513,10 @@ export const adminService = {
       }
       await batch.commit();
     }
+  },
+
+  async updateAttendanceStatus(recordId: string, newStatus: AttendanceRecordStatus): Promise<void> {
+    const ref = doc(db, "attendance_list", recordId);
+    await updateDoc(ref, { status: newStatus, updatedAt: new Date().toISOString() });
   },
 };
