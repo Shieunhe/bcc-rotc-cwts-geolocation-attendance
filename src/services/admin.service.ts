@@ -8,7 +8,7 @@ import {
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
   SpecialUnit, SPECIAL_UNIT_SLOT_LIMITS,
   AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
-  AttendanceRecord, AttendanceRecordStatus, StudentGrade,
+  AttendanceRecord, AttendanceRecordStatus, StudentGrade, AttendanceOffense,
 } from "@/types";
 
 export const adminService = {
@@ -518,5 +518,66 @@ export const adminService = {
   async updateAttendanceStatus(recordId: string, newStatus: AttendanceRecordStatus): Promise<void> {
     const ref = doc(db, "attendance_list", recordId);
     await updateDoc(ref, { status: newStatus, updatedAt: new Date().toISOString() });
+  },
+
+  async getAllAttendanceOffenses(): Promise<(AttendanceOffense & { student?: EnrollmentDocument })[]> {
+    const offenseSnap = await getDocs(collection(db, "attendance_offenses"));
+    if (offenseSnap.empty) return [];
+
+    const offenses = offenseSnap.docs.map((d) => d.data() as AttendanceOffense);
+    const uids = offenses.map((o) => o.student_uid);
+
+    const enrollmentMap = new Map<string, EnrollmentDocument>();
+    const batchSize = 10;
+    for (let i = 0; i < uids.length; i += batchSize) {
+      const batch = uids.slice(i, i + batchSize);
+      const q = query(collection(db, "account_reservations"), where("uid", "in", batch));
+      const snap = await getDocs(q);
+      snap.docs.forEach((d) => {
+        const data = d.data() as EnrollmentDocument;
+        enrollmentMap.set(data.uid, data);
+      });
+    }
+
+    return offenses.map((o) => ({ ...o, student: enrollmentMap.get(o.student_uid) }));
+  },
+
+  async getAttendanceOffense(uid: string): Promise<AttendanceOffense | null> {
+    const snap = await getDoc(doc(db, "attendance_offenses", uid));
+    return snap.exists() ? (snap.data() as AttendanceOffense) : null;
+  },
+
+  async recordAttendanceOffense(uid: string): Promise<AttendanceOffense> {
+    const ref = doc(db, "attendance_offenses", uid);
+    const now = new Date().toISOString();
+    const existing = await getDoc(ref);
+
+    if (existing.exists()) {
+      const data = existing.data() as AttendanceOffense;
+      const newOffend = Math.min(data.offend + 1, 2);
+      const updated: AttendanceOffense = {
+        ...data,
+        offend: newOffend,
+        settled: newOffend >= 2 ? false : data.settled,
+        updatedAt: now,
+      };
+      await setDoc(ref, updated);
+      return updated;
+    } else {
+      const offense: AttendanceOffense = {
+        student_uid: uid,
+        offend: 1,
+        settled: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await setDoc(ref, offense);
+      return offense;
+    }
+  },
+
+  async settleAttendanceOffense(uid: string): Promise<void> {
+    const ref = doc(db, "attendance_offenses", uid);
+    await updateDoc(ref, { settled: true, updatedAt: new Date().toISOString() });
   },
 };

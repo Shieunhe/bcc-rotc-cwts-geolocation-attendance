@@ -11,6 +11,7 @@ import CWTSCompanyRosterCard from "@/components/admin/cwts/dashboard/CWTSCompany
 import ROTCPlatoonRosterCard from "@/components/admin/rotc/dashboard/ROTCPlatoonRosterCard";
 import AttendanceSummaryCard from "./dashboard/AttendanceSummaryCard";
 import GradesCard from "./dashboard/GradesCard";
+import OffensesCard from "./dashboard/OffensesCard";
 
 interface AdminDashboardProps {
   program: NSTProgram;
@@ -57,6 +58,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
             {program === "ROTC" && <ROTCPlatoonRosterCard base={base} />}
             <AttendanceSummaryCard base={base} />
             <GradesCard base={base} />
+            <OffensesCard base={base} />
           </div>
         </main>
       </div>

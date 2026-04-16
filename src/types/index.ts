@@ -137,3 +137,12 @@ export interface StudentGrade {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AttendanceOffense {
+  student_uid: string;
+  offend: number;
+  settled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  warningAcknowledgedAt?: string;
+}

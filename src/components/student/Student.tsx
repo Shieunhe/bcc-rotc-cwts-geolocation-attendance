@@ -10,6 +10,7 @@ import AssignedPlatoon from "./dashboard/AssignedPlatoon";
 import Attendance from "./dashboard/Attendance";
 import Grades from "./dashboard/Grades";
 import SerialNumber from "./dashboard/SerialNumber";
+import AttendanceWarningModal from "./AttendanceWarningModal";
 
 const statusConfig = {
   pending: {  
@@ -71,6 +72,7 @@ export default function Student() {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <StudentSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AttendanceWarningModal />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top navbar — mobile only */}
