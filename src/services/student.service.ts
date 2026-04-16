@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { EnrollmentDocument, AttendanceSession, AttendanceRecord, AttendanceRecordStatus } from "@/types";
+import { EnrollmentDocument, AttendanceSession, AttendanceRecord, AttendanceRecordStatus, StudentGrade } from "@/types";
 
 
 const LATE_THRESHOLD_MINUTES = 15;
@@ -97,5 +97,16 @@ export const studentService = {
       updatedAt: now,
     };
     await setDoc(docRef, record);
+  },
+
+  async getStudentGrades(uid: string): Promise<{ ms1: StudentGrade | null; ms2: StudentGrade | null }> {
+    const [ms1Snap, ms2Snap] = await Promise.all([
+      getDoc(doc(db, "student_grades", "ms1", "students", uid)),
+      getDoc(doc(db, "student_grades", "ms2", "students", uid)),
+    ]);
+    return {
+      ms1: ms1Snap.exists() ? (ms1Snap.data() as StudentGrade) : null,
+      ms2: ms2Snap.exists() ? (ms2Snap.data() as StudentGrade) : null,
+    };
   },
 };
