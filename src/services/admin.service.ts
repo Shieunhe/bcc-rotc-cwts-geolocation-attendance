@@ -8,7 +8,7 @@ import {
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
   SpecialUnit, SPECIAL_UNIT_SLOT_LIMITS,
   AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
-  AttendanceRecord,
+  AttendanceRecord, StudentGrade,
 } from "@/types";
 
 export const adminService = {
@@ -458,5 +458,60 @@ export const adminService = {
 
     await setDoc(ref, session);
     return ref.id;
+  },
+
+  // ─── Grades ─────────────────────────────────────────────────────
+
+  async getApprovedEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentDocument[]> {
+    const q = query(
+      collection(db, "account_reservations"),
+      where("nstpComponent", "==", program),
+      where("status", "==", "approved"),
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs
+      .map((d) => d.data() as EnrollmentDocument)
+      .sort((a, b) => a.lastName.localeCompare(b.lastName));
+  },
+
+  async getStudentGradesByMs(msLevel: "ms1" | "ms2", program: NSTProgram): Promise<Map<string, StudentGrade>> {
+    const q = query(
+      collection(db, "student_grades", msLevel, "students"),
+      where("program", "==", program),
+    );
+    const snapshot = await getDocs(q);
+    const map = new Map<string, StudentGrade>();
+    for (const d of snapshot.docs) {
+      const grade = d.data() as StudentGrade;
+      map.set(grade.student_uid, grade);
+    }
+    return map;
+  },
+
+  async saveStudentGrade(uid: string, program: NSTProgram, msLevel: "ms1" | "ms2", grade: number): Promise<void> {
+    const ref = doc(db, "student_grades", msLevel, "students", uid);
+    const status: "Passed" | "Failed" = grade >= 1.0 && grade <= 3.0 ? "Passed" : "Failed";
+    const now = new Date().toISOString();
+    const existing = await getDoc(ref);
+    if (existing.exists()) {
+      await setDoc(ref, { student_uid: uid, grade, status, program, createdAt: existing.data().createdAt || now, updatedAt: now });
+    } else {
+      await setDoc(ref, { student_uid: uid, grade, status, program, createdAt: now, updatedAt: now });
+    }
+  },
+
+  async saveStudentGradesBatch(updates: { uid: string; program: NSTProgram; msLevel: "ms1" | "ms2"; grade: number }[]): Promise<void> {
+    const batchSize = 500;
+    for (let i = 0; i < updates.length; i += batchSize) {
+      const batch = writeBatch(db);
+      const chunk = updates.slice(i, i + batchSize);
+      const now = new Date().toISOString();
+      for (const u of chunk) {
+        const ref = doc(db, "student_grades", u.msLevel, "students", u.uid);
+        const status: "Passed" | "Failed" = u.grade >= 1.0 && u.grade <= 3.0 ? "Passed" : "Failed";
+        batch.set(ref, { student_uid: u.uid, grade: u.grade, status, program: u.program, createdAt: now, updatedAt: now });
+      }
+      await batch.commit();
+    }
   },
 };

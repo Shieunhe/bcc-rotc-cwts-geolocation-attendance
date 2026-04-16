@@ -128,3 +128,12 @@ export interface AttendanceRecord {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface StudentGrade {
+  student_uid: string;
+  grade: number;
+  status: "Passed" | "Failed";
+  program: NSTProgram;
+  createdAt: string;
+  updatedAt: string;
+}

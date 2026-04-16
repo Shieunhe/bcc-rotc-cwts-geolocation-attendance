@@ -122,7 +122,7 @@ export default function Student() {
             </Link> */}
 
             {/* Grades */}
-            <Grades grades={profile.grades}/>
+            <Grades />
             {/* Serial Number */}
             <SerialNumber serialNumber={profile.serialNumber}/>
           </div>

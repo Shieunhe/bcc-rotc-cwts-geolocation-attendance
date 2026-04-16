@@ -1,0 +1,17 @@
+  feature/admin-approved-disapprove[m
+  feature/admin-routing-login[m
+  feature/admin-set-enrollment-schedule[m
+  feature/create-login[m
+  feature/cwts-asign-platoon[m
+  feature/dashboard-users[m
+  feature/fix-all-rotc-features[m
+  feature/fix-enrollment-data-and-add-special-assignment[m
+  feature/fix-enrollment-schedule[m
+  feature/fix-officer-special-platoon-list[m
+  feature/implement-enrollment-status-pages[m
+  feature/officer-displayed-features[m
+  feature/rotc-assigned-platoon[m
+  feature/separate-attendance-for-advance-taker[m
+  feature/special-platoon-assignment[m
+  feature/student-attendance-geolocation[m
+* [32mmain[m
