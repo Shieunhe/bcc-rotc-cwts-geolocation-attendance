@@ -28,8 +28,45 @@ interface Props {
   sessions: AttendanceSession[];
 }
 
+const MI_COUNT = 15;
+const MI_NUMBERS = Array.from({ length: MI_COUNT }, (_, i) => i + 1);
+
+function getMISessions(sessions: AttendanceSession[]) {
+  const map = new Map<number, { in?: AttendanceSession; out?: AttendanceSession }>();
+  for (const s of sessions) {
+    if (!s.miNumber || !s.miType) continue;
+    const entry = map.get(s.miNumber) ?? {};
+    entry[s.miType] = s;
+    map.set(s.miNumber, entry);
+  }
+  return map;
+}
+
+function getMIOptionLabel(mi: number, entry?: { in?: AttendanceSession; out?: AttendanceSession }) {
+  const inLabel = entry?.in
+    ? `Time In - (${formatTime(entry.in.openDate)} - ${formatTime(entry.in.closeDate)})`
+    : "Time In - (Not yet)";
+  const outLabel = entry?.out
+    ? `Time Out - (${formatTime(entry.out.openDate)} - ${formatTime(entry.out.closeDate)})`
+    : "Time Out - (Not yet)";
+  return `MI ${mi}  ${inLabel} | ${outLabel}`;
+}
+
 export default function CWTSAttendanceBox({ sessions }: Props) {
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(sessions[0]?.id ?? null);
+  const miSessions = getMISessions(sessions);
+
+  const [selectedMI, setSelectedMI] = useState<number>(0);
+  const [selectedType, setSelectedType] = useState<"in" | "out">("in");
+
+  const currentMI = miSessions.get(selectedMI);
+  const currentSession = currentMI?.[selectedType] ?? null;
+  const selectedSessionId = currentSession?.id ?? null;
+
+  function handleMIChange(mi: number) {
+    setSelectedMI(mi);
+    const entry = miSessions.get(mi);
+    setSelectedType(entry?.in ? "in" : entry?.out ? "out" : "in");
+  }
   const [records, setRecords] = useState<RecordWithStudent[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
@@ -80,7 +117,7 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
   const attended = counts.present + counts.late;
   const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
 
-  const selectedSession = sessions.find((s) => s.id === selectedSessionId);
+  const selectedSession = currentSession;
   const LATE_THRESHOLD_MINUTES = 15;
   const lateDeadlineStr = selectedSession
     ? new Date(new Date(selectedSession.closeDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000).toISOString()
@@ -104,33 +141,34 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
       </div>
 
       <div className="p-5 space-y-4">
-        {sessions.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-gray-400 font-medium">No CWTS attendance sessions yet.</p>
+        {/* MI selector — always visible */}
+        <div>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Select Military Instruction</label>
+          <div className="relative">
+            <select
+              value={selectedMI}
+              onChange={(e) => handleMIChange(Number(e.target.value))}
+              className="w-full appearance-none px-3.5 py-2.5 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+            >
+              <option value={0}>Select Military Instruction...</option>
+              {MI_NUMBERS.map((mi) => {
+                const entry = miSessions.get(mi);
+                const created = !!entry;
+                return (
+                  <option key={mi} value={mi} disabled={!created}>
+                    {created ? getMIOptionLabel(mi, entry) : `MI ${mi} — Not yet created`}
+                  </option>
+                );
+              })}
+            </select>
+            <svg className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
-        ) : (
-          <>
-            {/* Session selector */}
-            <div>
-              <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Select Session</label>
-              <div className="relative">
-                <select
-                  value={selectedSessionId ?? ""}
-                  onChange={(e) => setSelectedSessionId(e.target.value)}
-                  className="w-full appearance-none px-3.5 py-2.5 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
-                >
-                  {sessions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {formatDate(s.openDate)} — {formatTime(s.openDate)} to {formatTime(s.closeDate)} ({s.status})
-                    </option>
-                  ))}
-                </select>
-                <svg className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+        </div>
 
+        {selectedMI > 0 ? (
+          <>
             {loadingRecords ? (
               <div className="flex items-center justify-center py-8">
                 <div className="flex items-center gap-2">
@@ -164,6 +202,14 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Filters</p>
                   <div className="flex flex-wrap gap-2">
+                    <div className="relative">
+                      <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as "in" | "out")}
+                        className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                        <option value="in" disabled={!currentMI?.in}>Time In{currentMI?.in ? "" : " — Not created"}</option>
+                        <option value="out" disabled={!currentMI?.out}>Time Out{currentMI?.out ? "" : " — Not created"}</option>
+                      </select>
+                      <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
                     <div className="relative">
                       <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value as CWTSCompany | "")}
                         className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
@@ -334,6 +380,10 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
               </>
             )}
           </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-sm text-gray-400 font-medium">Select a Military Instruction to view attendance records.</p>
+          </div>
         )}
       </div>
 

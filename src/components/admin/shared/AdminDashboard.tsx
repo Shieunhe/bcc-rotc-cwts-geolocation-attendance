@@ -12,6 +12,7 @@ import ROTCPlatoonRosterCard from "@/components/admin/rotc/dashboard/ROTCPlatoon
 import AttendanceSummaryCard from "./dashboard/AttendanceSummaryCard";
 import GradesCard from "./dashboard/GradesCard";
 import OffensesCard from "./dashboard/OffensesCard";
+import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
 interface AdminDashboardProps {
   program: NSTProgram;
@@ -20,6 +21,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ program }: AdminDashboardProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { enrollments, isLoading } = useAdminEnrollments(program);
+  useAutoCloseExpiredSessions();
 
   const base = `/admin/${program.toLowerCase()}`;
   const pending = enrollments.filter((e) => e.status === "pending").length;

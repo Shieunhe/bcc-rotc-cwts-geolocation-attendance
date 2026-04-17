@@ -43,11 +43,11 @@ export default function Grades() {
       ) : hasGrades ? (
         <div className="flex items-center gap-4">
           <div>
-            <p className="text-[10px] text-gray-400 font-medium">MS 1</p>
+            <p className="text-[10px] text-gray-400 font-medium">NSTP 1</p>
             <p className="text-lg font-bold text-gray-800">{ms1?.grade ?? "—"}</p>
           </div>
           <div>
-            <p className="text-[10px] text-gray-400 font-medium">MS 2</p>
+            <p className="text-[10px] text-gray-400 font-medium">NSTP 2</p>
             <p className="text-lg font-bold text-gray-800">{ms2?.grade ?? "—"}</p>
           </div>
         </div>

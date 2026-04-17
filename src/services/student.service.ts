@@ -2,9 +2,6 @@ import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where, writ
 import { db } from "@/lib/firebase";
 import { EnrollmentDocument, AttendanceSession, AttendanceRecord, AttendanceRecordStatus, StudentGrade, AttendanceOffense } from "@/types";
 
-
-const LATE_THRESHOLD_MINUTES = 15;
-
 export const studentService = {
   async getProfile(uid: string): Promise<EnrollmentDocument | null> {
     const snap = await getDoc(doc(db, "account_reservations", uid));
@@ -14,27 +11,10 @@ export const studentService = {
 
   async getAttendanceSessions(): Promise<AttendanceSession[]> {
     const snap = await getDocs(collection(db, "create_attendance"));
-    const now = new Date();
-    const sessions = snap.docs.map((d) => d.data() as AttendanceSession);
-
-    const expiredSessions = sessions.filter((s) => {
-      if (s.status === "closed") return false;
-      const lateDeadline = new Date(
-        new Date(s.closeDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000
-      );
-      return now >= lateDeadline;
-    });
-
-    for (const s of expiredSessions) {
-      await updateDoc(doc(db, "create_attendance", s.id), { status: "closed" });
-      s.status = "closed";
-      await this.markAbsentStudents(s.id, s.program, s.isAdvanceCourse);
-    }
-
-    return sessions;
+    return snap.docs.map((d) => d.data() as AttendanceSession);
   },
 
-  async markAbsentStudents(sessionId: string, program: string, isAdvanceCourse?: boolean): Promise<void> {
+  async markAbsentStudents(sessionId: string, program: string, isAdvanceCourse?: boolean, miNumber?: number, miType?: "in" | "out"): Promise<void> {
     const enrolledSnap = await getDocs(
       query(collection(db, "account_reservations"), where("nstpComponent", "==", program), where("status", "==", "approved"))
     );
@@ -65,6 +45,8 @@ export const studentService = {
         studentUid: data.uid,
         attendanceSessionId: sessionId,
         status: "absent",
+        ...(miNumber != null && { miNumber }),
+        ...(miType != null && { miType }),
         createdAt: now,
         updatedAt: now,
       } satisfies AttendanceRecord);
@@ -85,7 +67,7 @@ export const studentService = {
     return snap.docs[0].data() as AttendanceRecord;
   },
 
-  async markAttendance(studentUid: string, attendanceSessionId: string, status: AttendanceRecordStatus): Promise<void> {
+  async markAttendance(studentUid: string, attendanceSessionId: string, status: AttendanceRecordStatus, miNumber?: number, miType?: "in" | "out"): Promise<void> {
     const now = new Date().toISOString();
     const docRef = doc(collection(db, "attendance_list"));
     const record: AttendanceRecord = {
@@ -93,6 +75,8 @@ export const studentService = {
       studentUid,
       attendanceSessionId,
       status,
+      ...(miNumber != null && { miNumber }),
+      ...(miType != null && { miType }),
       createdAt: now,
       updatedAt: now,
     };

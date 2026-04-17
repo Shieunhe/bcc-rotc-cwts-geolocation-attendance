@@ -163,13 +163,15 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
     setSubmitting(true);
     try {
       const attendanceStatus = status === "late" ? "late" : "present";
-      await studentService.markAttendance(uid, session.id, attendanceStatus);
+      await studentService.markAttendance(uid, session.id, attendanceStatus, session.miNumber, session.miType);
       setJustMarked(true);
       setExistingRecord({
         id: "",
         studentUid: uid,
         attendanceSessionId: session.id,
         status: attendanceStatus,
+        miNumber: session.miNumber,
+        miType: session.miType,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });

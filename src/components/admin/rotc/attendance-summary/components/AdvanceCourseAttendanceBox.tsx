@@ -27,10 +27,15 @@ interface Props {
   recordMap: Map<string, AttendanceRecord>;
   graceOver: boolean;
   sessionCloseDate: string | null;
+  selectedType: "in" | "out";
+  onTypeChange: (type: "in" | "out") => void;
+  hasIn: boolean;
+  hasOut: boolean;
 }
 
 export default function AdvanceCourseAttendanceBox({
   students, recordMap, graceOver, sessionCloseDate,
+  selectedType, onTypeChange, hasIn, hasOut,
 }: Props) {
   const lateDeadlineStr = sessionCloseDate
     ? new Date(new Date(sessionCloseDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000).toISOString()
@@ -137,6 +142,14 @@ export default function AdvanceCourseAttendanceBox({
             <div className="space-y-2">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Filters</p>
               <div className="flex flex-wrap gap-2">
+                <div className="relative">
+                  <select value={selectedType} onChange={(e) => onTypeChange(e.target.value as "in" | "out")}
+                    className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-400 transition">
+                    <option value="in" disabled={!hasIn}>Time In{hasIn ? "" : " — Not created"}</option>
+                    <option value="out" disabled={!hasOut}>Time Out{hasOut ? "" : " — Not created"}</option>
+                  </select>
+                  <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </div>
                 <div className="relative">
                   <select value={filterGender} onChange={(e) => setFilterGender(e.target.value as "" | "Male" | "Female")}
                     className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-400 transition">

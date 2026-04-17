@@ -3,6 +3,7 @@
 import { useState } from "react";
 import AdminSidebarItems from "@/components/admin/shared/AdminSidebarItems";
 import { NSTProgram } from "@/types";
+import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
 interface AdminPageLayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface AdminPageLayoutProps {
 
 export default function AdminPageLayout({ children, program }: AdminPageLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useAutoCloseExpiredSessions();
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">

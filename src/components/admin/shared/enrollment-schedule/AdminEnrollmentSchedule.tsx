@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 import Button from "@/components/common/Button";
 import { EnrollmentSchedule, MSLevel, NSTProgram } from "@/types";
@@ -11,7 +11,10 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 function formatDisplayDate(dateStr: string) {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
-  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  const hh = d.getHours().toString().padStart(2, "0");
+  const mm = d.getMinutes().toString().padStart(2, "0");
+  const ss = d.getSeconds().toString().padStart(2, "0");
+  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${hh}:${mm}:${ss}`;
 }
 
 function getScheduleStatus(openDate: string, deadline: string): { label: string; className: string; dot: string } {
@@ -69,8 +72,8 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
   function openEdit(schedule: EnrollmentSchedule) {
     setEditingMs(schedule.msLevel);
     setFormMs(schedule.msLevel);
-    setFormOpen(schedule.openDate);
-    setFormDeadline(schedule.deadline);
+    setFormOpen(schedule.openDate.split("T")[0]);
+    setFormDeadline(schedule.deadline.split("T")[0]);
     setShowForm(true);
     setSuccess(false);
   }
@@ -80,12 +83,14 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
     setEditingMs(null);
   }
 
-  const isValid = formOpen !== "" && formDeadline !== "" && new Date(formDeadline) > new Date(formOpen);
+  const isValid = formOpen !== "" && formDeadline !== "" && new Date(formDeadline) >= new Date(formOpen);
 
   async function handleSave() {
     if (!isValid) return;
     setSuccess(false);
-    await save({ program, msLevel: formMs, openDate: formOpen, deadline: formDeadline, updatedAt: "" });
+    const openWithTime = `${formOpen}T00:00:00`;
+    const deadlineWithTime = `${formDeadline}T23:59:59`;
+    await save({ program, msLevel: formMs, openDate: openWithTime, deadline: deadlineWithTime, updatedAt: "" });
     setSuccess(true);
     setTimeout(() => {
       setSuccess(false);
@@ -168,18 +173,12 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
 
             {/* Dates */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Open Date</label>
-                <input type="date" value={formOpen} onChange={(e) => setFormOpen(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Deadline</label>
-                <input type="date" value={formDeadline} onChange={(e) => setFormDeadline(e.target.value)} min={formOpen || undefined} className={inputClass} />
-              </div>
+              <DateWithTime label="Open Date" value={formOpen} time="00:00:00" onChange={setFormOpen} />
+              <DateWithTime label="Deadline" value={formDeadline} time="23:59:59" onChange={setFormDeadline} min={formOpen || undefined} />
             </div>
 
-            {formOpen && formDeadline && new Date(formDeadline) <= new Date(formOpen) && (
-              <p className="text-xs text-red-500 font-medium">Deadline must be after the open date.</p>
+            {formOpen && formDeadline && new Date(formDeadline) < new Date(formOpen) && (
+              <p className="text-xs text-red-500 font-medium">Deadline must not be before the open date.</p>
             )}
 
             {success && (
@@ -209,6 +208,46 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
         )}
       </div>
     </AdminPageLayout>
+  );
+}
+
+function formatDateValue(dateStr: string) {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  return `${m}/${d}/${y}`;
+}
+
+function DateWithTime({ label, value, time, onChange, min }: { label: string; value: string; time: string; onChange: (v: string) => void; min?: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const openPicker = () => {
+    try { inputRef.current?.showPicker(); } catch { inputRef.current?.focus(); }
+  };
+
+  return (
+    <div>
+      <label className={labelClass}>{label}</label>
+      <div
+        onClick={openPicker}
+        className={inputClass + " flex items-center justify-between cursor-pointer"}
+      >
+        <span className="text-sm text-gray-900">
+          {value ? `${formatDateValue(value)} ${time}` : <span className="text-gray-400">Select date</span>}
+        </span>
+        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+      <input
+        ref={inputRef}
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        min={min}
+        className="sr-only"
+        tabIndex={-1}
+      />
+    </div>
   );
 }
 
