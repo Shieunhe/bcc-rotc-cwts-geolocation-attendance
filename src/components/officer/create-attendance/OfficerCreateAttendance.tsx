@@ -194,7 +194,7 @@ export default function OfficerCreateAttendance() {
       },
       { enableHighAccuracy: true, timeout: 15000 }
     );
-  }
+  } 
 
   const stepMIDone = miNumber > 0;
   const stepTypeDone = stepMIDone;

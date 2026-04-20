@@ -623,4 +623,21 @@ export const adminService = {
     const ref = doc(db, "account_reservations", uid);
     await updateDoc(ref, { ...fields, updatedAt: new Date().toISOString() });
   },
+
+  async getStudentAttendanceRecords(studentUid: string): Promise<AttendanceRecord[]> {
+    const q = query(collection(db, "attendance_list"), where("studentUid", "==", studentUid));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as AttendanceRecord);
+  },
+
+  async getStudentGrades(studentUid: string): Promise<{ ms1?: StudentGrade; ms2?: StudentGrade }> {
+    const [ms1Snap, ms2Snap] = await Promise.all([
+      getDoc(doc(db, "student_grades", "ms1", "students", studentUid)),
+      getDoc(doc(db, "student_grades", "ms2", "students", studentUid)),
+    ]);
+    return {
+      ms1: ms1Snap.exists() ? (ms1Snap.data() as StudentGrade) : undefined,
+      ms2: ms2Snap.exists() ? (ms2Snap.data() as StudentGrade) : undefined,
+    };
+  },
 };
