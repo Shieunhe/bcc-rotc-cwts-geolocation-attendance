@@ -8,9 +8,11 @@ import CWTSCard from "@/components/officer/dashboard/CWTSCard";
 import CreateAttendanceCard from "@/components/officer/dashboard/CreateAttendanceCard";
 import ViewAttendanceCard from "@/components/officer/dashboard/ViewAttendanceCard";
 import AdvanceCourseCard from "@/components/officer/dashboard/AdvanceCourseCard";
+import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
 export default function Officer() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useAutoCloseExpiredSessions();
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">

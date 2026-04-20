@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import OfficerSidebarItems from "@/components/officer/OfficerSidebarItems";
+import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
 interface OfficerPageLayoutProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface OfficerPageLayoutProps {
 
 export default function OfficerPageLayout({ children }: OfficerPageLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useAutoCloseExpiredSessions();
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">

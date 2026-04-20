@@ -26,15 +26,13 @@ export default function OfficerViewAttendance({ section }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    adminService.getAllAttendanceSessions().then((data) => {
+    const isAdvance = section === "advance-course";
+    const program = section === "cwts" ? "CWTS" : "ROTC";
+    adminService.getSessionsByProgram(program, isAdvance || undefined).then((data) => {
       setSessions(data);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
-
-  const rotcSessions = sessions.filter((s) => s.program === "ROTC" && !s.isAdvanceCourse);
-  const advanceCourseSessions = sessions.filter((s) => s.program === "ROTC" && s.isAdvanceCourse);
-  const cwtsSessions = sessions.filter((s) => s.program === "CWTS");
+  }, [section]);
 
   return (
     <>
@@ -62,9 +60,9 @@ export default function OfficerViewAttendance({ section }: Props) {
         </div>
       ) : (
         <div className="space-y-6">
-          {(section === "rotc" || section === "special-platoon") && <ROTCAttendanceBox sessions={rotcSessions} />}
-          {section === "advance-course" && <AdvanceCourseAttendanceBox sessions={advanceCourseSessions} />}
-          {section === "cwts" && <CWTSAttendanceBox sessions={cwtsSessions} />}
+          {(section === "rotc" || section === "special-platoon") && <ROTCAttendanceBox sessions={sessions} />}
+          {section === "advance-course" && <AdvanceCourseAttendanceBox sessions={sessions} />}
+          {section === "cwts" && <CWTSAttendanceBox sessions={sessions} />}
         </div>
       )}
     </>

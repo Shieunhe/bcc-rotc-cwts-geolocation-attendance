@@ -43,7 +43,7 @@ export default function SpecialBattalionSection({ unitData }: SpecialBattalionSe
   return (
     <div>
       <div className="flex items-center gap-3 mb-3">
-        <h2 className="text-sm font-bold text-gray-800">Special Battalion</h2>
+        <h2 className="text-sm font-bold text-gray-800">Special Platoon</h2>
         <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-semibold">
           MEDICAL
         </span>

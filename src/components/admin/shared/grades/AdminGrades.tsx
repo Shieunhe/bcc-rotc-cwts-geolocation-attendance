@@ -358,7 +358,7 @@ function GradeModal({ student, program, ms1Grade, ms2Grade, onClose, onSaved }: 
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600">1</span>
-                <span className="text-xs font-bold text-gray-700">MS 1</span>
+                <span className="text-xs font-bold text-gray-700">NSTP 1</span>
               </div>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${ms1Status.style}`}>
                 {ms1Status.label}
@@ -384,7 +384,7 @@ function GradeModal({ student, program, ms1Grade, ms2Grade, onClose, onSaved }: 
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${ms2Disabled ? "bg-gray-100 text-gray-300" : "bg-gray-100 text-gray-600"}`}>2</span>
-                <span className={`text-xs font-bold ${ms2Disabled ? "text-gray-400" : "text-gray-700"}`}>MS 2</span>
+                <span className={`text-xs font-bold ${ms2Disabled ? "text-gray-400" : "text-gray-700"}`}>NSTP 2</span>
                 {ms2Disabled && (
                   <span className="text-[10px] text-gray-400 font-medium">— Not enrolled</span>
                 )}

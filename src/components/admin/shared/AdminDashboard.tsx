@@ -10,7 +10,10 @@ import EnrollmentList from "./dashboard/EnrollmentList";
 import CWTSCompanyRosterCard from "@/components/admin/cwts/dashboard/CWTSCompanyRosterCard";
 import ROTCPlatoonRosterCard from "@/components/admin/rotc/dashboard/ROTCPlatoonRosterCard";
 import AttendanceSummaryCard from "./dashboard/AttendanceSummaryCard";
+import ViewRecordsCard from "./dashboard/ViewRecordsCard";
 import GradesCard from "./dashboard/GradesCard";
+import OffensesCard from "./dashboard/OffensesCard";
+import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
 interface AdminDashboardProps {
   program: NSTProgram;
@@ -19,6 +22,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ program }: AdminDashboardProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { enrollments, isLoading } = useAdminEnrollments(program);
+  useAutoCloseExpiredSessions();
 
   const base = `/admin/${program.toLowerCase()}`;
   const pending = enrollments.filter((e) => e.status === "pending").length;
@@ -56,7 +60,9 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
             {program === "CWTS" && <CWTSCompanyRosterCard base={base} />}
             {program === "ROTC" && <ROTCPlatoonRosterCard base={base} />}
             <AttendanceSummaryCard base={base} />
+            <ViewRecordsCard base={base} />
             <GradesCard base={base} />
+            <OffensesCard base={base} />
           </div>
         </main>
       </div>

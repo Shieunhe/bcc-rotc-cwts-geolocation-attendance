@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import StudentSidebarItems from "@/components/student/StudentSidebarItems";
+import AttendanceWarningModal from "@/components/student/AttendanceWarningModal";
+import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
 interface StudentPageLayoutProps {
   children: React.ReactNode;
@@ -9,10 +11,12 @@ interface StudentPageLayoutProps {
 
 export default function StudentPageLayout({ children }: StudentPageLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useAutoCloseExpiredSessions();
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <StudentSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AttendanceWarningModal />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top navbar — mobile only */}

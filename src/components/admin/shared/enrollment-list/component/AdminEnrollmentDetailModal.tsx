@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { EnrollmentDocument, EnrollmentStatus, SpecialUnit, SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS } from "@/types";
+import { EnrollmentDocument, EnrollmentStatus, SpecialUnit, SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, Sex } from "@/types";
 import { adminService } from "@/services/admin.service";
 import FilePreview from "@/components/common/FilePreview";
 import Button from "@/components/common/Button";
@@ -29,7 +29,31 @@ function toTitleCase(text: string) {
   return text.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+const editInputClass = "w-full border border-gray-200 rounded-lg py-1.5 px-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white";
+
+function Field({ label, value, editing, editValue, onChange, type = "text", options }: {
+  label: string;
+  value: React.ReactNode;
+  editing?: boolean;
+  editValue?: string;
+  onChange?: (v: string) => void;
+  type?: "text" | "date" | "select";
+  options?: { value: string; label: string }[];
+}) {
+  if (editing && onChange) {
+    return (
+      <div className="min-w-0">
+        <p className="text-[11px] text-gray-400 mb-1 tracking-wide">{label}</p>
+        {type === "select" && options ? (
+          <select value={editValue ?? ""} onChange={(e) => onChange(e.target.value)} className={editInputClass}>
+            {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        ) : (
+          <input type={type} value={editValue ?? ""} onChange={(e) => onChange(e.target.value)} className={editInputClass} />
+        )}
+      </div>
+    );
+  }
   const displayed = typeof value === "string" ? toTitleCase(value) : value;
   return (
     <div className="min-w-0">
@@ -39,12 +63,15 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, icon, children, editing }: { title: string; icon: React.ReactNode; children: React.ReactNode; editing?: boolean }) {
   return (
-    <div className="bg-gray-50/50 rounded-xl p-4 sm:p-5">
+    <div className={`rounded-xl p-4 sm:p-5 ${editing ? "bg-blue-50/30 border border-blue-100" : "bg-gray-50/50"}`}>
       <div className="flex items-center gap-2 mb-4">
         <span className="text-gray-400">{icon}</span>
         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">{title}</h3>
+        {editing && (
+          <span className="ml-auto text-[10px] font-semibold text-blue-500 uppercase tracking-wide">Editing</span>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">{children}</div>
     </div>
@@ -96,11 +123,38 @@ const ICONS = {
   ),
 };
 
+type EditableFields = Pick<EnrollmentDocument,
+  "lastName" | "firstName" | "middleName" | "sex" | "birthdate" | "placeOfBirth" | "religion" | "contactNumber" |
+  "temporaryBarangay" | "temporaryMunicipality" | "temporaryProvince" |
+  "permanentBarangay" | "permanentMunicipality" | "permanentProvince" |
+  "fatherName" | "fatherOccupation" | "motherName" | "motherOccupation" |
+  "emergencyContactName" | "emergencyContactRelationship" | "emergencyContactContactNumber" | "emergencyContactAddress" |
+  "willingToTakeAdvanceCourse" | "course" | "yearLevel"
+>;
+
+function getEditableFields(e: EnrollmentDocument): EditableFields {
+  return {
+    lastName: e.lastName, firstName: e.firstName, middleName: e.middleName,
+    sex: e.sex, birthdate: e.birthdate, placeOfBirth: e.placeOfBirth,
+    religion: e.religion, contactNumber: e.contactNumber,
+    temporaryBarangay: e.temporaryBarangay, temporaryMunicipality: e.temporaryMunicipality, temporaryProvince: e.temporaryProvince,
+    permanentBarangay: e.permanentBarangay, permanentMunicipality: e.permanentMunicipality, permanentProvince: e.permanentProvince,
+    fatherName: e.fatherName, fatherOccupation: e.fatherOccupation, motherName: e.motherName, motherOccupation: e.motherOccupation,
+    emergencyContactName: e.emergencyContactName, emergencyContactRelationship: e.emergencyContactRelationship,
+    emergencyContactContactNumber: e.emergencyContactContactNumber, emergencyContactAddress: e.emergencyContactAddress,
+    willingToTakeAdvanceCourse: e.willingToTakeAdvanceCourse, course: e.course, yearLevel: e.yearLevel,
+  };
+}
+
 export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStatusChange }: AdminEnrollmentDetailModalProps) {
   const statusConfig = STATUS_CONFIG[enrollment.status] ?? STATUS_CONFIG.pending;
   const [showDisapprove, setShowDisapprove] = useState(false);
   const [disapproveReason, setDisapproveReason] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<EditableFields>(() => getEditableFields(enrollment));
+  const [isSaving, setIsSaving] = useState(false);
 
   const hasMedical = enrollment.hasMedicalCondition === true && enrollment.nstpComponent === "ROTC";
   const [showMedicalAssign, setShowMedicalAssign] = useState(false);
@@ -115,6 +169,35 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
       .then(([medics, hq, mp]) => setUnitCounts({ Medics: medics, HQ: hq, MP: mp }))
       .finally(() => setLoadingCounts(false));
   }, [showMedicalAssign]);
+
+  function updateField<K extends keyof EditableFields>(key: K, value: EditableFields[K]) {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleCancelEdit() {
+    setFormData(getEditableFields(enrollment));
+    setIsEditing(false);
+  }
+
+  async function handleSaveEdit() {
+    setIsSaving(true);
+    try {
+      const changed: Partial<EnrollmentDocument> = {};
+      const original = getEditableFields(enrollment);
+      for (const key of Object.keys(formData) as (keyof EditableFields)[]) {
+        if (formData[key] !== original[key]) {
+          (changed as Record<string, unknown>)[key] = formData[key];
+        }
+      }
+      if (Object.keys(changed).length > 0) {
+        await adminService.updateEnrollmentFields(enrollment.uid, changed);
+        onStatusChange?.();
+      }
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   async function handleApprove() {
     if (hasMedical && !showMedicalAssign) {
@@ -159,12 +242,14 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
     }
   }
 
+  const e = isEditing ? { ...enrollment, ...formData } : enrollment;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(ev) => ev.stopPropagation()}
       >
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
@@ -177,7 +262,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
               </div>
             )}
             <div>
-              <h2 className="text-base font-bold text-gray-900">{enrollment.lastName}, {enrollment.firstName} {enrollment.middleName}</h2>
+              <h2 className="text-base font-bold text-gray-900">{e.lastName}, {e.firstName} {e.middleName}</h2>
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-xs text-gray-400">{enrollment.studentId} • {enrollment.email}</p>
               </div>
@@ -188,6 +273,17 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
               <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
               {statusConfig.label}
             </span>
+            {!isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-[11px] font-semibold text-blue-600 hover:bg-blue-100 transition"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                Edit
+              </button>
+            )}
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -198,50 +294,55 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
 
         {/* Scrollable content */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
-          <Section title="Personal Information" icon={ICONS.person}>
-            <Field label="Last Name" value={enrollment.lastName} />
-            <Field label="First Name" value={enrollment.firstName} />
-            <Field label="Middle Name" value={enrollment.middleName} />
-            <Field label="Sex" value={enrollment.sex} />
-            <Field label="Birthdate" value={enrollment.birthdate} />
-            <Field label="Place of Birth" value={enrollment.placeOfBirth} />
-            <Field label="Religion" value={enrollment.religion} />
-            <Field label="Contact Number" value={enrollment.contactNumber} />
+          <Section title="Personal Information" icon={ICONS.person} editing={isEditing}>
+            <Field label="Last Name" value={e.lastName} editing={isEditing} editValue={formData.lastName} onChange={(v) => updateField("lastName", v)} />
+            <Field label="First Name" value={e.firstName} editing={isEditing} editValue={formData.firstName} onChange={(v) => updateField("firstName", v)} />
+            <Field label="Middle Name" value={e.middleName} editing={isEditing} editValue={formData.middleName} onChange={(v) => updateField("middleName", v)} />
+            <Field label="Sex" value={e.sex} editing={isEditing} editValue={formData.sex} onChange={(v) => updateField("sex", v as Sex | "")} type="select"
+              options={[{ value: "", label: "Select" }, { value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+            <Field label="Birthdate" value={e.birthdate} editing={isEditing} editValue={formData.birthdate} onChange={(v) => updateField("birthdate", v)} type="date" />
+            <Field label="Place of Birth" value={e.placeOfBirth} editing={isEditing} editValue={formData.placeOfBirth} onChange={(v) => updateField("placeOfBirth", v)} />
+            <Field label="Religion" value={e.religion} editing={isEditing} editValue={formData.religion} onChange={(v) => updateField("religion", v)} />
+            <Field label="Contact Number" value={e.contactNumber} editing={isEditing} editValue={formData.contactNumber} onChange={(v) => updateField("contactNumber", v)} />
           </Section>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Section title="Temporary Address" icon={ICONS.location}>
-              <Field label="Barangay" value={enrollment.temporaryBarangay} />
-              <Field label="Municipality" value={enrollment.temporaryMunicipality} />
-              <Field label="Province" value={enrollment.temporaryProvince} />
+            <Section title="Temporary Address" icon={ICONS.location} editing={isEditing}>
+              <Field label="Barangay" value={e.temporaryBarangay} editing={isEditing} editValue={formData.temporaryBarangay} onChange={(v) => updateField("temporaryBarangay", v)} />
+              <Field label="Municipality" value={e.temporaryMunicipality} editing={isEditing} editValue={formData.temporaryMunicipality} onChange={(v) => updateField("temporaryMunicipality", v)} />
+              <Field label="Province" value={e.temporaryProvince} editing={isEditing} editValue={formData.temporaryProvince} onChange={(v) => updateField("temporaryProvince", v)} />
             </Section>
-            <Section title="Permanent Address" icon={ICONS.location}>
-              <Field label="Barangay" value={enrollment.permanentBarangay} />
-              <Field label="Municipality" value={enrollment.permanentMunicipality} />
-              <Field label="Province" value={enrollment.permanentProvince} />
+            <Section title="Permanent Address" icon={ICONS.location} editing={isEditing}>
+              <Field label="Barangay" value={e.permanentBarangay} editing={isEditing} editValue={formData.permanentBarangay} onChange={(v) => updateField("permanentBarangay", v)} />
+              <Field label="Municipality" value={e.permanentMunicipality} editing={isEditing} editValue={formData.permanentMunicipality} onChange={(v) => updateField("permanentMunicipality", v)} />
+              <Field label="Province" value={e.permanentProvince} editing={isEditing} editValue={formData.permanentProvince} onChange={(v) => updateField("permanentProvince", v)} />
             </Section>
           </div>
 
-          <Section title="Family Information" icon={ICONS.family}>
-            <Field label="Father's Name" value={enrollment.fatherName} />
-            <Field label="Father's Occupation" value={enrollment.fatherOccupation} />
-            <Field label="Mother's Name" value={enrollment.motherName} />
-            <Field label="Mother's Occupation" value={enrollment.motherOccupation} />
+          <Section title="Family Information" icon={ICONS.family} editing={isEditing}>
+            <Field label="Father's Name" value={e.fatherName} editing={isEditing} editValue={formData.fatherName} onChange={(v) => updateField("fatherName", v)} />
+            <Field label="Father's Occupation" value={e.fatherOccupation} editing={isEditing} editValue={formData.fatherOccupation} onChange={(v) => updateField("fatherOccupation", v)} />
+            <Field label="Mother's Name" value={e.motherName} editing={isEditing} editValue={formData.motherName} onChange={(v) => updateField("motherName", v)} />
+            <Field label="Mother's Occupation" value={e.motherOccupation} editing={isEditing} editValue={formData.motherOccupation} onChange={(v) => updateField("motherOccupation", v)} />
           </Section>
 
-          <Section title="Emergency Contact" icon={ICONS.emergency}>
-            <Field label="Name" value={enrollment.emergencyContactName} />
-            <Field label="Relationship" value={enrollment.emergencyContactRelationship} />
-            <Field label="Contact Number" value={enrollment.emergencyContactContactNumber} />
-            <Field label="Address" value={enrollment.emergencyContactAddress} />
+          <Section title="Emergency Contact" icon={ICONS.emergency} editing={isEditing}>
+            <Field label="Name" value={e.emergencyContactName} editing={isEditing} editValue={formData.emergencyContactName} onChange={(v) => updateField("emergencyContactName", v)} />
+            <Field label="Relationship" value={e.emergencyContactRelationship} editing={isEditing} editValue={formData.emergencyContactRelationship} onChange={(v) => updateField("emergencyContactRelationship", v)} />
+            <Field label="Contact Number" value={e.emergencyContactContactNumber} editing={isEditing} editValue={formData.emergencyContactContactNumber} onChange={(v) => updateField("emergencyContactContactNumber", v)} />
+            <Field label="Address" value={e.emergencyContactAddress} editing={isEditing} editValue={formData.emergencyContactAddress} onChange={(v) => updateField("emergencyContactAddress", v)} />
           </Section>
 
-          <Section title="Academic Information" icon={ICONS.academic}>
-            <Field label="Course" value={enrollment.course} />
-            <Field label="Year Level" value={enrollment.yearLevel} />
+          <Section title="Academic Information" icon={ICONS.academic} editing={isEditing}>
+            <Field label="Course" value={e.course} editing={isEditing} editValue={formData.course} onChange={(v) => updateField("course", v)} />
+            <Field label="Year Level" value={e.yearLevel} editing={isEditing} editValue={formData.yearLevel as string} onChange={(v) => updateField("yearLevel", v as typeof formData.yearLevel)} type="select"
+              options={[{ value: "", label: "Select" }, { value: "1st Year", label: "1st Year" }, { value: "2nd Year", label: "2nd Year" }, { value: "3rd Year", label: "3rd Year" }, { value: "4th Year", label: "4th Year" }]} />
             <Field label="NSTP Component" value={enrollment.nstpComponent} />
             <Field label="MS Level" value={enrollment.msLevel} />
-            <Field label="Advance Course" value={enrollment.willingToTakeAdvanceCourse ? "Yes" : "No"} />
+            <Field label="Advance Course" value={e.willingToTakeAdvanceCourse ? "Yes" : "No"}
+              editing={isEditing} editValue={formData.willingToTakeAdvanceCourse ? "yes" : "no"}
+              onChange={(v) => updateField("willingToTakeAdvanceCourse", v === "yes")}
+              type="select" options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
             {enrollment.company && (
               <Field label="Company" value={
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold">
@@ -312,7 +413,16 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
 
         {/* Sticky footer */}
         <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 rounded-b-2xl">
-          {enrollment.status !== "pending" ? (
+          {isEditing ? (
+            <div className="flex gap-3">
+              <Button variant="primary" fullWidth className="!py-2 !text-sm" loading={isSaving} onClick={handleSaveEdit}>
+                Save Changes
+              </Button>
+              <Button variant="secondary" fullWidth className="!py-2 !text-sm" onClick={handleCancelEdit} disabled={isSaving}>
+                Cancel
+              </Button>
+            </div>
+          ) : enrollment.status !== "pending" ? (
             <Button variant="secondary" fullWidth className="!py-2 !text-sm" onClick={onClose}>Close</Button>
           ) : showMedicalAssign ? (
             <div className="space-y-3">
@@ -335,7 +445,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
                 ) : (
                   <select
                     value={selectedUnit}
-                    onChange={(e) => setSelectedUnit(e.target.value as SpecialUnit)}
+                    onChange={(ev) => setSelectedUnit(ev.target.value as SpecialUnit)}
                     className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
                   >
                     <option value="" disabled>Select a special unit...</option>
@@ -378,7 +488,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Reason for disapproval</label>
                 <textarea
                   value={disapproveReason}
-                  onChange={(e) => setDisapproveReason(e.target.value)}
+                  onChange={(ev) => setDisapproveReason(ev.target.value)}
                   placeholder="Enter the reason for disapproving this enrollment..."
                   rows={3}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition resize-none"

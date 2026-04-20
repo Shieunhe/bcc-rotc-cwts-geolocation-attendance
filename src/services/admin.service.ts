@@ -8,7 +8,7 @@ import {
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
   SpecialUnit, SPECIAL_UNIT_SLOT_LIMITS,
   AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
-  AttendanceRecord, AttendanceRecordStatus, StudentGrade,
+  AttendanceRecord, AttendanceRecordStatus, StudentGrade, AttendanceOffense,
 } from "@/types";
 
 export const adminService = {
@@ -315,30 +315,62 @@ export const adminService = {
 
   // ─── Attendance ────────────────────────────────────────────────
 
-  async getAllAttendanceSessions(): Promise<AttendanceSession[]> {
+  async getSessionsByProgram(program: NSTProgram, isAdvanceCourse?: boolean): Promise<AttendanceSession[]> {
+    const snap = await getDocs(
+      query(collection(db, "create_attendance"), where("program", "==", program))
+    );
+    const sessions = snap.docs.map((d) => d.data() as AttendanceSession);
+    return sessions.filter((s) => {
+      if (isAdvanceCourse) return !!s.isAdvanceCourse;
+      if (program === "ROTC") return !s.isAdvanceCourse;
+      return true;
+    });
+  },
+
+  async autoCloseExpiredSessions(): Promise<number> {
+    const LATE_THRESHOLD_MINUTES = 15;
     const snap = await getDocs(collection(db, "create_attendance"));
     const now = new Date();
-    const sessions = snap.docs.map((d) => d.data() as AttendanceSession);
+    let closed = 0;
 
-    const LATE_THRESHOLD_MINUTES = 15;
-    const expiredSessions = sessions.filter((s) => {
-      if (s.status === "closed") return false;
-      const lateDeadline = new Date(
-        new Date(s.closeDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000
+    console.log(`[AutoClose] Fetched ${snap.docs.length} session(s). Now = ${now.toISOString()}`);
+
+    for (const d of snap.docs) {
+      const s = d.data() as AttendanceSession;
+      if (s.status === "closed") continue;
+
+      const closeTime = new Date(s.closeDate).getTime();
+      const lateDeadline = new Date(closeTime + LATE_THRESHOLD_MINUTES * 60 * 1000);
+
+      console.log(
+        `[AutoClose] Session ${s.id} | status=${s.status} | closeDate=${s.closeDate} | ` +
+        `parsedClose=${new Date(closeTime).toISOString()} | lateDeadline=${lateDeadline.toISOString()} | ` +
+        `shouldClose=${now >= lateDeadline}`
       );
-      return now >= lateDeadline;
-    });
 
-    for (const s of expiredSessions) {
-      await updateDoc(doc(db, "create_attendance", s.id), { status: "closed" });
-      s.status = "closed";
-      await this.markAbsentStudents(s.id, s.program, s.isAdvanceCourse);
+      if (now >= lateDeadline) {
+        try {
+          await updateDoc(doc(db, "create_attendance", s.id), { status: "closed" });
+          console.log(`[AutoClose] Updated status to closed for ${s.id}`);
+          await this.markAbsentStudents(s.id, s.program, s.isAdvanceCourse, s.miNumber, s.miType);
+          console.log(`[AutoClose] Marked absents for ${s.id}`);
+          closed++;
+        } catch (err) {
+          console.error(`[AutoClose] Failed to close session ${s.id}:`, err);
+        }
+      }
     }
 
+    return closed;
+  },
+
+  async getAllAttendanceSessions(): Promise<AttendanceSession[]> {
+    const snap = await getDocs(collection(db, "create_attendance"));
+    const sessions = snap.docs.map((d) => d.data() as AttendanceSession);
     return sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
-  async markAbsentStudents(sessionId: string, program: string, isAdvanceCourse?: boolean): Promise<void> {
+  async markAbsentStudents(sessionId: string, program: string, isAdvanceCourse?: boolean, miNumber?: number, miType?: "in" | "out"): Promise<void> {
     const enrolledSnap = await getDocs(
       query(collection(db, "account_reservations"), where("nstpComponent", "==", program), where("status", "==", "approved"))
     );
@@ -369,6 +401,8 @@ export const adminService = {
         studentUid: data.uid,
         attendanceSessionId: sessionId,
         status: "absent",
+        ...(miNumber != null && { miNumber }),
+        ...(miType != null && { miType }),
         createdAt: now,
         updatedAt: now,
       } satisfies AttendanceRecord);
@@ -428,6 +462,8 @@ export const adminService = {
   async createAttendanceSession(data: {
     program: NSTProgram;
     isAdvanceCourse?: boolean;
+    miNumber?: number;
+    miType?: "in" | "out";
     openDate: string;
     closeDate: string;
     location: AttendanceLocation;
@@ -447,6 +483,8 @@ export const adminService = {
       id: ref.id,
       program: data.program,
       ...(data.isAdvanceCourse ? { isAdvanceCourse: true } : {}),
+      ...(data.miNumber ? { miNumber: data.miNumber } : {}),
+      ...(data.miType ? { miType: data.miType } : {}),
       openDate: data.openDate,
       closeDate: data.closeDate,
       location: data.location,
@@ -518,5 +556,88 @@ export const adminService = {
   async updateAttendanceStatus(recordId: string, newStatus: AttendanceRecordStatus): Promise<void> {
     const ref = doc(db, "attendance_list", recordId);
     await updateDoc(ref, { status: newStatus, updatedAt: new Date().toISOString() });
+  },
+
+  async getAllAttendanceOffenses(): Promise<(AttendanceOffense & { student?: EnrollmentDocument })[]> {
+    const offenseSnap = await getDocs(collection(db, "attendance_offenses"));
+    if (offenseSnap.empty) return [];
+
+    const offenses = offenseSnap.docs.map((d) => d.data() as AttendanceOffense);
+    const uids = offenses.map((o) => o.student_uid);
+
+    const enrollmentMap = new Map<string, EnrollmentDocument>();
+    const batchSize = 10;
+    for (let i = 0; i < uids.length; i += batchSize) {
+      const batch = uids.slice(i, i + batchSize);
+      const q = query(collection(db, "account_reservations"), where("uid", "in", batch));
+      const snap = await getDocs(q);
+      snap.docs.forEach((d) => {
+        const data = d.data() as EnrollmentDocument;
+        enrollmentMap.set(data.uid, data);
+      });
+    }
+
+    return offenses.map((o) => ({ ...o, student: enrollmentMap.get(o.student_uid) }));
+  },
+
+  async getAttendanceOffense(uid: string): Promise<AttendanceOffense | null> {
+    const snap = await getDoc(doc(db, "attendance_offenses", uid));
+    return snap.exists() ? (snap.data() as AttendanceOffense) : null;
+  },
+
+  async recordAttendanceOffense(uid: string): Promise<AttendanceOffense> {
+    const ref = doc(db, "attendance_offenses", uid);
+    const now = new Date().toISOString();
+    const existing = await getDoc(ref);
+
+    if (existing.exists()) {
+      const data = existing.data() as AttendanceOffense;
+      const newOffend = Math.min(data.offend + 1, 2);
+      const updated: AttendanceOffense = {
+        ...data,
+        offend: newOffend,
+        settled: newOffend >= 2 ? false : data.settled,
+        updatedAt: now,
+      };
+      await setDoc(ref, updated);
+      return updated;
+    } else {
+      const offense: AttendanceOffense = {
+        student_uid: uid,
+        offend: 1,
+        settled: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await setDoc(ref, offense);
+      return offense;
+    }
+  },
+
+  async settleAttendanceOffense(uid: string): Promise<void> {
+    const ref = doc(db, "attendance_offenses", uid);
+    await updateDoc(ref, { settled: true, updatedAt: new Date().toISOString() });
+  },
+
+  async updateEnrollmentFields(uid: string, fields: Partial<EnrollmentDocument>): Promise<void> {
+    const ref = doc(db, "account_reservations", uid);
+    await updateDoc(ref, { ...fields, updatedAt: new Date().toISOString() });
+  },
+
+  async getStudentAttendanceRecords(studentUid: string): Promise<AttendanceRecord[]> {
+    const q = query(collection(db, "attendance_list"), where("studentUid", "==", studentUid));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as AttendanceRecord);
+  },
+
+  async getStudentGrades(studentUid: string): Promise<{ ms1?: StudentGrade; ms2?: StudentGrade }> {
+    const [ms1Snap, ms2Snap] = await Promise.all([
+      getDoc(doc(db, "student_grades", "ms1", "students", studentUid)),
+      getDoc(doc(db, "student_grades", "ms2", "students", studentUid)),
+    ]);
+    return {
+      ms1: ms1Snap.exists() ? (ms1Snap.data() as StudentGrade) : undefined,
+      ms2: ms2Snap.exists() ? (ms2Snap.data() as StudentGrade) : undefined,
+    };
   },
 };

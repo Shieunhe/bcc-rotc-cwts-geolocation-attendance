@@ -51,7 +51,7 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Course & Year</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Date</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Status</th>
-              <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">View Details</th>
+              <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">View / Edit Details</th>
             </tr>
           </thead>
           <tbody>
@@ -96,9 +96,9 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
                   <td className="px-5 py-3.5">
                     <button
                       onClick={() => setSelectedEnrollment(enrollment)}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition"
+                      className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline text-center transition"
                     >
-                      View Details
+                      View / Edit
                     </button>
                   </td>
                 </tr>
@@ -148,7 +148,7 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
                   onClick={() => setSelectedEnrollment(enrollment)}
                   className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition"
                 >
-                  View Details
+                  View / Edit
                 </button>
               </div>
             </div>

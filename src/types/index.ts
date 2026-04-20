@@ -103,12 +103,14 @@ export interface AttendanceLocation {
   longitude: number;
 }
 
-export const ATTENDANCE_RADIUS_METERS = 100;
+export const ATTENDANCE_RADIUS_METERS = 50;
 
 export interface AttendanceSession {
   id: string;
   program: NSTProgram;
   isAdvanceCourse?: boolean;
+  miNumber?: number;
+  miType?: "in" | "out";
   openDate: string;
   closeDate: string;
   location: AttendanceLocation;
@@ -125,6 +127,8 @@ export interface AttendanceRecord {
   studentUid: string;
   attendanceSessionId: string;
   status: AttendanceRecordStatus;
+  miNumber?: number;
+  miType?: "in" | "out";
   createdAt: string;
   updatedAt: string;
 }
@@ -136,4 +140,13 @@ export interface StudentGrade {
   program: NSTProgram;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AttendanceOffense {
+  student_uid: string;
+  offend: number;
+  settled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  warningAcknowledgedAt?: string;
 }
