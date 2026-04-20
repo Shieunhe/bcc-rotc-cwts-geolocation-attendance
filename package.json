@@ -11,6 +11,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.95.0",
     "firebase": "^12.10.0",
+    "firebase-admin": "^13.8.0",
     "leaflet": "^1.9.4",
     "next": "16.1.7",
     "react": "19.2.3",
