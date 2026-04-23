@@ -33,7 +33,7 @@ export default function ROTCAssignSummary({ isLoading, grandTotal, b1Total, b2To
             <p className="text-2xl font-bold text-amber-600 mt-1">{isLoading ? "—" : advanceTotal}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Special Battalion</p>
+            <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Special Platoon</p>
             <p className="text-2xl font-bold text-red-600 mt-1">{isLoading ? "—" : specialTotal}<span className="text-sm text-gray-400 font-medium">/{specialCapacity}</span></p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">

@@ -213,9 +213,9 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
                     <div className="relative">
                       <select value={filterGender} onChange={(e) => setFilterGender(e.target.value as "" | "Male" | "Female")}
                         className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-400 transition">
-                        <option value="">All Battalion</option>
-                        <option value="Male">Battalion 1</option>
-                        <option value="Female">Battalion 2</option>
+                        <option value="">All Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
                       </select>
                       <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </div>
