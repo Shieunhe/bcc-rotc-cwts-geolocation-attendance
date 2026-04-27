@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import StudentSidebarItems from "@/components/student/StudentSidebarItems";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
+import { studentService } from "@/services/student.service";
 import EnrollmentStatus from "./dashboard/EnrollmentStatus";
 import AssignedPlatoon from "./dashboard/AssignedPlatoon";
 import Attendance from "./dashboard/Attendance";
@@ -37,8 +38,16 @@ const statusConfig = {
 export default function Student() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { profile, authLoading, dataLoading, error, uid } = useStudentProfile();
+  const [serialNumber, setSerialNumber] = useState<string | undefined>(undefined);
   useAuthGuard({ authLoading, uid });
   useAutoCloseExpiredSessions();
+
+  useEffect(() => {
+    if (!uid) return;
+    studentService.getSerialNumber(uid).then((data) => {
+      if (data) setSerialNumber(data.serialNumber);
+    });
+  }, [uid]);
 
   const isLoading = authLoading || dataLoading;
 
@@ -128,7 +137,7 @@ export default function Student() {
             {/* Grades */}
             <Grades />
             {/* Serial Number */}
-            <SerialNumber serialNumber={profile.serialNumber}/>
+            <SerialNumber serialNumber={serialNumber}/>
           </div>
         </main>
       </div>

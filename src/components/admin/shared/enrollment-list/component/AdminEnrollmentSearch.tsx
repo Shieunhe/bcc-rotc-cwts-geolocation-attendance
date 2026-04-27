@@ -89,17 +89,15 @@ export default function AdminEnrollmentSearch({ filters, onFiltersChange, progra
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Filters:</span>
 
-        {program !== "CWTS" && (
-          <div className="relative">
-            <select value={filters.msLevel} onChange={(e) => update({ msLevel: e.target.value })} className={selectClass}>
-              <option value="">All MS Level</option>
-              {MS_LEVELS.map((ms) => (
-                <option key={ms} value={ms}>MS {ms}</option>
-              ))}
-            </select>
-            {ChevronIcon}
-          </div>
-        )}
+        <div className="relative">
+          <select value={filters.msLevel} onChange={(e) => update({ msLevel: e.target.value })} className={selectClass}>
+            <option value="">All MS Level</option>
+            {MS_LEVELS.map((ms) => (
+              <option key={ms} value={ms}>MS {ms}</option>
+            ))}
+          </select>
+          {ChevronIcon}
+        </div>
 
         <div className="relative">
           <select value={filters.yearLevel} onChange={(e) => update({ yearLevel: e.target.value })} className={selectClass}>

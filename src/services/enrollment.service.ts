@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { EnrollmentDocument } from "@/types";
 import { EnrollmentFormData } from "@/types/enrollmentTypes";
@@ -161,6 +161,66 @@ export const enrollmentService = {
         }
       }
       
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  async submitReEnrollment(uid: string, formData: EnrollmentFormData, existingDoc: EnrollmentDocument): Promise<EnrollmentResult> {
+    try {
+      const [photoBase64, corBase64, medicalCertBase64, xrayBase64] = await Promise.all([
+        fileToBase64(formData.photo),
+        fileToBase64(formData.corFile),
+        fileToBase64(formData.medicalCertificate),
+        fileToBase64(formData.xrayFile),
+      ]);
+
+      const updateData: Partial<EnrollmentDocument> = {
+        studentId: formData.studentId,
+        lastName: formData.lastName,
+        firstName: formData.firstName,
+        middleName: formData.middleName || "",
+        religion: formData.religion,
+        birthdate: formData.birthdate,
+        sex: formData.sex,
+        contactNumber: formData.contactNumber,
+        placeOfBirth: formData.placeOfBirth,
+        temporaryBarangay: formData.temporaryBarangay,
+        temporaryMunicipality: formData.temporaryMunicipality,
+        temporaryProvince: formData.temporaryProvince,
+        permanentBarangay: formData.permanentBarangay,
+        permanentMunicipality: formData.permanentMunicipality,
+        permanentProvince: formData.permanentProvince,
+        fatherName: formData.fatherName,
+        fatherOccupation: formData.fatherOccupation,
+        motherName: formData.motherName,
+        motherOccupation: formData.motherOccupation,
+        emergencyContactName: formData.emergencyContactName,
+        emergencyContactAddress: formData.emergencyContactAddress,
+        emergencyContactRelationship: formData.emergencyContactRelationship,
+        emergencyContactContactNumber: formData.emergencyContactContactNumber,
+        willingToTakeAdvanceCourse: formData.willingToTakeAdvanceCourse,
+        course: formData.course,
+        yearLevel: formData.yearLevel,
+        msLevel: formData.msLevel,
+        height: formData.height,
+        weight: formData.weight,
+        bloodType: formData.bloodType,
+        complexion: formData.complexion,
+        hasMedicalCondition: formData.hasMedicalCondition,
+        medicalCondition: formData.medicalCondition || "",
+        photo: photoBase64 || existingDoc.photo,
+        corFile: corBase64 || existingDoc.corFile,
+        medicalCertificate: medicalCertBase64 || existingDoc.medicalCertificate,
+        xrayFile: xrayBase64 || existingDoc.xrayFile,
+        updatedAt: new Date().toISOString(),
+        status: "pending",
+      };
+
+      await updateDoc(doc(db, "account_reservations", uid), updateData as Record<string, unknown>);
+      return { success: true, uid };
+    } catch (err: unknown) {
+      console.error("Re-enrollment error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Re-enrollment failed.";
       return { success: false, error: errorMessage };
     }
   },

@@ -1,8 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { adminService } from "@/services/admin.service";
+import { NSTProgram } from "@/types";
 import EnrollmentTimeline from "./component/EnrollmentTimeline";
 import EnrollmentStatusBanner from "./component/EnrollmentStatusBanner";
 import EnrollmentPersonalInfo from "./component/EnrollmentPersonalInfo";
@@ -47,6 +51,23 @@ const timelineSteps = [
 export default function EnrollmentStatus() {
   const { profile, authLoading, dataLoading, uid } = useStudentProfile();
   useAuthGuard({ authLoading, uid });
+  const [reEnrollAvailable, setReEnrollAvailable] = useState(false);
+
+  const nextMs = profile?.msLevel === "1" && profile?.status === "approved" ? "2" : null;
+
+  useEffect(() => {
+    if (!nextMs || !profile?.nstpComponent) return;
+    adminService
+      .getEnrollmentSchedule(profile.nstpComponent as NSTProgram, nextMs)
+      .then((schedule) => {
+        if (!schedule) return;
+        const now = new Date();
+        if (now >= new Date(schedule.openDate) && now <= new Date(schedule.deadline)) {
+          setReEnrollAvailable(true);
+        }
+      })
+      .catch(() => {});
+  }, [nextMs, profile?.nstpComponent]);
 
   if (authLoading || dataLoading) {
     return (
@@ -85,6 +106,28 @@ export default function EnrollmentStatus() {
 
         {/* Status banner */}
         <EnrollmentStatusBanner status={status} rejectionReason={profile.rejectionReason} />
+
+        {/* Re-enrollment banner */}
+        {reEnrollAvailable && nextMs && (
+          <Link href="/student/re-enrollment" className="block bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 p-4 hover:border-indigo-300 hover:shadow-md transition-all group">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800">MS {nextMs} Enrollment is Open</p>
+                  <p className="text-xs text-indigo-600/70 mt-0.5">Tap here to apply for re-enrollment. Your information will be pre-filled.</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-indigo-300 group-hover:text-indigo-500 transition shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+        )}
 
         {/* Timeline */}
         <EnrollmentTimeline timelineSteps={timelineSteps} status={status} profileStatus={profile.status} />

@@ -49,6 +49,7 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Student</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Student ID</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Course & Year</th>
+              <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">MS Level</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Date</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Status</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">View / Edit Details</th>
@@ -87,6 +88,13 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
                   </td>
                   <td className="px-5 py-3.5 text-gray-600">{enrollment.studentId}</td>
                   <td className="px-5 py-3.5 text-gray-600">{enrollment.course} • {enrollment.yearLevel}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-semibold ${
+                      enrollment.msLevel === "2" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}>
+                      MS {enrollment.msLevel || "1"}
+                    </span>
+                  </td>
                   <td className="px-5 py-3.5 text-gray-500 text-xs">{formatDate(enrollment.createdAt)}</td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-semibold ${badge.className}`}>
@@ -140,8 +148,13 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange }: Ad
                 </div>
               )}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-3 text-xs text-gray-500">
                   <span>{enrollment.course} • {enrollment.yearLevel}</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
+                    enrollment.msLevel === "2" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                  }`}>
+                    MS {enrollment.msLevel || "1"}
+                  </span>
                   <span>{formatDate(enrollment.createdAt)}</span>
                 </div>
                 <button

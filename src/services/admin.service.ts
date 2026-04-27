@@ -630,6 +630,29 @@ export const adminService = {
     return snap.docs.map((d) => d.data() as AttendanceRecord);
   },
 
+  async saveSerialNumber(uid: string, serialNumber: string, program: NSTProgram, commandant: string, schoolRegistrar: string): Promise<void> {
+    const ref = doc(db, "serial_number", uid);
+    await setDoc(ref, {
+      uid,
+      serialNumber,
+      program,
+      commandant,
+      schoolRegistrar,
+      createdAt: new Date().toISOString(),
+    });
+  },
+
+  async getSerialNumbersByProgram(program: NSTProgram): Promise<Map<string, { serialNumber: string; createdAt: string; commandant?: string; schoolRegistrar?: string }>> {
+    const q = query(collection(db, "serial_number"), where("program", "==", program));
+    const snap = await getDocs(q);
+    const map = new Map<string, { serialNumber: string; createdAt: string; commandant?: string; schoolRegistrar?: string }>();
+    for (const d of snap.docs) {
+      const data = d.data();
+      map.set(data.uid, { serialNumber: data.serialNumber, createdAt: data.createdAt, commandant: data.commandant, schoolRegistrar: data.schoolRegistrar });
+    }
+    return map;
+  },
+
   async getStudentGrades(studentUid: string): Promise<{ ms1?: StudentGrade; ms2?: StudentGrade }> {
     const [ms1Snap, ms2Snap] = await Promise.all([
       getDoc(doc(db, "student_grades", "ms1", "students", studentUid)),
