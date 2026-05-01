@@ -37,9 +37,25 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
   const [assignStudent, setAssignStudent] = useState<StudentWithGrades | null>(null);
   const [serialInput, setSerialInput] = useState("");
   const [serialError, setSerialError] = useState("");
-  const [commandantInput, setCommandantInput] = useState("");
-  const [registrarInput, setRegistrarInput] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Certificate settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [signatorySettings, setSignatorySettings] = useState<Record<string, string | null>>({});
+  const [settingsAY, setSettingsAY] = useState("");
+  const [settingsDate, setSettingsDate] = useState("");
+  const [settingsCommandant, setSettingsCommandant] = useState("");
+  const [settingsRegistrar, setSettingsRegistrar] = useState("");
+  const [settingsNstpCoordinator, setSettingsNstpCoordinator] = useState("");
+  const [settingsMunicipalMayor, setSettingsMunicipalMayor] = useState("");
+  const [settingsBccPresident, setSettingsBccPresident] = useState("");
+  const [sigCommandantFile, setSigCommandantFile] = useState<File | null>(null);
+  const [sigRegistrarFile, setSigRegistrarFile] = useState<File | null>(null);
+  const [sigNstpCoordinatorFile, setSigNstpCoordinatorFile] = useState<File | null>(null);
+  const [sigMunicipalMayorFile, setSigMunicipalMayorFile] = useState<File | null>(null);
+  const [sigBccPresidentFile, setSigBccPresidentFile] = useState<File | null>(null);
 
   const approvedStudents = useMemo(
     () => enrollments.filter((e) => e.status === "approved"),
@@ -81,6 +97,127 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
     loadGrades();
   }, [approvedStudents, program]);
 
+  useEffect(() => {
+    async function loadSettings() {
+      setSettingsLoading(true);
+      try {
+        const data = await adminService.getSignatorySettings(program);
+        if (data) {
+          setSignatorySettings(data);
+          setSettingsAY(data.academicYear || "");
+          setSettingsDate(data.ceremonyDate || "");
+          if (program === "ROTC") {
+            setSettingsCommandant(data.commandant || "");
+            setSettingsRegistrar(data.schoolRegistrar || "");
+          } else {
+            setSettingsNstpCoordinator(data.nstpCoordinator || "");
+            setSettingsMunicipalMayor(data.municipalMayor || "");
+            setSettingsBccPresident(data.bccPresident || "");
+          }
+        }
+      } catch (err) {
+        console.error("Error loading signatory settings:", err);
+      } finally {
+        setSettingsLoading(false);
+      }
+    }
+    loadSettings();
+  }, [program]);
+
+  const [bgError, setBgError] = useState(false);
+
+  const fileToBase64 = async (file: File | null): Promise<string | null> => {
+    if (!file) return null;
+    try {
+      const { removeBackground } = await import("@imgly/background-removal");
+      const blob = await removeBackground(file, {
+        model: "isnet_fp16",
+        output: { format: "image/png", quality: 0.8 },
+      });
+      const MAX_SIZE = 200;
+      return new Promise((resolve) => {
+        const url = URL.createObjectURL(blob);
+        const img = document.createElement("img");
+        img.onload = () => {
+          let w = img.naturalWidth;
+          let h = img.naturalHeight;
+          if (w > MAX_SIZE || h > MAX_SIZE) {
+            const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(null);
+        };
+        img.src = url;
+      });
+    } catch (err) {
+      console.error("AI background removal failed:", err);
+      throw err;
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSettingsSaving(true);
+    setBgError(false);
+    try {
+      const [sigCmd, sigReg, sigNstp, sigMayor, sigPres] = await Promise.all([
+        fileToBase64(sigCommandantFile),
+        fileToBase64(sigRegistrarFile),
+        fileToBase64(sigNstpCoordinatorFile),
+        fileToBase64(sigMunicipalMayorFile),
+        fileToBase64(sigBccPresidentFile),
+      ]);
+
+      const settings: Record<string, string | null> = {
+        academicYear: settingsAY,
+        ceremonyDate: settingsDate,
+      };
+
+      if (program === "ROTC") {
+        settings.commandant = settingsCommandant;
+        settings.schoolRegistrar = settingsRegistrar;
+        if (sigCmd) settings.commandantSignature = sigCmd;
+        if (sigReg) settings.schoolRegistrarSignature = sigReg;
+      } else {
+        settings.nstpCoordinator = settingsNstpCoordinator;
+        settings.municipalMayor = settingsMunicipalMayor;
+        settings.bccPresident = settingsBccPresident;
+        if (sigNstp) settings.nstpCoordinatorSignature = sigNstp;
+        if (sigMayor) settings.municipalMayorSignature = sigMayor;
+        if (sigPres) settings.bccPresidentSignature = sigPres;
+      }
+
+      await adminService.saveSignatorySettings(program, settings);
+      const updated = await adminService.getSignatorySettings(program);
+      if (updated) setSignatorySettings(updated);
+      setSigCommandantFile(null);
+      setSigRegistrarFile(null);
+      setSigNstpCoordinatorFile(null);
+      setSigMunicipalMayorFile(null);
+      setSigBccPresidentFile(null);
+      setShowSettings(false);
+    } catch (err) {
+      console.error("Error saving settings:", err);
+      setBgError(true);
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const isSettingsComplete = program === "ROTC"
+    ? !!(signatorySettings.commandant && signatorySettings.schoolRegistrar && signatorySettings.academicYear && signatorySettings.ceremonyDate)
+    : !!(signatorySettings.nstpCoordinator && signatorySettings.municipalMayor && signatorySettings.bccPresident && signatorySettings.academicYear && signatorySettings.ceremonyDate);
+
   const companyOptions = useMemo((): string[] => {
     if (program !== "ROTC") return [];
     switch (battalionFilter) {
@@ -118,12 +255,10 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
     setAssignStudent(student);
     setSerialInput("");
     setSerialError("");
-    setCommandantInput("");
-    setRegistrarInput("");
   };
 
   const handleSaveSerial = async () => {
-    if (!assignStudent || !serialInput.trim() || !commandantInput.trim() || !registrarInput.trim()) return;
+    if (!assignStudent || !serialInput.trim() || !isSettingsComplete) return;
     const value = serialInput.trim();
     if (!SERIAL_REGEX.test(value)) {
       setSerialError("Invalid format. Must match: XX-X00-000000 (e.g. BO-R00-000000)");
@@ -132,15 +267,23 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
     setSerialError("");
     setSaving(true);
     try {
-      await adminService.saveSerialNumber(assignStudent.uid, value, program, commandantInput.trim(), registrarInput.trim());
+      const signatories: Record<string, string> = program === "ROTC"
+        ? { commandant: signatorySettings.commandant || "", schoolRegistrar: signatorySettings.schoolRegistrar || "" }
+        : { nstpCoordinator: signatorySettings.nstpCoordinator || "", municipalMayor: signatorySettings.municipalMayor || "", bccPresident: signatorySettings.bccPresident || "" };
+      signatories.academicYear = signatorySettings.academicYear || "";
+      signatories.ceremonyDate = signatorySettings.ceremonyDate || "";
+      if (signatorySettings.commandantSignature) signatories.commandantSignature = signatorySettings.commandantSignature;
+      if (signatorySettings.schoolRegistrarSignature) signatories.schoolRegistrarSignature = signatorySettings.schoolRegistrarSignature;
+      if (signatorySettings.nstpCoordinatorSignature) signatories.nstpCoordinatorSignature = signatorySettings.nstpCoordinatorSignature;
+      if (signatorySettings.municipalMayorSignature) signatories.municipalMayorSignature = signatorySettings.municipalMayorSignature;
+      if (signatorySettings.bccPresidentSignature) signatories.bccPresidentSignature = signatorySettings.bccPresidentSignature;
+      await adminService.saveSerialNumber(assignStudent.uid, value, program, signatories);
       const now = new Date().toISOString();
       setStudentsWithGrades((prev) =>
         prev.map((s) => s.uid === assignStudent.uid ? { ...s, serialNumber: value, serialCreatedAt: now } : s)
       );
       setAssignStudent(null);
       setSerialInput("");
-      setCommandantInput("");
-      setRegistrarInput("");
     } catch (err) {
       console.error("Error saving serial number:", err);
     } finally {
@@ -199,19 +342,40 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
     <div className="space-y-5">
       {/* Header */}
       <div className="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-2xl p-5 border border-violet-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
-            <svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+              <svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">Serial Number</h1>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Assign serial numbers to {program} students who have completed all grades.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 bg-white border border-violet-200 rounded-lg hover:bg-violet-50 transition shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Serial Number</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Assign serial numbers to {program} students who have completed all grades.
-            </p>
-          </div>
+            Certificate Settings
+          </button>
         </div>
+
+        {!settingsLoading && !isSettingsComplete && (
+          <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+            <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="text-xs text-amber-700 font-medium">Please configure Certificate Settings before assigning serial numbers.</p>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mt-4">
@@ -486,6 +650,253 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
         </div>
       </div>
 
+      {/* Certificate Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowSettings(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-indigo-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+                    <svg className="w-4.5 h-4.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-800">Certificate Settings</h3>
+                    <p className="text-xs text-gray-500">Configure signatories, date, and A.Y. for certificates</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowSettings(false)} className="p-1.5 rounded-lg hover:bg-white/80 text-gray-400 hover:text-gray-600 transition">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Academic Year */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Academic Year (A.Y.)</label>
+                <input
+                  type="text"
+                  value={settingsAY}
+                  onChange={(e) => setSettingsAY(e.target.value)}
+                  placeholder="e.g. 2025-2026"
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
+                />
+                <p className="text-[11px] text-gray-400 mt-1.5">Format: YYYY-YYYY (displayed on certificate)</p>
+              </div>
+
+              {/* Ceremony Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Ceremony / Issuance Date</label>
+                <input
+                  type="date"
+                  value={settingsDate}
+                  onChange={(e) => setSettingsDate(e.target.value)}
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800"
+                />
+                <p className="text-[11px] text-gray-400 mt-1.5">Date displayed on the certificate</p>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Signatories */}
+              {program === "ROTC" ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Commandant</label>
+                    <input
+                      type="text"
+                      value={settingsCommandant}
+                      onChange={(e) => setSettingsCommandant(e.target.value.toUpperCase())}
+                      placeholder="e.g. LTC REY A AUGUIS (INF) PA"
+                      className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
+                    />
+                    <div className="mt-2">
+                      <label className="text-[11px] text-gray-500 font-medium cursor-pointer inline-flex items-center gap-1.5 hover:text-violet-600 transition">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {sigCommandantFile || signatorySettings.commandantSignature ? "Change Signature" : "Upload Signature"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setSigCommandantFile(e.target.files?.[0] || null)} />
+                      </label>
+                      {(sigCommandantFile || signatorySettings.commandantSignature) && (
+                        <div className="mt-2 p-2 bg-white border border-gray-200 rounded-lg inline-block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={sigCommandantFile ? URL.createObjectURL(sigCommandantFile) : signatorySettings.commandantSignature || ""}
+                            alt="Commandant Signature"
+                            className="h-12 max-w-[180px] object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">School Registrar</label>
+                    <input
+                      type="text"
+                      value={settingsRegistrar}
+                      onChange={(e) => setSettingsRegistrar(e.target.value.toUpperCase())}
+                      placeholder="e.g. MA. MAY N. CUPTA"
+                      className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
+                    />
+                    <div className="mt-2">
+                      <label className="text-[11px] text-gray-500 font-medium cursor-pointer inline-flex items-center gap-1.5 hover:text-violet-600 transition">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {sigRegistrarFile || signatorySettings.schoolRegistrarSignature ? "Change Signature" : "Upload Signature"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setSigRegistrarFile(e.target.files?.[0] || null)} />
+                      </label>
+                      {(sigRegistrarFile || signatorySettings.schoolRegistrarSignature) && (
+                        <div className="mt-2 p-2 bg-white border border-gray-200 rounded-lg inline-block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={sigRegistrarFile ? URL.createObjectURL(sigRegistrarFile) : signatorySettings.schoolRegistrarSignature || ""}
+                            alt="School Registrar Signature"
+                            className="h-12 max-w-[180px] object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">NSTP Coordinator</label>
+                    <input
+                      type="text"
+                      value={settingsNstpCoordinator}
+                      onChange={(e) => setSettingsNstpCoordinator(e.target.value.toUpperCase())}
+                      placeholder="Enter NSTP Coordinator"
+                      className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
+                    />
+                    <div className="mt-2">
+                      <label className="text-[11px] text-gray-500 font-medium cursor-pointer inline-flex items-center gap-1.5 hover:text-violet-600 transition">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {sigNstpCoordinatorFile || signatorySettings.nstpCoordinatorSignature ? "Change Signature" : "Upload Signature"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setSigNstpCoordinatorFile(e.target.files?.[0] || null)} />
+                      </label>
+                      {(sigNstpCoordinatorFile || signatorySettings.nstpCoordinatorSignature) && (
+                        <div className="mt-2 p-2 bg-white border border-gray-200 rounded-lg inline-block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={sigNstpCoordinatorFile ? URL.createObjectURL(sigNstpCoordinatorFile) : signatorySettings.nstpCoordinatorSignature || ""}
+                            alt="NSTP Coordinator Signature"
+                            className="h-12 max-w-[180px] object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">BCC President</label>
+                    <input
+                      type="text"
+                      value={settingsBccPresident}
+                      onChange={(e) => setSettingsBccPresident(e.target.value.toUpperCase())}
+                      placeholder="Enter BCC President"
+                      className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
+                    />
+                    <div className="mt-2">
+                      <label className="text-[11px] text-gray-500 font-medium cursor-pointer inline-flex items-center gap-1.5 hover:text-violet-600 transition">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {sigBccPresidentFile || signatorySettings.bccPresidentSignature ? "Change Signature" : "Upload Signature"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setSigBccPresidentFile(e.target.files?.[0] || null)} />
+                      </label>
+                      {(sigBccPresidentFile || signatorySettings.bccPresidentSignature) && (
+                        <div className="mt-2 p-2 bg-white border border-gray-200 rounded-lg inline-block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={sigBccPresidentFile ? URL.createObjectURL(sigBccPresidentFile) : signatorySettings.bccPresidentSignature || ""}
+                            alt="BCC President Signature"
+                            className="h-12 max-w-[180px] object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Municipal Mayor / Chairman, BCC-BOT</label>
+                    <input
+                      type="text"
+                      value={settingsMunicipalMayor}
+                      onChange={(e) => setSettingsMunicipalMayor(e.target.value.toUpperCase())}
+                      placeholder="Enter Municipal Mayor"
+                      className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
+                    />
+                    <div className="mt-2">
+                      <label className="text-[11px] text-gray-500 font-medium cursor-pointer inline-flex items-center gap-1.5 hover:text-violet-600 transition">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {sigMunicipalMayorFile || signatorySettings.municipalMayorSignature ? "Change Signature" : "Upload Signature"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setSigMunicipalMayorFile(e.target.files?.[0] || null)} />
+                      </label>
+                      {(sigMunicipalMayorFile || signatorySettings.municipalMayorSignature) && (
+                        <div className="mt-2 p-2 bg-white border border-gray-200 rounded-lg inline-block"> 
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={sigMunicipalMayorFile ? URL.createObjectURL(sigMunicipalMayorFile) : signatorySettings.municipalMayorSignature || ""}
+                            alt="Municipal Mayor Signature"
+                            className="h-12 max-w-[180px] object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                disabled={settingsSaving || !settingsAY.trim() || !settingsDate.trim() || (program === "ROTC" ? (!settingsCommandant.trim() || !settingsRegistrar.trim()) : (!settingsNstpCoordinator.trim() || !settingsMunicipalMayor.trim() || !settingsBccPresident.trim()))}
+                className="px-4 py-2 text-sm font-semibold text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {settingsSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Save Settings
+                  </>
+                )}
+              </button>
+              {bgError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700 font-medium">Failed to process signature images. Please re-upload and try again.</p>
+                  <button onClick={() => setBgError(false)} className="text-xs text-red-500 underline mt-1">Dismiss</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Assign Serial Modal */}
       {assignStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -514,7 +925,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
             </div>
 
             {/* Modal Body */}
-            <div className="px-6 py-5 space-y-5">
+            <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
               {/* Student Info */}
               <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                 <div className="flex items-center justify-between">
@@ -571,30 +982,25 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                 )}
               </div>
 
-              {/* Commandant Input */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Commandant</label>
-                <input
-                  type="text"
-                  value={commandantInput}
-                  onChange={(e) => setCommandantInput(e.target.value)}
-                  placeholder="e.g. LTC REY A AUGUIS (INF) PA"
-                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
-                />
-                <p className="text-[11px] text-gray-400 mt-1.5">Full name with rank (displayed on certificate)</p>
-              </div>
-
-              {/* School Registrar Input */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">School Registrar</label>
-                <input
-                  type="text"
-                  value={registrarInput}
-                  onChange={(e) => setRegistrarInput(e.target.value)}
-                  placeholder="e.g. MA. MAY N. CUPTA"
-                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
-                />
-                <p className="text-[11px] text-gray-400 mt-1.5">Full name of the school registrar (displayed on certificate)</p>
+              {/* Saved settings preview */}
+              <div className="bg-violet-50 rounded-xl p-3 border border-violet-100">
+                <p className="text-[10px] font-semibold text-violet-500 uppercase tracking-wider mb-2">Certificate Info (from settings)</p>
+                <div className="space-y-1 text-xs text-gray-700">
+                  <p><span className="font-medium text-gray-500">A.Y.:</span> {signatorySettings.academicYear || "—"}</p>
+                  <p><span className="font-medium text-gray-500">Date:</span> {signatorySettings.ceremonyDate || "—"}</p>
+                  {program === "ROTC" ? (
+                    <>
+                      <p><span className="font-medium text-gray-500">Commandant:</span> {signatorySettings.commandant || "—"}</p>
+                      <p><span className="font-medium text-gray-500">Registrar:</span> {signatorySettings.schoolRegistrar || "—"}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p><span className="font-medium text-gray-500">NSTP Coordinator:</span> {signatorySettings.nstpCoordinator || "—"}</p>
+                      <p><span className="font-medium text-gray-500">BCC President:</span> {signatorySettings.bccPresident || "—"}</p>
+                      <p><span className="font-medium text-gray-500">Municipal Mayor:</span> {signatorySettings.municipalMayor || "—"}</p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -608,7 +1014,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
               </button>
               <button
                 onClick={handleSaveSerial}
-                disabled={!serialInput.trim() || !commandantInput.trim() || !registrarInput.trim() || saving}
+                disabled={!serialInput.trim() || !isSettingsComplete || saving}
                 className="px-4 py-2 text-sm font-semibold text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {saving ? (

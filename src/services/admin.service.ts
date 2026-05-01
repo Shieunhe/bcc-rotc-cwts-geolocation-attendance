@@ -630,25 +630,35 @@ export const adminService = {
     return snap.docs.map((d) => d.data() as AttendanceRecord);
   },
 
-  async saveSerialNumber(uid: string, serialNumber: string, program: NSTProgram, commandant: string, schoolRegistrar: string): Promise<void> {
+  async saveSignatorySettings(program: NSTProgram, settings: Record<string, string | null>): Promise<void> {
+    const ref = doc(db, "serial_number_settings", program);
+    await setDoc(ref, { ...settings, program, updatedAt: new Date().toISOString() }, { merge: true });
+  },
+
+  async getSignatorySettings(program: NSTProgram): Promise<Record<string, string> | null> {
+    const snap = await getDoc(doc(db, "serial_number_settings", program));
+    if (!snap.exists()) return null;
+    return snap.data() as Record<string, string>;
+  },
+
+  async saveSerialNumber(uid: string, serialNumber: string, program: NSTProgram, signatories: Record<string, string>): Promise<void> {
     const ref = doc(db, "serial_number", uid);
     await setDoc(ref, {
       uid,
       serialNumber,
       program,
-      commandant,
-      schoolRegistrar,
+      ...signatories,
       createdAt: new Date().toISOString(),
     });
   },
 
-  async getSerialNumbersByProgram(program: NSTProgram): Promise<Map<string, { serialNumber: string; createdAt: string; commandant?: string; schoolRegistrar?: string }>> {
+  async getSerialNumbersByProgram(program: NSTProgram): Promise<Map<string, { serialNumber: string; createdAt: string; [key: string]: string | undefined }>> {
     const q = query(collection(db, "serial_number"), where("program", "==", program));
     const snap = await getDocs(q);
-    const map = new Map<string, { serialNumber: string; createdAt: string; commandant?: string; schoolRegistrar?: string }>();
+    const map = new Map<string, { serialNumber: string; createdAt: string; [key: string]: string | undefined }>();
     for (const d of snap.docs) {
       const data = d.data();
-      map.set(data.uid, { serialNumber: data.serialNumber, createdAt: data.createdAt, commandant: data.commandant, schoolRegistrar: data.schoolRegistrar });
+      map.set(data.uid, { ...data, serialNumber: data.serialNumber, createdAt: data.createdAt } as { serialNumber: string; createdAt: string; [key: string]: string | undefined });
     }
     return map;
   },
