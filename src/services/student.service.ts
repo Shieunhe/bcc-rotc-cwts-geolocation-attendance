@@ -103,4 +103,17 @@ export const studentService = {
     const ref = doc(db, "attendance_offenses", uid);
     await updateDoc(ref, { warningAcknowledgedAt: new Date().toISOString() });
   },
+
+  async getSerialNumber(uid: string): Promise<Record<string, string> | null> {
+    const snap = await getDoc(doc(db, "serial_number", uid));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return data as Record<string, string>;
+  },
+
+  async getSignatorySettings(program: string): Promise<Record<string, string> | null> {
+    const snap = await getDoc(doc(db, "serial_number_settings", program));
+    if (!snap.exists()) return null;
+    return snap.data() as Record<string, string>;
+  },
 };

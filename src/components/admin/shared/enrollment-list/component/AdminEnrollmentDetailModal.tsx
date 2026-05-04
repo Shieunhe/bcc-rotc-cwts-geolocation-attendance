@@ -199,14 +199,20 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
     }
   }
 
+  const isReEnrollment = enrollment.msLevel === "2" && !!(
+    enrollment.company || enrollment.battalion || enrollment.rotcCompany || enrollment.specialUnit
+  );
+
   async function handleApprove() {
-    if (hasMedical && !showMedicalAssign) {
+    if (hasMedical && !showMedicalAssign && !isReEnrollment) {
       setShowMedicalAssign(true);
       return;
     }
     setIsUpdating(true);
     try {
-      if (hasMedical && selectedUnit) {
+      if (isReEnrollment) {
+        await adminService.updateEnrollmentStatus(enrollment.uid, "approved");
+      } else if (hasMedical && selectedUnit) {
         const result = await adminService.approveWithSpecialUnit(enrollment.uid, selectedUnit);
         if (!result) {
           alert(`${selectedUnit} unit is full (${SPECIAL_UNIT_SLOT_LIMITS[selectedUnit]}/${SPECIAL_UNIT_SLOT_LIMITS[selectedUnit]}). Please select a different unit.`);

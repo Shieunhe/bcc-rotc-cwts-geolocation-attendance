@@ -13,6 +13,7 @@ import AttendanceSummaryCard from "./dashboard/AttendanceSummaryCard";
 import ViewRecordsCard from "./dashboard/ViewRecordsCard";
 import GradesCard from "./dashboard/GradesCard";
 import OffensesCard from "./dashboard/OffensesCard";
+import SerialNumberCard from "./dashboard/SerialNumberCard";
 import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
 interface AdminDashboardProps {
@@ -63,6 +64,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
             <ViewRecordsCard base={base} />
             <GradesCard base={base} />
             <OffensesCard base={base} />
+            <SerialNumberCard base={base} />
           </div>
         </main>
       </div>
