@@ -40,6 +40,9 @@ function buildCertificateDownloadFilename(studentName: string, serialNumber: str
 /** Same as Tailwind max-w-4xl — export at this width so phone downloads match desktop layout. */
 const CERTIFICATE_EXPORT_WIDTH_PX = 896;
 
+/** Fixed 2× scale for PNG export. Using devicePixelRatio made phones at 1× DPR half the resolution of desktops at 2×. */
+const CERTIFICATE_DOWNLOAD_PIXEL_RATIO = 2;
+
 function ROTCCertificate({ serialData, studentFullName }: {
   serialData: Record<string, string>;
   studentFullName: string;
@@ -50,21 +53,22 @@ function ROTCCertificate({ serialData, studentFullName }: {
 
   return (
     <div className="bg-white shadow-xl overflow-hidden">
-      <div className="p-3 sm:p-6">
-        <div className="border-[3px] border-gray-800 p-1.5 sm:p-2">
-          <div className="border border-gray-400 px-4 py-6 sm:px-10 sm:py-10">
+      {/* Fixed desktop scale at all viewports (mobile uses 896px pan; matches large-screen sm: styles). */}
+      <div className="p-6">
+        <div className="border-[3px] border-gray-800 p-2">
+          <div className="border border-gray-400 px-10 py-10">
 
-            <div className="text-center mb-1">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-wide" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+            <div className="mb-1 text-center">
+              <h2 className="text-2xl font-bold tracking-wide text-gray-900" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
                 BUENAVISTA COMMUNITY COLLEGE
               </h2>
-              <p className="text-sm sm:text-base text-gray-700" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+              <p className="text-base text-gray-700" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
                 Cangawa, Buenavista, Bohol
               </p>
             </div>
 
-            <div className="flex items-center justify-center gap-3 sm:gap-6 my-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+            <div className="my-4 flex items-center justify-center gap-6">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/image/nstp-rotc.png"
@@ -72,7 +76,7 @@ function ROTCCertificate({ serialData, studentFullName }: {
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/image/commision-rotc.png"
@@ -80,7 +84,7 @@ function ROTCCertificate({ serialData, studentFullName }: {
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/image/republika-rotc.png"
@@ -88,7 +92,7 @@ function ROTCCertificate({ serialData, studentFullName }: {
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/image/tesda-rotc.png"
@@ -98,80 +102,87 @@ function ROTCCertificate({ serialData, studentFullName }: {
               </div>
             </div>
 
-            <p className="text-center text-sm sm:text-base italic font-semibold text-gray-600 mb-2" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-2 text-center text-base font-semibold italic text-gray-600" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               Award this
             </p>
 
-            <h1 className="text-center text-3xl sm:text-[40px] font-extrabold text-gray-900 tracking-wide leading-tight mb-2" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+            <h1 className="mb-2 text-center text-[40px] font-extrabold leading-tight tracking-wide text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
               CERTIFICATE OF COMPLETION
             </h1>
 
-            <p className="text-center text-sm italic text-gray-600 mb-4" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-4 text-center text-sm italic text-gray-600" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               to
             </p>
 
-            <div className="text-center mb-4">
-              <p className="text-lg sm:text-2xl font-bold text-gray-900 inline-block border-b-2 border-gray-800 pb-1 px-2 sm:px-6 leading-relaxed" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+            <div className="mb-4 text-center">
+              <p className="inline-block max-w-full border-b-2 border-gray-800 px-6 pb-1 text-2xl font-bold leading-relaxed text-gray-900 whitespace-normal break-words" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                 Pvt {studentFullName} {serialData.serialNumber} PA (Res)
               </p>
             </div>
 
-            <p className="text-center text-sm italic text-gray-600 mb-4" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-4 text-center text-sm italic text-gray-600" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               for having satisfactorily completed the
             </p>
 
-            <div className="text-center mb-5">
-              <p className="text-base sm:text-xl font-bold text-gray-900 leading-relaxed" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+            <div className="mb-5 text-center">
+              <p className="text-xl font-bold leading-relaxed text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                 RESERVE OFFICERS TRAINING CORPS (ROTC) COMPONENT
               </p>
-              <p className="text-base sm:text-xl font-bold text-gray-900 leading-relaxed" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+              <p className="text-xl font-bold leading-relaxed text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                 OF THE
               </p>
-              <p className="text-base sm:text-xl font-bold text-gray-900 leading-relaxed" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+              <p className="text-xl font-bold leading-relaxed text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                 NATIONAL SERVICE TRAINING PROGRAM (NSTP)
               </p>
-              <p className="text-sm font-semibold text-gray-700 mt-1" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+              <p className="mt-1 text-sm font-semibold text-gray-700" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                 A.Y. {academicYear}
               </p>
             </div>
 
-            <p className="text-center text-xs sm:text-sm italic text-gray-700 mb-8 sm:mb-12" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-12 text-center text-sm italic text-gray-700" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               {`Given this ${day} day of ${month}, ${year} at Buenavista Community College of Cangawa, Buenavista, Bohol.`}
             </p>
 
-            <div
-              className="mt-6 grid grid-cols-2 gap-4 items-end px-2 sm:gap-10 sm:px-12"
-              dir="ltr"
-            >
-              <div className="flex min-w-0 flex-col items-center text-center">
-                {serialData.commandantSignature && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.commandantSignature} alt="" className="h-14 sm:h-20 mx-auto max-w-full object-contain -mb-4 sm:-mb-5" />
-                )}
-                {serialData.commandant && (
-                  <p className="text-xs sm:text-sm font-bold text-gray-900 mb-0.5" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
-                    {serialData.commandant}
+            <div className="mt-6 px-12">
+              <div className="mx-auto grid w-full grid-cols-2 items-end gap-10" dir="ltr">
+                <div className="flex min-w-0 flex-col items-center text-center">
+                  {serialData.commandantSignature && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={serialData.commandantSignature}
+                      alt=""
+                      className="mx-auto h-20 max-h-24 w-auto max-w-full object-contain -mb-5"
+                    />
+                  )}
+                  {serialData.commandant && (
+                    <p className="mb-0.5 text-sm font-bold text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                      {serialData.commandant}
+                    </p>
+                  )}
+                  <div className="mb-1 w-48 max-w-full border-b border-gray-800" />
+                  <p className="text-sm italic text-gray-700" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                    Commandant
                   </p>
-                )}
-                <div className="w-36 sm:w-48 max-w-full border-b border-gray-800 mb-1" />
-                <p className="text-xs sm:text-sm italic text-gray-700" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
-                  Commandant
-                </p>
-              </div>
-              <div className="flex min-w-0 flex-col items-center text-center">
-                {serialData.schoolRegistrarSignature && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.schoolRegistrarSignature} alt="" className="h-14 sm:h-20 mx-auto max-w-full object-contain -mb-4 sm:-mb-5" />
-                )}
-                {serialData.schoolRegistrar && (
-                  <p className="text-xs sm:text-sm font-bold text-gray-900 mb-0.5" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
-                    {serialData.schoolRegistrar}
+                </div>
+                <div className="flex min-w-0 flex-col items-center text-center">
+                  {serialData.schoolRegistrarSignature && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={serialData.schoolRegistrarSignature}
+                      alt=""
+                      className="mx-auto h-20 max-h-24 w-auto max-w-full object-contain -mb-5"
+                    />
+                  )}
+                  {serialData.schoolRegistrar && (
+                    <p className="mb-0.5 text-sm font-bold text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                      {serialData.schoolRegistrar}
+                    </p>
+                  )}
+                  <div className="mb-1 w-48 max-w-full border-b border-gray-800" />
+                  <p className="text-sm italic text-gray-700" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                    School Registrar
                   </p>
-                )}
-                <div className="w-36 sm:w-48 max-w-full border-b border-gray-800 mb-1" />
-                <p className="text-xs sm:text-sm italic text-gray-700" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
-                  School Registrar
-                </p>
+                </div>
               </div>
             </div>
 
@@ -192,7 +203,7 @@ function CWTSCertificate({ serialData, studentFullName }: {
 
   return (
     <div className="bg-white shadow-xl overflow-hidden">
-      <div className="p-3 sm:p-6">
+      <div className="p-6">
         <div className="border-[5px] relative" style={{ borderColor: "#e9c6ac" }}>
           {/* Back L shape on upper-left */}
           <div className="absolute -top-[15px] -left-[17px] w-[30px] h-2/3 z-10" style={{ backgroundColor: "#182845" }} />
@@ -207,39 +218,39 @@ function CWTSCertificate({ serialData, studentFullName }: {
           <div className="absolute bottom-[20px] right-[20px] w-1/3 h-[7px] z-10" style={{ backgroundColor: "#c8580d" }} />
           <div className="absolute bottom-[20px] right-[20px] w-[7px] h-1/2 z-10" style={{ backgroundColor: "#c8580d" }} />
           <div>
-            <div className="bg-white px-4 py-6 sm:px-10 sm:py-10">
+            <div className="bg-white px-10 py-10">
 
-            {/* Header (CWTS only; ROTC uses ROTCCertificate): CHED + BCC left, college center, CWTS logo right */}
+            {/* Header — fixed desktop scale at all viewports (mobile scroll shows full 896px canvas). */}
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/image/ched-logo.png"
                   alt="Commission on Higher Education"
-                  className="h-14 w-auto max-w-[6.5rem] sm:h-20 sm:max-w-[8rem] object-contain"
+                  className="h-20 w-auto max-w-[8rem] object-contain"
                 />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/image/bcclogo-removebg-preview.png"
                   alt="Buenavista Community College"
-                  className="h-14 w-auto max-w-[6.5rem] sm:h-20 sm:max-w-[8rem] object-contain"
+                  className="h-20 w-auto max-w-[8rem] object-contain"
                 />
               </div>
               <div className="text-center flex-1 px-2">
-                <h2 className="text-base sm:text-xl font-bold text-gray-900 tracking-wide" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+                <h2 className="text-xl font-bold text-gray-900 tracking-wide" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
                   BUENAVISTA COMMUNITY COLLEGE
                 </h2>
-                <p className="text-xs sm:text-sm italic text-gray-600" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+                <p className="text-sm italic text-gray-600" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
                   &ldquo;Caring your future&rdquo;
                 </p>
-                <p className="text-xs sm:text-sm text-gray-700" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+                <p className="text-sm text-gray-700" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
                   Cangawa, Buenavista, Bohol
                 </p>
-                <p className="text-[10px] sm:text-xs text-gray-500" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+                <p className="text-xs text-gray-500" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
                   Telefax: (038)5139169/Tel.: 513-9179
                 </p>
               </div>
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/image/cwts-logo.png"
@@ -249,90 +260,96 @@ function CWTSCertificate({ serialData, studentFullName }: {
               </div>
             </div>
 
-            {/* "Present this" — left aligned italic */}
-            <p className="text-sm sm:text-base italic font-semibold text-gray-600 mb-1 ml-2 sm:ml-6" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-1 ml-6 text-base italic font-semibold text-gray-600" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               Present this
             </p>
 
-            {/* CERTIFICATE OF COMPLETION — green per sample */}
-            <h1 className="text-center text-2xl sm:text-[38px] font-extrabold text-green-800 tracking-wide leading-tight mb-1" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+            <h1 className="mb-1 text-center text-[38px] font-extrabold leading-tight tracking-wide text-green-800" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
               CERTIFICATE OF COMPLETION
             </h1>
 
-            {/* "to" */}
-            <p className="text-center text-sm italic text-gray-600 mb-5" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-5 text-center text-sm italic text-gray-600" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               to
             </p>
 
-            {/* Student name — long underline */}
-            <div className="text-center mb-6">
-              <div className="w-full max-w-sm sm:max-w-md mx-auto border-b-2 border-gray-800 pb-1 min-h-[2rem] flex items-end justify-center">
-                <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-relaxed" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+            {/* Student name — same underline box as desktop (max-w-md, text-2xl) */}
+            <div className="mb-6 text-center">
+              <div className="mx-auto flex min-h-[2rem] w-full max-w-md items-end justify-center border-b-2 border-gray-800 pb-1">
+                <p className="whitespace-normal break-words text-2xl font-bold leading-relaxed text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   {studentFullName}
                 </p>
               </div>
             </div>
 
-            {/* Body paragraph with serial number inline */}
-            <p className="text-xs sm:text-sm italic text-gray-700 leading-relaxed mb-4 px-2 sm:px-4" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-4 px-4 text-sm italic leading-relaxed text-gray-700" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               for having satisfactorily completed the National Service Training Program &ndash; Civic Welfare Training
               Service (NSTP-CWTS) A.Y. {academicYear} with a <span className="font-bold not-italic">SERIAL NUMBER</span> of{" "}
-              <span className="font-bold not-italic border-b border-gray-800 px-1">{serialData.serialNumber}</span>
+              <span className="border-b border-gray-800 px-1 font-bold not-italic">{serialData.serialNumber}</span>
             </p>
 
-            {/* Date line */}
-            <p className="text-xs sm:text-sm italic text-gray-700 mb-8 sm:mb-10 px-2 sm:px-4" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-10 px-4 text-sm italic text-gray-700" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               {`Given this ${day} day of ${month}, ${year} at the Buenavista Cultural Center, Poblacion, Buenavista, Bohol.`}
             </p>
 
-            {/* Signatures — NSTP Coordinator (left), BCC President (right) */}
-            <div className="flex justify-between items-end px-2 sm:px-6 mt-6">
+            {/* Signatures — desktop layout: flex justify-between (not grid), sm: sizes only */}
+            <div className="mt-6 flex items-end justify-between px-6" dir="ltr">
               <div className="text-center">
                 {serialData.nstpCoordinatorSignature && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.nstpCoordinatorSignature} alt="" className="h-[4.25rem] sm:h-28 mx-auto object-contain -mb-7 sm:-mb-10" />
+                  <img
+                    src={serialData.nstpCoordinatorSignature}
+                    alt=""
+                    className="mx-auto h-28 object-contain -mb-10"
+                  />
                 )}
                 {serialData.nstpCoordinator && (
-                  <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight mb-0" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                  <p className="mb-0 text-sm font-bold leading-tight text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                     {serialData.nstpCoordinator}
                   </p>
                 )}
-                <div className="w-32 sm:w-48 border-b border-gray-800 mb-1 mt-0.5" />
-                <p className="text-[10px] sm:text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                <div className="mb-1 mt-0.5 w-48 border-b border-gray-800" />
+                <p className="text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   NSTP - Coordinator
                 </p>
               </div>
               <div className="text-center">
                 {serialData.bccPresidentSignature && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.bccPresidentSignature} alt="" className="h-[4.25rem] sm:h-28 mx-auto object-contain -mb-7 sm:-mb-10" />
+                  <img
+                    src={serialData.bccPresidentSignature}
+                    alt=""
+                    className="mx-auto h-28 object-contain -mb-10"
+                  />
                 )}
                 {serialData.bccPresident && (
-                  <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight mb-0" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                  <p className="mb-0 text-sm font-bold leading-tight text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                     {serialData.bccPresident}
                   </p>
                 )}
-                <div className="w-32 sm:w-48 border-b border-gray-800 mb-1 mt-0.5" />
-                <p className="text-[10px] sm:text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                <div className="mb-1 mt-0.5 w-48 border-b border-gray-800" />
+                <p className="text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   BCC President
                 </p>
               </div>
             </div>
 
-            {/* Municipal Mayor — centered below */}
-            <div className="flex justify-center mt-6 sm:mt-8">
+            <div className="mt-8 flex justify-center">
               <div className="text-center">
                 {serialData.municipalMayorSignature && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.municipalMayorSignature} alt="" className="h-[4.25rem] sm:h-28 mx-auto object-contain -mb-7 sm:-mb-10" />
+                  <img
+                    src={serialData.municipalMayorSignature}
+                    alt=""
+                    className="mx-auto h-28 object-contain -mb-10"
+                  />
                 )}
                 {serialData.municipalMayor && (
-                  <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight mb-0" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                  <p className="mb-0 text-sm font-bold leading-tight text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                     {serialData.municipalMayor}
                   </p>
                 )}
-                <div className="w-36 sm:w-52 border-b border-gray-800 mb-1 mt-0.5" />
-                <p className="text-[10px] sm:text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                <div className="mb-1 mt-0.5 w-52 border-b border-gray-800" />
+                <p className="text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   Municipal Mayor/Chairman, BCC-BOT
                 </p>
               </div>
@@ -389,12 +406,11 @@ export default function SerialNumberPage() {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
       const exportHeight = Math.ceil(node.scrollHeight);
-      const pixelRatio = typeof window !== "undefined" ? Math.min(2, window.devicePixelRatio || 2) : 2;
       const dataUrl = await toPng(node, {
         width: CERTIFICATE_EXPORT_WIDTH_PX,
         height: exportHeight,
         cacheBust: true,
-        pixelRatio,
+        pixelRatio: CERTIFICATE_DOWNLOAD_PIXEL_RATIO,
         backgroundColor: "#ffffff",
       });
       const link = document.createElement("a");
@@ -419,13 +435,10 @@ export default function SerialNumberPage() {
           </div>
         ) : serialData && profile ? (
           <div className="space-y-5">
-            <p className="text-center text-xs text-gray-500 sm:hidden">
-              Swipe sideways (or drag) to see the full certificate.
-            </p>
             {/* Mobile only: pan/zoom frame + stone border. Desktop: certificate only (sm:contents unwraps these wrappers). */}
             <div className="w-full min-w-0 max-sm:overflow-hidden max-sm:rounded-xl max-sm:border max-sm:border-gray-200/80 max-sm:bg-stone-100/60 max-sm:shadow-inner sm:contents">
               <div
-                className="max-sm:max-h-[min(92vh,1400px)] max-sm:overflow-x-auto max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pl-3 max-sm:[-webkit-overflow-scrolling:touch] max-sm:[touch-action:pan-x_pan-y] sm:contents"
+                className="max-sm:max-h-[min(92vh,1400px)] max-sm:overflow-x-auto max-sm:overflow-y-auto max-sm:overscroll-x-contain max-sm:pl-3 max-sm:touch-auto max-sm:[-webkit-overflow-scrolling:touch] sm:contents"
               >
                 {/* 896px must match CERTIFICATE_EXPORT_WIDTH_PX (mobile pan width) */}
                 <div
