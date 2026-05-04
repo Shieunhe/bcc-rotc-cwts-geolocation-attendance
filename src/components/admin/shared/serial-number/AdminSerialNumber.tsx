@@ -25,6 +25,42 @@ interface AdminSerialNumberProps {
   program: NSTProgram;
 }
 
+const MAX_SIG_IMAGE_SIZE = 200;
+
+/** Resize signature image to PNG data URL (used after bg removal or as fallback). */
+async function imageBlobToResizedPngDataUrl(source: Blob): Promise<string | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(source);
+    const img = document.createElement("img");
+    img.onload = () => {
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (w > MAX_SIG_IMAGE_SIZE || h > MAX_SIG_IMAGE_SIZE) {
+        const ratio = Math.min(MAX_SIG_IMAGE_SIZE / w, MAX_SIG_IMAGE_SIZE / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        resolve(null);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
 export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
   const { enrollments, isLoading } = useAdminEnrollments(program);
   const [search, setSearch] = useState("");
@@ -134,35 +170,10 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
         model: "isnet_fp16",
         output: { format: "image/png", quality: 0.8 },
       });
-      const MAX_SIZE = 200;
-      return new Promise((resolve) => {
-        const url = URL.createObjectURL(blob);
-        const img = document.createElement("img");
-        img.onload = () => {
-          let w = img.naturalWidth;
-          let h = img.naturalHeight;
-          if (w > MAX_SIZE || h > MAX_SIZE) {
-            const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
-          }
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d")!;
-          ctx.drawImage(img, 0, 0, w, h);
-          URL.revokeObjectURL(url);
-          resolve(canvas.toDataURL("image/png"));
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          resolve(null);
-        };
-        img.src = url;
-      });
+      return imageBlobToResizedPngDataUrl(blob);
     } catch (err) {
-      console.error("AI background removal failed:", err);
-      throw err;
+      console.warn("Background removal unavailable or failed; using original image:", err);
+      return imageBlobToResizedPngDataUrl(file);
     }
   };
 
@@ -714,7 +725,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                       type="text"
                       value={settingsCommandant}
                       onChange={(e) => setSettingsCommandant(e.target.value.toUpperCase())}
-                      placeholder="e.g. LTC REY A AUGUIS (INF) PA"
+                      placeholder="Enter Commandant name"
                       className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
                     />
                     <div className="mt-2">
@@ -743,7 +754,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                       type="text"
                       value={settingsRegistrar}
                       onChange={(e) => setSettingsRegistrar(e.target.value.toUpperCase())}
-                      placeholder="e.g. MA. MAY N. CUPTA"
+                      placeholder="Enter School Registrar name"
                       className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-semibold text-gray-800 placeholder:font-normal placeholder:text-gray-400"
                     />
                     <div className="mt-2">

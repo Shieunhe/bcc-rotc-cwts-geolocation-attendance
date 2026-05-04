@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toPng } from "html-to-image";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { studentService } from "@/services/student.service";
@@ -19,15 +20,25 @@ function formatCertDate(dateStr: string) {
   return { day, month, year };
 }
 
-function SealIcon({ className }: { className?: string }) {
-  return (
-    <div className={`rounded-full bg-gradient-to-br from-gray-200 to-gray-100 border-2 border-gray-300 flex items-center justify-center shadow-sm ${className}`}>
-      <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-      </svg>
-    </div>
-  );
+function safeDownloadSegment(text: string, fallback: string) {
+  const cleaned = text
+    .trim()
+    .replace(/[/\\?%*:|"<>]+/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  const base = cleaned || fallback;
+  return base.length > 150 ? base.slice(0, 150) : base;
 }
+
+function buildCertificateDownloadFilename(studentName: string, serialNumber: string | undefined) {
+  const namePart = safeDownloadSegment(studentName, "student");
+  const serialPart = safeDownloadSegment(serialNumber ?? "", "no-serial");
+  return `${namePart}-${serialPart}.png`;
+}
+
+/** Same as Tailwind max-w-4xl — export at this width so phone downloads match desktop layout. */
+const CERTIFICATE_EXPORT_WIDTH_PX = 896;
 
 function ROTCCertificate({ serialData, studentFullName }: {
   serialData: Record<string, string>;
@@ -53,11 +64,38 @@ function ROTCCertificate({ serialData, studentFullName }: {
             </div>
 
             <div className="flex items-center justify-center gap-3 sm:gap-6 my-4">
-              <SealIcon className="w-12 h-12 sm:w-14 sm:h-14" />
-              <SealIcon className="w-12 h-12 sm:w-14 sm:h-14" />
-              <SealIcon className="w-12 h-12 sm:w-14 sm:h-14" />
-              <SealIcon className="w-12 h-12 sm:w-14 sm:h-14" />
-              <SealIcon className="w-12 h-12 sm:w-14 sm:h-14" />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/image/nstp-rotc.png"
+                  alt="National Service Training Program"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/image/commision-rotc.png"
+                  alt="Commission ROTC"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/image/republika-rotc.png"
+                  alt="Republika ROTC"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/image/tesda-rotc.png"
+                  alt="TESDA ROTC"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
             </div>
 
             <p className="text-center text-sm sm:text-base italic font-semibold text-gray-600 mb-2" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
@@ -65,7 +103,7 @@ function ROTCCertificate({ serialData, studentFullName }: {
             </p>
 
             <h1 className="text-center text-3xl sm:text-[40px] font-extrabold text-gray-900 tracking-wide leading-tight mb-2" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
-              CERTIFICATE OF COMPLETIONasdsadsadsadsdasdsad
+              CERTIFICATE OF COMPLETION
             </h1>
 
             <p className="text-center text-sm italic text-gray-600 mb-4" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
@@ -101,33 +139,36 @@ function ROTCCertificate({ serialData, studentFullName }: {
               {`Given this ${day} day of ${month}, ${year} at Buenavista Community College of Cangawa, Buenavista, Bohol.`}
             </p>
 
-            <div className="flex justify-between items-end px-2 sm:px-12 mt-6">
-              <div className="text-center">
+            <div
+              className="mt-6 grid grid-cols-2 gap-4 items-end px-2 sm:gap-10 sm:px-12"
+              dir="ltr"
+            >
+              <div className="flex min-w-0 flex-col items-center text-center">
                 {serialData.commandantSignature && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.commandantSignature} alt="" className="h-14 sm:h-20 mx-auto object-contain -mb-15 sm:-mb-5" />
+                  <img src={serialData.commandantSignature} alt="" className="h-14 sm:h-20 mx-auto max-w-full object-contain -mb-4 sm:-mb-5" />
                 )}
                 {serialData.commandant && (
                   <p className="text-xs sm:text-sm font-bold text-gray-900 mb-0.5" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                     {serialData.commandant}
                   </p>
                 )}
-                <div className="w-36 sm:w-48 border-b border-gray-800 mb-1" />
+                <div className="w-36 sm:w-48 max-w-full border-b border-gray-800 mb-1" />
                 <p className="text-xs sm:text-sm italic text-gray-700" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   Commandant
                 </p>
               </div>
-              <div className="text-center">
+              <div className="flex min-w-0 flex-col items-center text-center">
                 {serialData.schoolRegistrarSignature && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.schoolRegistrarSignature} alt="" className="h-14 sm:h-20 mx-auto object-contain -mb-4 sm:-mb-5" />
+                  <img src={serialData.schoolRegistrarSignature} alt="" className="h-14 sm:h-20 mx-auto max-w-full object-contain -mb-4 sm:-mb-5" />
                 )}
                 {serialData.schoolRegistrar && (
                   <p className="text-xs sm:text-sm font-bold text-gray-900 mb-0.5" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                     {serialData.schoolRegistrar}
                   </p>
                 )}
-                <div className="w-36 sm:w-48 border-b border-gray-800 mb-1" />
+                <div className="w-36 sm:w-48 max-w-full border-b border-gray-800 mb-1" />
                 <p className="text-xs sm:text-sm italic text-gray-700" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   School Registrar
                 </p>
@@ -168,11 +209,21 @@ function CWTSCertificate({ serialData, studentFullName }: {
           <div>
             <div className="bg-white px-4 py-6 sm:px-10 sm:py-10">
 
-            {/* Header: 2 logos left, college info center, 1 logo right */}
+            {/* Header (CWTS only; ROTC uses ROTCCertificate): CHED + BCC left, college center, CWTS logo right */}
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <SealIcon className="w-11 h-11 sm:w-14 sm:h-14" />
-                <SealIcon className="w-11 h-11 sm:w-14 sm:h-14" />
+              <div className="flex items-center gap-1 sm:gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/image/ched-logo.png"
+                  alt="Commission on Higher Education"
+                  className="h-14 w-auto max-w-[6.5rem] sm:h-20 sm:max-w-[8rem] object-contain"
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/image/bcclogo-removebg-preview.png"
+                  alt="Buenavista Community College"
+                  className="h-14 w-auto max-w-[6.5rem] sm:h-20 sm:max-w-[8rem] object-contain"
+                />
               </div>
               <div className="text-center flex-1 px-2">
                 <h2 className="text-base sm:text-xl font-bold text-gray-900 tracking-wide" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
@@ -188,7 +239,14 @@ function CWTSCertificate({ serialData, studentFullName }: {
                   Telefax: (038)5139169/Tel.: 513-9179
                 </p>
               </div>
-              <SealIcon className="w-11 h-11 sm:w-14 sm:h-14" />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center sm:h-20 sm:w-20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/image/cwts-logo.png"
+                  alt="Civic Welfare Training Service"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
             </div>
 
             {/* "Present this" — left aligned italic */}
@@ -232,14 +290,14 @@ function CWTSCertificate({ serialData, studentFullName }: {
               <div className="text-center">
                 {serialData.nstpCoordinatorSignature && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.nstpCoordinatorSignature} alt="" className="h-14 sm:h-20 mx-auto object-contain -mb-4 sm:-mb-5" />
+                  <img src={serialData.nstpCoordinatorSignature} alt="" className="h-[4.25rem] sm:h-28 mx-auto object-contain -mb-7 sm:-mb-10" />
                 )}
                 {serialData.nstpCoordinator && (
-                  <p className="text-xs sm:text-sm font-bold text-gray-900 mb-0.5" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                  <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight mb-0" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                     {serialData.nstpCoordinator}
                   </p>
                 )}
-                <div className="w-32 sm:w-48 border-b border-gray-800 mb-1" />
+                <div className="w-32 sm:w-48 border-b border-gray-800 mb-1 mt-0.5" />
                 <p className="text-[10px] sm:text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   NSTP - Coordinator
                 </p>
@@ -247,14 +305,14 @@ function CWTSCertificate({ serialData, studentFullName }: {
               <div className="text-center">
                 {serialData.bccPresidentSignature && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.bccPresidentSignature} alt="" className="h-14 sm:h-20 mx-auto object-contain -mb-4 sm:-mb-5" />
+                  <img src={serialData.bccPresidentSignature} alt="" className="h-[4.25rem] sm:h-28 mx-auto object-contain -mb-7 sm:-mb-10" />
                 )}
                 {serialData.bccPresident && (
-                  <p className="text-xs sm:text-sm font-bold text-gray-900 mb-0.5" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                  <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight mb-0" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                     {serialData.bccPresident}
                   </p>
                 )}
-                <div className="w-32 sm:w-48 border-b border-gray-800 mb-1" />
+                <div className="w-32 sm:w-48 border-b border-gray-800 mb-1 mt-0.5" />
                 <p className="text-[10px] sm:text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   BCC President
                 </p>
@@ -266,14 +324,14 @@ function CWTSCertificate({ serialData, studentFullName }: {
               <div className="text-center">
                 {serialData.municipalMayorSignature && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={serialData.municipalMayorSignature} alt="" className="h-14 sm:h-20 mx-auto object-contain -mb-4 sm:-mb-5" />
+                  <img src={serialData.municipalMayorSignature} alt="" className="h-[4.25rem] sm:h-28 mx-auto object-contain -mb-7 sm:-mb-10" />
                 )}
                 {serialData.municipalMayor && (
-                  <p className="text-xs sm:text-sm font-bold text-gray-900 mb-0.5" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                  <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight mb-0" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                     {serialData.municipalMayor}
                   </p>
                 )}
-                <div className="w-36 sm:w-52 border-b border-gray-800 mb-1" />
+                <div className="w-36 sm:w-52 border-b border-gray-800 mb-1 mt-0.5" />
                 <p className="text-[10px] sm:text-xs italic text-gray-600" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                   Municipal Mayor/Chairman, BCC-BOT
                 </p>
@@ -292,6 +350,9 @@ export default function SerialNumberPage() {
   const { profile, uid } = useStudentProfile();
   const [serialData, setSerialData] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const certificateRef = useRef<HTMLDivElement>(null);
   const program = profile?.nstpComponent;
 
   useEffect(() => {
@@ -315,20 +376,103 @@ export default function SerialNumberPage() {
     ? `${profile.firstName} ${profile.middleName ? `${profile.middleName.charAt(0)}` : ""} ${profile.lastName}`.replace(/\s+/g, " ").trim()
     : "";
 
+  const handleDownloadCertificate = async () => {
+    const node = certificateRef.current;
+    if (!node || !serialData) return;
+    setDownloadError(null);
+    setDownloading(true);
+    try {
+      if (typeof document.fonts?.ready !== "undefined") {
+        await document.fonts.ready;
+      }
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      const exportHeight = Math.ceil(node.scrollHeight);
+      const pixelRatio = typeof window !== "undefined" ? Math.min(2, window.devicePixelRatio || 2) : 2;
+      const dataUrl = await toPng(node, {
+        width: CERTIFICATE_EXPORT_WIDTH_PX,
+        height: exportHeight,
+        cacheBust: true,
+        pixelRatio,
+        backgroundColor: "#ffffff",
+      });
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = buildCertificateDownloadFilename(studentFullName, serialData.serialNumber);
+      link.rel = "noopener";
+      link.click();
+    } catch (err) {
+      console.error("Certificate download failed:", err);
+      setDownloadError("Could not save the image. Try again, or take a screenshot if it keeps failing.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <StudentPageLayout>
-      <div className="max-w-4xl mx-auto mt-4 sm:mt-8 px-2">
+      <div className="mx-auto mt-4 sm:mt-8 w-full min-w-0 max-w-4xl px-2 max-sm:overflow-x-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-7 h-7 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : serialData && profile ? (
           <div className="space-y-5">
-            {isROTC ? (
-              <ROTCCertificate serialData={serialData} studentFullName={studentFullName} />
-            ) : (
-              <CWTSCertificate serialData={serialData} studentFullName={studentFullName} />
-            )}
+            <p className="text-center text-xs text-gray-500 sm:hidden">
+              Swipe sideways (or drag) to see the full certificate.
+            </p>
+            {/* Mobile only: pan/zoom frame + stone border. Desktop: certificate only (sm:contents unwraps these wrappers). */}
+            <div className="w-full min-w-0 max-sm:overflow-hidden max-sm:rounded-xl max-sm:border max-sm:border-gray-200/80 max-sm:bg-stone-100/60 max-sm:shadow-inner sm:contents">
+              <div
+                className="max-sm:max-h-[min(92vh,1400px)] max-sm:overflow-x-auto max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:pl-3 max-sm:[-webkit-overflow-scrolling:touch] max-sm:[touch-action:pan-x_pan-y] sm:contents"
+              >
+                {/* 896px must match CERTIFICATE_EXPORT_WIDTH_PX (mobile pan width) */}
+                <div
+                  ref={certificateRef}
+                  className="mx-auto w-full min-w-0 max-w-4xl max-sm:max-w-none max-sm:shrink-0 max-sm:[width:896px] max-sm:[min-width:896px]"
+                >
+                  {isROTC ? (
+                    <ROTCCertificate serialData={serialData} studentFullName={studentFullName} />
+                  ) : (
+                    <CWTSCertificate serialData={serialData} studentFullName={studentFullName} />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50/90 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <p className="order-2 text-xs text-gray-600 leading-relaxed sm:order-1 sm:min-w-0 sm:flex-1">
+                  Download a PNG for your records. On a phone, pan inside the gray frame above if needed.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDownloadCertificate}
+                  disabled={downloading}
+                  className="order-1 flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60 sm:order-2 sm:w-auto"
+                >
+                  {downloading ? (
+                    <>
+                      <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download certificate
+                    </>
+                  )}
+                </button>
+              </div>
+              {downloadError && (
+                <p className="mt-3 text-xs font-medium text-red-600" role="alert">
+                  {downloadError}
+                </p>
+              )}
+            </div>
 
             <div className="flex items-start gap-3 bg-blue-50 rounded-xl p-4 border border-blue-100">
               <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
