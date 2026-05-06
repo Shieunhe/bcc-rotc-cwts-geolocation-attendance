@@ -14,6 +14,7 @@ import ViewRecordsCard from "./dashboard/ViewRecordsCard";
 import GradesCard from "./dashboard/GradesCard";
 import OffensesCard from "./dashboard/OffensesCard";
 import SerialNumberCard from "./dashboard/SerialNumberCard";
+import SettingsDashboardCard from "@/components/settings/SettingsDashboardCard";
 import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
 interface AdminDashboardProps {
@@ -65,6 +66,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
             <GradesCard base={base} />
             <OffensesCard base={base} />
             <SerialNumberCard base={base} />
+            <SettingsDashboardCard href={`${base}/settings`} />
           </div>
         </main>
       </div>
