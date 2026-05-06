@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import StudentSidebarItems from "@/components/student/StudentSidebarItems";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
@@ -11,6 +10,7 @@ import AssignedPlatoon from "./dashboard/AssignedPlatoon";
 import Attendance from "./dashboard/Attendance";
 import Grades from "./dashboard/Grades";
 import SerialNumber from "./dashboard/SerialNumber";
+import SettingsDashboardCard from "@/components/settings/SettingsDashboardCard";
 import AttendanceWarningModal from "./AttendanceWarningModal";
 import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 
@@ -138,6 +138,7 @@ export default function Student() {
             <Grades />
             {/* Serial Number */}
             <SerialNumber serialNumber={serialNumber}/>
+            <SettingsDashboardCard href="/student/settings" />
           </div>
         </main>
       </div>
