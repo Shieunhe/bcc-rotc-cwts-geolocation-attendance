@@ -152,6 +152,34 @@ export default function CWTSAttendanceSummary() {
     ...(hasUnmarked ? [{ value: "unmarked", label: "Not Yet Marked" }] : []),
   ];
 
+  function downloadCSV() {
+    const headers = ["Name", "Student ID", "Course", "Year Level", "Company", "Status", "Time"];
+    const rows = sorted.map((s) => {
+      const status = getStatus(s.uid, recordMap, graceOver);
+      const cfg = statusConfig[status] ?? statusConfig.absent;
+      const record = recordMap.get(s.uid);
+      const time = status === "present" || status === "late"
+        ? (record ? formatTimeDisplay(record.createdAt) : "")
+        : status === "absent" && lateDeadlineStr
+          ? formatTimeDisplay(lateDeadlineStr)
+          : "";
+      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+      return [name, s.studentId ?? "", s.course ?? "", s.yearLevel ?? "", s.company ?? "", cfg.label, time];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `CWTS_Attendance_MI${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <AdminPageLayout program="CWTS">
       <div className="mb-6">
@@ -216,16 +244,27 @@ export default function CWTSAttendanceSummary() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white">CWTS Attendance</h2>
+                  <p className="text-[11px] text-white/70 font-medium">{enrolledStudents.length} student{enrolledStudents.length !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+              <button
+                onClick={downloadCSV}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur text-white text-[11px] font-semibold transition cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-white">CWTS Attendance</h2>
-                <p className="text-[11px] text-white/70 font-medium">{enrolledStudents.length} student{enrolledStudents.length !== 1 ? "s" : ""}</p>
-              </div>
+                Download CSV
+              </button>
             </div>
           </div>
 
