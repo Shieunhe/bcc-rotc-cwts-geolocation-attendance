@@ -196,7 +196,7 @@ export default function EnrollmentForm() {
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
           <img 
-            src="/image/feb5dc39-69af-4d8a-a3d7-66aca9aaa290.png" 
+            src="/image/bcclogo-removebg-preview.png" 
             alt="Buenavista Community College Logo" 
             className="w-20 h-20 sm:w-24 sm:h-24 object-contain mb-3"
           />

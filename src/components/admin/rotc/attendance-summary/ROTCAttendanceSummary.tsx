@@ -279,6 +279,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               onTypeChange={setSelectedType}
               hasIn={!!currentMI?.in}
               hasOut={!!currentMI?.out}
+              selectedMI={selectedMI}
             />
           )}
         </div>

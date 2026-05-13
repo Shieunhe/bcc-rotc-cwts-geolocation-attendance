@@ -51,13 +51,20 @@ interface Props {
   onTypeChange: (type: "in" | "out") => void;
   hasIn: boolean;
   hasOut: boolean;
+  selectedMI: number;
 }
 
 type GroupFilter = "" | "battalion-1" | "battalion-2" | "special";
 
+const GROUP_LABELS: Record<string, string> = {
+  "battalion-1": "Battalion 1",
+  "battalion-2": "Battalion 2",
+  "special": "Special Platoon",
+};
+
 export default function OverallAttendanceBox({
   b1Students, b2Students, specialUnitStudents, recordMap, graceOver, sessionCloseDate,
-  selectedType, onTypeChange, hasIn, hasOut,
+  selectedType, onTypeChange, hasIn, hasOut, selectedMI,
 }: Props) {
   const lateDeadlineStr = sessionCloseDate
     ? new Date(new Date(sessionCloseDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000).toISOString()
@@ -85,6 +92,35 @@ export default function OverallAttendanceBox({
   const hasUnmarked = overallCounts.unmarked > 0;
   const attended = overallCounts.present + overallCounts.late;
   const pct = overallCounts.total > 0 ? Math.round((attended / overallCounts.total) * 100) : 0;
+
+  function downloadCSV() {
+    const headers = ["Name", "Student ID", "Course", "Year Level", "Battalion", "Assignment", "Status", "Time"];
+    const rows = sorted.map((row) => {
+      const s = row.student;
+      const status = getStatus(s.uid, recordMap, graceOver);
+      const cfg = statusConfig[status] ?? statusConfig.absent;
+      const record = recordMap.get(s.uid);
+      const time = status === "present" || status === "late"
+        ? (record ? formatTimeDisplay(record.createdAt) : "")
+        : status === "absent" && lateDeadlineStr
+          ? formatTimeDisplay(lateDeadlineStr)
+          : "";
+      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+      return [name, s.studentId ?? "", s.course ?? "", s.yearLevel ?? "", GROUP_LABELS[row.group] ?? row.group, row.info, cfg.label, time];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ROTC_Overall_Attendance_MI${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   type UnifiedStudent = { student: EnrollmentDocument; group: string; info: string };
 
@@ -135,16 +171,27 @@ export default function OverallAttendanceBox({
       {/* Overall totals card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-gray-700 to-gray-900 px-5 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">Overall ROTC Attendance</h2>
+                <p className="text-[11px] text-white/70 font-medium">{overallCounts.total} total cadets</p>
+              </div>
+            </div>
+            <button
+              onClick={downloadCSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur text-white text-[11px] font-semibold transition cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white">Overall ROTC Attendance</h2>
-              <p className="text-[11px] text-white/70 font-medium">{overallCounts.total} total cadets</p>
-            </div>
+              Download CSV
+            </button>
           </div>
         </div>
 
@@ -246,9 +293,9 @@ export default function OverallAttendanceBox({
               <div className="relative">
                 <select value={filterGroup} onChange={(e) => setFilterGroup(e.target.value as GroupFilter)}
                   className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 transition">
-                  <option value="">All Groups</option>
-                  <option value="battalion-1">Battalion 1 (Male)</option>
-                  <option value="battalion-2">Battalion 2 (Female)</option>
+                  <option value="">All Battalions</option>
+                  <option value="battalion-1">Battalion 1</option>
+                  <option value="battalion-2">Battalion 2</option>
                   <option value="special">Special Platoon</option>
                 </select>
                 <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -297,8 +344,9 @@ export default function OverallAttendanceBox({
               <>
                 {/* Desktop table */}
                 <div className="hidden sm:block divide-y divide-gray-100">
-                  <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                  <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
                     <span>Student</span>
+                    <span className="w-28 text-center">Battalion</span>
                     <span className="w-28 text-center">Assignment</span>
                     <span className="w-16 text-center">Time</span>
                     <span className="w-18 text-center">Status</span>
@@ -311,7 +359,7 @@ export default function OverallAttendanceBox({
                     const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
 
                     return (
-                      <div key={s.uid} className={`grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-l-3 ${cfg.border}`}>
+                      <div key={s.uid} className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-l-3 ${cfg.border}`}>
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-gray-700 truncate">{name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
@@ -330,6 +378,7 @@ export default function OverallAttendanceBox({
                             )}
                           </div>
                         </div>
+                        <span className="text-[10px] text-gray-500 font-semibold w-28 text-center truncate">{GROUP_LABELS[row.group] ?? row.group}</span>
                         <span className="text-[10px] text-gray-400 font-medium w-28 text-center truncate">{row.info}</span>
                         <span className="text-[10px] text-gray-400 font-medium w-16 text-center">
                           {status === "present" || status === "late"
@@ -374,6 +423,8 @@ export default function OverallAttendanceBox({
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[10px] text-gray-500 font-semibold">{GROUP_LABELS[row.group] ?? row.group}</span>
+                          <span className="text-gray-300">&middot;</span>
                           <span className="text-[10px] text-gray-400 font-medium">{row.info}</span>
                           <span className="text-gray-300">&middot;</span>
                           <span className="text-[10px] text-gray-400">{timeStr}</span>
