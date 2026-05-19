@@ -5,6 +5,11 @@ import {
   AttendanceRecord, EnrollmentDocument,
   ROTCCompany, SpecialUnit, SPECIAL_UNITS,
 } from "@/types";
+import {
+  Document, Packer, Paragraph, Table, TableRow, TableCell,
+  TextRun, WidthType, AlignmentType, BorderStyle, HeadingLevel,
+} from "docx";
+import { saveAs } from "file-saver";
 
 type StudentRow = { student: EnrollmentDocument; company: ROTCCompany; platoon: number };
 
@@ -93,9 +98,9 @@ export default function OverallAttendanceBox({
   const attended = overallCounts.present + overallCounts.late;
   const pct = overallCounts.total > 0 ? Math.round((attended / overallCounts.total) * 100) : 0;
 
-  function downloadCSV() {
-    const headers = ["Name", "Student ID", "Course", "Year Level", "Battalion", "Assignment", "Status", "Time"];
-    const rows = sorted.map((row) => {
+  async function downloadWord() {
+    const headers = ["#", "Name", "Student ID", "Course", "Year Level", "Battalion", "Assignment", "Status", "Time"];
+    const rows = sorted.map((row, i) => {
       const s = row.student;
       const status = getStatus(s.uid, recordMap, graceOver);
       const cfg = statusConfig[status] ?? statusConfig.absent;
@@ -106,28 +111,85 @@ export default function OverallAttendanceBox({
           ? formatTimeDisplay(lateDeadlineStr)
           : "";
       const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
-      return [name, s.studentId ?? "", s.course ?? "", s.yearLevel ?? "", GROUP_LABELS[row.group] ?? row.group, row.info, cfg.label, time];
+      return [String(i + 1), name, s.studentId ?? "", s.course ?? "", s.yearLevel ?? "", GROUP_LABELS[row.group] ?? row.group, row.info, cfg.label, time];
     });
 
-    const csvContent = [headers, ...rows]
-      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
+    const borderStyle = { style: BorderStyle.SINGLE, size: 1, color: "999999" };
+    const borders = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
 
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ROTC_Overall_Attendance_MI${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const headerRow = new TableRow({
+      tableHeader: true,
+      children: headers.map((h) =>
+        new TableCell({
+          borders,
+          shading: { fill: "1F2937" },
+          children: [new Paragraph({
+            spacing: { before: 40, after: 40 },
+            children: [new TextRun({ text: h, bold: true, size: 18, font: "Arial", color: "FFFFFF" })],
+          })],
+        })
+      ),
+    });
+
+    const dataRows = rows.map((cells, idx) =>
+      new TableRow({
+        children: cells.map((text) =>
+          new TableCell({
+            borders,
+            ...(idx % 2 === 1 ? { shading: { fill: "F9FAFB" } } : {}),
+            children: [new Paragraph({
+              spacing: { before: 30, after: 30 },
+              children: [new TextRun({ text, size: 18, font: "Arial" })],
+            })],
+          })
+        ),
+      })
+    );
+
+    const doc = new Document({
+      sections: [{
+        children: [
+          new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            spacing: { after: 100 },
+            children: [new TextRun({ text: "ROTC Overall Attendance Summary", bold: true, size: 28, font: "Arial" })],
+          }),
+          new Paragraph({
+            spacing: { after: 60 },
+            children: [new TextRun({ text: `MI ${selectedMI} — ${selectedType === "in" ? "Time In" : "Time Out"}`, size: 22, font: "Arial", color: "555555" })],
+          }),
+          new Paragraph({
+            spacing: { after: 200 },
+            children: [
+              new TextRun({ text: `Total: ${overallCounts.total}  |  `, size: 20, font: "Arial" }),
+              new TextRun({ text: `Present: ${overallCounts.present}  |  `, size: 20, font: "Arial", color: "15803D" }),
+              new TextRun({ text: `Late: ${overallCounts.late}  |  `, size: 20, font: "Arial", color: "B45309" }),
+              new TextRun({ text: `Absent: ${overallCounts.absent}`, size: 20, font: "Arial", color: "B91C1C" }),
+            ],
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [headerRow, ...dataRows],
+          }),
+          new Paragraph({
+            spacing: { before: 200 },
+            alignment: AlignmentType.RIGHT,
+            children: [new TextRun({ text: `${sorted.length} of ${allStudents.length} cadets shown`, size: 16, font: "Arial", color: "999999" })],
+          }),
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `ROTC_Overall_Attendance_MI${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.docx`);
   }
 
-  type UnifiedStudent = { student: EnrollmentDocument; group: string; info: string };
+  type UnifiedStudent = { student: EnrollmentDocument; group: string; companyName: string; info: string };
 
   const allStudents: UnifiedStudent[] = [
-    ...b1Students.map((r) => ({ student: r.student, group: "battalion-1" as const, info: `B1 · ${r.company} · P${r.platoon}` })),
-    ...b2Students.map((r) => ({ student: r.student, group: "battalion-2" as const, info: `B2 · ${r.company} · P${r.platoon}` })),
-    ...specialAll.map((s) => ({ student: s, group: "special" as const, info: s.specialUnit ?? "Special" })),
+    ...b1Students.map((r) => ({ student: r.student, group: "battalion-1" as const, companyName: r.company, info: `B1 · ${r.company} · P${r.platoon}` })),
+    ...b2Students.map((r) => ({ student: r.student, group: "battalion-2" as const, companyName: r.company, info: `B2 · ${r.company} · P${r.platoon}` })),
+    ...specialAll.map((s) => ({ student: s, group: "special" as const, companyName: s.specialUnit ?? "", info: s.specialUnit ?? "Special" })),
   ];
 
   const filtered = allStudents.filter((row) => {
@@ -144,7 +206,18 @@ export default function OverallAttendanceBox({
     return true;
   });
 
+  const companyOrder: Record<string, number> = {
+    Alpha: 0, Bravo: 1, Charlie: 2, Delta: 3,
+    Echo: 4, Foxtrot: 5, Golf: 6, Hotel: 7,
+    Medics: 8, HQ: 9, MP: 10,
+  };
+
   const sorted = [...filtered].sort((a, b) => {
+    if (filterGroup) {
+      const ca = companyOrder[a.companyName] ?? 99;
+      const cb = companyOrder[b.companyName] ?? 99;
+      if (ca !== cb) return ca - cb;
+    }
     const order: Record<string, number> = { present: 0, late: 1, absent: 2, unmarked: 3 };
     const sa = getStatus(a.student.uid, recordMap, graceOver);
     const sb = getStatus(b.student.uid, recordMap, graceOver);
@@ -184,13 +257,13 @@ export default function OverallAttendanceBox({
               </div>
             </div>
             <button
-              onClick={downloadCSV}
+              onClick={downloadWord}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur text-white text-[11px] font-semibold transition cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Download CSV
+              Download
             </button>
           </div>
         </div>

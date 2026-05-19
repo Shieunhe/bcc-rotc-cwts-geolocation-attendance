@@ -192,7 +192,7 @@ export default function OfficerCreateAttendance() {
         );
         setLoadingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 15000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   } 
 
