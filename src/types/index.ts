@@ -103,7 +103,7 @@ export interface AttendanceLocation {
   longitude: number;
 }
 
-export const ATTENDANCE_RADIUS_METERS = 50;
+export const ATTENDANCE_RADIUS_METERS = 100;
 
 export interface AttendanceSession {
   id: string;

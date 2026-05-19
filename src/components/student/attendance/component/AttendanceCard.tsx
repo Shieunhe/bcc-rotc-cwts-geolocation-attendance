@@ -128,6 +128,7 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
         setStudentLat(pos.coords.latitude);
         setStudentLng(pos.coords.longitude);
         setLocLoading(false);
+        setLocError(null);
       },
       (err) => {
         setLocError(
@@ -137,13 +138,39 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
         );
         setLocLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 15000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   }
 
   useEffect(() => {
-    if (status !== "closed") captureLocation();
-    else setLocLoading(false);
+    if (status === "closed") { setLocLoading(false); return; }
+    if (!navigator.geolocation) {
+      setLocError("Geolocation is not supported by your browser.");
+      setLocLoading(false);
+      return;
+    }
+    setLocLoading(true);
+    setLocError(null);
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setStudentLat(pos.coords.latitude);
+        setStudentLng(pos.coords.longitude);
+        setLocLoading(false);
+        setLocError(null);
+      },
+      (err) => {
+        setLocError(
+          err.code === 1
+            ? "Location access denied. Please allow location in your browser settings."
+            : "Unable to retrieve your location. Please try again."
+        );
+        setLocLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, [status]);
 
   const distance =
