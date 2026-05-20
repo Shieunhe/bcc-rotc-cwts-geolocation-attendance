@@ -262,7 +262,7 @@ export default function OfficerCreateAttendance() {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Create Attendance</h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              Set up MI attendance sessions for ROTC, CWTS, or Advance Course.
+              Set up MI attendance sessions for ROTC, CWTS, and Advance Course.
             </p>
           </div>
         </div>

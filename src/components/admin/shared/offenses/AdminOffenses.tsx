@@ -43,7 +43,7 @@ export default function AdminOffenses({ program }: Props) {
   });
 
   const warningCount = allOffenses.filter((o) => o.offend === 1).length;
-  const settlementCount = allOffenses.filter((o) => o.offend >= 2).length;
+  const settlementCount = allOffenses.filter((o) => o.offend >= 2 && !o.settled).length;
 
   const themeColor = program === "ROTC" ? "blue" : "emerald";
 
@@ -109,7 +109,7 @@ export default function AdminOffenses({ program }: Props) {
             {([
               { value: "" as OffenseFilter, label: "All" },
               { value: "warning" as OffenseFilter, label: "Warning" },
-              { value: "settlement" as OffenseFilter, label: "Need for Settlement" },
+              { value: "settlement" as OffenseFilter, label: "Not following instructions" },
             ]).map((opt) => (
               <button
                 key={opt.value}
@@ -198,9 +198,9 @@ export default function AdminOffenses({ program }: Props) {
                         <td className="px-4 py-3 text-xs text-gray-500">{s?.course ?? "—"}</td>
                         <td className="px-4 py-3 text-center">
                           {isSettlement ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 border border-red-200">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-black-100 text-black-700 border border-red-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                              Need for Settlement
+                              Not following instructions
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-50 text-amber-600 border border-amber-200">
@@ -325,7 +325,7 @@ export default function AdminOffenses({ program }: Props) {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-gray-800">Offense Detail</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{isSettlement ? "Need for Settlement" : "Warning"}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">{isSettlement ? "Not following instructions" : "Warning"}</p>
                   </div>
                 </div>
                 <button

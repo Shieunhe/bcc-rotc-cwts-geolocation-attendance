@@ -34,7 +34,7 @@ export default function Officer() {
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Welcome, Officer</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Welcome, NSTP Director</h1>
             <p className="text-sm text-gray-500 mt-0.5">
               Manage CWTS/ROTC battalions and operations.
             </p>

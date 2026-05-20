@@ -145,7 +145,7 @@ export default function OfficerSidebarItems({ isOpen, onClose }: OfficerSidebarP
       onClose={onClose}
       navItems={navItems}
       title="BCC NSTP"
-      subtitle="Officer Panel"
+      subtitle="NSTP Director"
     />
   );
 }
