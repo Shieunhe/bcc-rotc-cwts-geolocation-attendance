@@ -135,6 +135,8 @@ export interface AttendanceRecord {
 
 export interface StudentGrade {
   student_uid: string;
+  midterm?: number;
+  finalTerm?: number;
   grade: number;
   status: "Passed" | "Failed";
   program: NSTProgram;

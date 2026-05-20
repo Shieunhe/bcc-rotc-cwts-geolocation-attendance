@@ -526,16 +526,16 @@ export const adminService = {
     return map;
   },
 
-  async saveStudentGrade(uid: string, program: NSTProgram, msLevel: "ms1" | "ms2", grade: number): Promise<void> {
+  async saveStudentGrade(uid: string, program: NSTProgram, msLevel: "ms1" | "ms2", grade: number, midterm?: number, finalTerm?: number): Promise<void> {
     const ref = doc(db, "student_grades", msLevel, "students", uid);
     const status: "Passed" | "Failed" = grade >= 1.0 && grade <= 3.0 ? "Passed" : "Failed";
     const now = new Date().toISOString();
     const existing = await getDoc(ref);
-    if (existing.exists()) {
-      await setDoc(ref, { student_uid: uid, grade, status, program, createdAt: existing.data().createdAt || now, updatedAt: now });
-    } else {
-      await setDoc(ref, { student_uid: uid, grade, status, program, createdAt: now, updatedAt: now });
-    }
+    const data: Record<string, unknown> = { student_uid: uid, grade, status, program, updatedAt: now };
+    if (midterm !== undefined) data.midterm = midterm;
+    if (finalTerm !== undefined) data.finalTerm = finalTerm;
+    data.createdAt = existing.exists() ? (existing.data().createdAt || now) : now;
+    await setDoc(ref, data);
   },
 
   async saveStudentGradesBatch(updates: { uid: string; program: NSTProgram; msLevel: "ms1" | "ms2"; grade: number }[]): Promise<void> {

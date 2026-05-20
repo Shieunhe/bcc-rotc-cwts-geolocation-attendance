@@ -41,14 +41,40 @@ export default function Grades() {
       {loading ? (
         <p className="text-xs text-gray-400">Loading...</p>
       ) : hasGrades ? (
-        <div className="flex items-center gap-4">
+        <div className="space-y-2">
           <div>
-            <p className="text-[10px] text-gray-400 font-medium">NSTP 1</p>
-            <p className="text-lg font-bold text-gray-800">{ms1?.grade ?? "—"}</p>
+            <p className="text-[10px] text-gray-400 font-medium mb-0.5">NSTP 1</p>
+            <div className="flex items-center gap-3">
+              <div className="text-center">
+                <p className="text-[9px] text-gray-400">Mid</p>
+                <p className="text-sm font-bold text-gray-800">{ms1?.midterm ?? "—"}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] text-gray-400">Final</p>
+                <p className="text-sm font-bold text-gray-800">{ms1?.finalTerm ?? "—"}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] text-gray-400">Avg</p>
+                <p className="text-sm font-bold text-gray-800">{ms1?.grade ?? "—"}</p>
+              </div>
+            </div>
           </div>
           <div>
-            <p className="text-[10px] text-gray-400 font-medium">NSTP 2</p>
-            <p className="text-lg font-bold text-gray-800">{ms2?.grade ?? "—"}</p>
+            <p className="text-[10px] text-gray-400 font-medium mb-0.5">NSTP 2</p>
+            <div className="flex items-center gap-3">
+              <div className="text-center">
+                <p className="text-[9px] text-gray-400">Mid</p>
+                <p className="text-sm font-bold text-gray-800">{ms2?.midterm ?? "—"}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] text-gray-400">Final</p>
+                <p className="text-sm font-bold text-gray-800">{ms2?.finalTerm ?? "—"}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] text-gray-400">Avg</p>
+                <p className="text-sm font-bold text-gray-800">{ms2?.grade ?? "—"}</p>
+              </div>
+            </div>
           </div>
         </div>
       ) : (
