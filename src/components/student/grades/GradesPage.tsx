@@ -78,125 +78,86 @@ export default function GradesPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Student ID</th>
-                  <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Full Name</th>
                   <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Subject</th>
                   <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Description</th>
-                  <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Grade</th>
+                  <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Midterm</th>
+                  <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Final Term</th>
+                  <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Average</th>
                   <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Unit</th>
                   <th className="px-5 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wide text-center">Status</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-gray-50">
-                  <td className="px-5 py-3.5 text-xs text-gray-600">{profile?.studentId || "—"}</td>
-                  <td className="px-5 py-3.5 text-xs font-semibold text-gray-800">
-                    {profile ? `${profile.lastName}, ${profile.firstName}${profile.middleName ? ` ${profile.middleName[0]}.` : ""}` : "—"}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs text-gray-600">NSTP 1</td>
-                  <td className="px-5 py-3.5 text-xs text-gray-600">{programDesc}</td>
-                  <td className="px-5 py-3.5 text-center">
-                    {ms1 ? (
-                      <span className="text-sm font-bold text-gray-800">{ms1.grade}</span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-center">
-                    <span className="text-sm font-bold text-gray-800">3</span>
-                  </td>
-                  <td className="px-5 py-3.5 text-center">
-                    {ms1 ? (
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
-                        ms1.status === "Passed"
-                          ? "bg-green-50 border-green-200 text-green-700"
-                          : "bg-red-50 border-red-200 text-red-700"
-                      }`}>
-                        {ms1.status}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-50">
-                  <td className="px-5 py-3.5 text-xs text-gray-600">{profile?.studentId || "—"}</td>
-                  <td className="px-5 py-3.5 text-xs font-semibold text-gray-800">
-                    {profile ? `${profile.lastName}, ${profile.firstName}${profile.middleName ? ` ${profile.middleName[0]}.` : ""}` : "—"}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs text-gray-600">NSTP 2</td>
-                  <td className="px-5 py-3.5 text-xs text-gray-600">{programDesc}</td>
-                  <td className="px-5 py-3.5 text-center">
-                    {ms2 ? (
-                      <span className="text-sm font-bold text-gray-800">{ms2.grade}</span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-center">
-                    <span className="text-sm font-bold text-gray-800">3</span>
-                  </td>
-                  <td className="px-5 py-3.5 text-center">
-                    {ms2 ? (
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
-                        ms2.status === "Passed"
-                          ? "bg-green-50 border-green-200 text-green-700"
-                          : "bg-red-50 border-red-200 text-red-700"
-                      }`}>
-                        {ms2.status}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
-                </tr>
+                {[{ label: "NSTP 1", data: ms1 }, { label: "NSTP 2", data: ms2 }].map((item) => (
+                  <tr key={item.label} className="border-b border-gray-50">
+                    <td className="px-5 py-3.5 text-xs font-semibold text-gray-700">{item.label}</td>
+                    <td className="px-5 py-3.5 text-xs text-gray-600">{programDesc}</td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className="text-sm font-bold text-gray-800">{item.data?.midterm ?? "—"}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className="text-sm font-bold text-gray-800">{item.data?.finalTerm ?? "—"}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className="text-sm font-bold text-gray-800">{item.data?.grade ?? "—"}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className="text-sm font-bold text-gray-800">3</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      {item.data ? (
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
+                          item.data.status === "Passed"
+                            ? "bg-green-50 border-green-200 text-green-700"
+                            : "bg-red-50 border-red-200 text-red-700"
+                        }`}>
+                          {item.data.status}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
           {/* Mobile cards */}
           <div className="sm:hidden divide-y divide-gray-100">
-            {[{ label: "NSTP 1", grade: ms1 }, { label: "NSTP 2", grade: ms2 }].map((item) => (
+            {[{ label: "NSTP 1", data: ms1 }, { label: "NSTP 2", data: ms2 }].map((item) => (
               <div key={item.label} className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Student ID</p>
-                    <p className="text-xs font-semibold text-gray-700">{profile?.studentId || "—"}</p>
+                    <p className="text-xs font-bold text-gray-700">{item.label}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{programDesc}</p>
                   </div>
-                  {item.grade ? (
+                  {item.data ? (
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
-                      item.grade.status === "Passed"
+                      item.data.status === "Passed"
                         ? "bg-green-50 border-green-200 text-green-700"
                         : "bg-red-50 border-red-200 text-red-700"
                     }`}>
-                      {item.grade.status}
+                      {item.data.status}
                     </span>
                   ) : (
                     <span className="text-xs text-gray-400">—</span>
                   )}
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Full Name</p>
-                  <p className="text-xs font-semibold text-gray-800">
-                    {profile ? `${profile.lastName}, ${profile.firstName}${profile.middleName ? ` ${profile.middleName[0]}.` : ""}` : "—"}
-                  </p>
-                </div>
-                <div className="flex gap-4">
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Subject</p>
-                    <p className="text-xs text-gray-600">{item.label}</p>
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-gray-100">
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Midterm</p>
+                    <p className="text-lg font-bold text-gray-800">{item.data?.midterm ?? "—"}</p>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Description</p>
-                    <p className="text-xs text-gray-600">{programDesc}</p>
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Final</p>
+                    <p className="text-lg font-bold text-gray-800">{item.data?.finalTerm ?? "—"}</p>
                   </div>
-                </div>
-                <div className="flex gap-4 pt-2 border-t border-gray-100">
-                  <div className="flex-1 text-center">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Grade</p>
-                    <p className="text-lg font-bold text-gray-800">{item.grade?.grade ?? "—"}</p>
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Average</p>
+                    <p className="text-lg font-bold text-gray-800">{item.data?.grade ?? "—"}</p>
                   </div>
-                  <div className="flex-1 text-center">
+                  <div className="text-center">
                     <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Unit</p>
                     <p className="text-lg font-bold text-gray-800">3</p>
                   </div>

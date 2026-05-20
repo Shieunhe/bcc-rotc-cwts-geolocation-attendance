@@ -114,48 +114,41 @@ export default function StudentRecordModal({ student, program, onClose }: Studen
                 </h3>
                 <div className="bg-gray-50 rounded-xl overflow-hidden">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-100 ">
+                    <thead className="bg-gray-100">
                       <tr>
                         <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Subject</th>
-                        <th className="text-center px-4 py-2.5 font-semibold text-gray-600">Grade</th>
+                        <th className="text-center px-4 py-2.5 font-semibold text-gray-600">Midterm</th>
+                        <th className="text-center px-4 py-2.5 font-semibold text-gray-600">Final</th>
+                        <th className="text-center px-4 py-2.5 font-semibold text-gray-600">Avg</th>
                         <th className="text-center px-4 py-2.5 font-semibold text-gray-600">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      <tr>
-                        <td className="px-4 py-2.5 text-gray-700">NSTP 1</td>
-                        <td className="px-4 py-2.5 text-center font-medium text-gray-700">
-                          {grades.ms1 ? grades.ms1.grade.toFixed(1) : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          {grades.ms1 ? (
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              grades.ms1.status === "Passed"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}>
-                              {grades.ms1.status}
-                            </span>
-                          ) : "—"}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2.5 text-gray-700">NSTP 2</td>
-                        <td className="px-4 py-2.5 text-center font-medium text-gray-700">
-                          {grades.ms2 ? grades.ms2.grade.toFixed(1) : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          {grades.ms2 ? (
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              grades.ms2.status === "Passed"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}>
-                              {grades.ms2.status}
-                            </span>
-                          ) : "—"}
-                        </td>
-                      </tr>
+                      {[{ label: "NSTP 1", data: grades.ms1 }, { label: "NSTP 2", data: grades.ms2 }].map((item) => (
+                        <tr key={item.label}>
+                          <td className="px-4 py-2.5 text-gray-700">{item.label}</td>
+                          <td className="px-4 py-2.5 text-center font-medium text-gray-700">
+                            {item.data?.midterm != null ? item.data.midterm.toFixed(1) : "—"}
+                          </td>
+                          <td className="px-4 py-2.5 text-center font-medium text-gray-700">
+                            {item.data?.finalTerm != null ? item.data.finalTerm.toFixed(1) : "—"}
+                          </td>
+                          <td className="px-4 py-2.5 text-center font-medium text-gray-700">
+                            {item.data ? item.data.grade.toFixed(1) : "—"}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            {item.data ? (
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                item.data.status === "Passed"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}>
+                                {item.data.status}
+                              </span>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

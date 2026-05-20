@@ -9,11 +9,6 @@ interface AdminGradesProps {
   program: NSTProgram;
 }
 
-function getPassFail(grade: number | undefined) {
-  if (grade === undefined || grade === null) return null;
-  return grade >= 1.0 && grade <= 3.0 ? "Passed" : "Failed";
-}
-
 export default function AdminGrades({ program }: AdminGradesProps) {
   const [students, setStudents] = useState<EnrollmentDocument[]>([]);
   const [ms1Map, setMs1Map] = useState<Map<string, StudentGrade>>(new Map());
@@ -56,14 +51,14 @@ export default function AdminGrades({ program }: AdminGradesProps) {
   const gradedCount = filtered.filter((s) => ms1Map.has(s.uid) || ms2Map.has(s.uid)).length;
   const ungradedCount = filtered.length - gradedCount;
 
-  const handleGradeSaved = (uid: string, ms: "ms1" | "ms2", grade: number) => {
+  const handleGradeSaved = (uid: string, ms: "ms1" | "ms2", grade: number, midterm?: number, finalTerm?: number) => {
     const setMap = ms === "ms1" ? setMs1Map : setMs2Map;
     const status: "Passed" | "Failed" = grade >= 1.0 && grade <= 3.0 ? "Passed" : "Failed";
     const now = new Date().toISOString();
     setMap((prev) => {
       const existing = prev.get(uid);
       const next = new Map(prev);
-      next.set(uid, { student_uid: uid, grade, status, program, createdAt: existing?.createdAt || now, updatedAt: now });
+      next.set(uid, { student_uid: uid, grade, midterm, finalTerm, status, program, createdAt: existing?.createdAt || now, updatedAt: now });
       return next;
     });
   };
@@ -81,8 +76,8 @@ export default function AdminGrades({ program }: AdminGradesProps) {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Encode Grades</h1>
             <p className="text-sm text-gray-500 mt-0.5">
               {program === "ROTC"
-                ? "Assign MS 1 and MS 2 final grades for ROTC cadets."
-                : "Assign MS 1 and MS 2 final grades for CWTS students."}
+                ? "Assign NSTP 1 and NSTP 2 midterm & final term grades for ROTC cadets."
+                : "Assign NSTP 1 and NSTP 2 midterm & final term grades for CWTS students."}
             </p>
           </div>
         </div>
@@ -243,8 +238,8 @@ export default function AdminGrades({ program }: AdminGradesProps) {
         <GradeModal
           student={selectedStudent}
           program={program}
-          ms1Grade={ms1Map.get(selectedStudent.uid)?.grade}
-          ms2Grade={ms2Map.get(selectedStudent.uid)?.grade}
+          ms1Data={ms1Map.get(selectedStudent.uid)}
+          ms2Data={ms2Map.get(selectedStudent.uid)}
           onClose={() => setSelectedStudent(null)}
           onSaved={handleGradeSaved}
         />
@@ -256,15 +251,17 @@ export default function AdminGrades({ program }: AdminGradesProps) {
 interface GradeModalProps {
   student: EnrollmentDocument;
   program: NSTProgram;
-  ms1Grade?: number;
-  ms2Grade?: number;
+  ms1Data?: StudentGrade;
+  ms2Data?: StudentGrade;
   onClose: () => void;
-  onSaved: (uid: string, ms: "ms1" | "ms2", grade: number) => void;
+  onSaved: (uid: string, ms: "ms1" | "ms2", grade: number, midterm?: number, finalTerm?: number) => void;
 }
 
-function GradeModal({ student, program, ms1Grade, ms2Grade, onClose, onSaved }: GradeModalProps) {
-  const [ms1Input, setMs1Input] = useState(ms1Grade !== undefined ? String(ms1Grade) : "");
-  const [ms2Input, setMs2Input] = useState(ms2Grade !== undefined ? String(ms2Grade) : "");
+function GradeModal({ student, program, ms1Data, ms2Data, onClose, onSaved }: GradeModalProps) {
+  const [ms1Mid, setMs1Mid] = useState(ms1Data?.midterm !== undefined ? String(ms1Data.midterm) : "");
+  const [ms1Final, setMs1Final] = useState(ms1Data?.finalTerm !== undefined ? String(ms1Data.finalTerm) : "");
+  const [ms2Mid, setMs2Mid] = useState(ms2Data?.midterm !== undefined ? String(ms2Data.midterm) : "");
+  const [ms2Final, setMs2Final] = useState(ms2Data?.finalTerm !== undefined ? String(ms2Data.finalTerm) : "");
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<string | null>(null);
 
@@ -280,23 +277,41 @@ function GradeModal({ student, program, ms1Grade, ms2Grade, onClose, onSaved }: 
     if (val === "" || /^\d*\.?\d{0,2}$/.test(val)) setter(val);
   };
 
-  const ms1Val = parseFloat(ms1Input);
-  const ms2Val = parseFloat(ms2Input);
-  const ms1Changed = isValid(ms1Input) && ms1Grade !== ms1Val;
-  const ms2Changed = !ms2Disabled && isValid(ms2Input) && ms2Grade !== ms2Val;
+  const computeAvg = (mid: string, final: string) => {
+    const m = parseFloat(mid);
+    const f = parseFloat(final);
+    if (isValid(mid) && isValid(final)) return Math.round(((m + f) / 2) * 100) / 100;
+    return null;
+  };
+
+  const ms1Avg = computeAvg(ms1Mid, ms1Final);
+  const ms2Avg = computeAvg(ms2Mid, ms2Final);
+
+  const ms1MidChanged = isValid(ms1Mid) && ms1Data?.midterm !== parseFloat(ms1Mid);
+  const ms1FinalChanged = isValid(ms1Final) && ms1Data?.finalTerm !== parseFloat(ms1Final);
+  const ms1Changed = (ms1MidChanged || ms1FinalChanged) && ms1Avg !== null;
+
+  const ms2MidChanged = !ms2Disabled && isValid(ms2Mid) && ms2Data?.midterm !== parseFloat(ms2Mid);
+  const ms2FinalChanged = !ms2Disabled && isValid(ms2Final) && ms2Data?.finalTerm !== parseFloat(ms2Final);
+  const ms2Changed = (ms2MidChanged || ms2FinalChanged) && ms2Avg !== null;
+
   const hasChanges = ms1Changed || ms2Changed;
 
   const handleSave = async () => {
     setSaving(true);
     setSaveResult(null);
     try {
-      if (ms1Changed) {
-        await adminService.saveStudentGrade(student.uid, program, "ms1", ms1Val);
-        onSaved(student.uid, "ms1", ms1Val);
+      if (ms1Changed && ms1Avg !== null) {
+        const mid = parseFloat(ms1Mid);
+        const fin = parseFloat(ms1Final);
+        await adminService.saveStudentGrade(student.uid, program, "ms1", ms1Avg, mid, fin);
+        onSaved(student.uid, "ms1", ms1Avg, mid, fin);
       }
-      if (ms2Changed) {
-        await adminService.saveStudentGrade(student.uid, program, "ms2", ms2Val);
-        onSaved(student.uid, "ms2", ms2Val);
+      if (ms2Changed && ms2Avg !== null) {
+        const mid = parseFloat(ms2Mid);
+        const fin = parseFloat(ms2Final);
+        await adminService.saveStudentGrade(student.uid, program, "ms2", ms2Avg, mid, fin);
+        onSaved(student.uid, "ms2", ms2Avg, mid, fin);
       }
       setSaveResult("Grades saved successfully.");
       setTimeout(() => setSaveResult(null), 3000);
@@ -307,24 +322,30 @@ function GradeModal({ student, program, ms1Grade, ms2Grade, onClose, onSaved }: 
     }
   };
 
-  function statusDisplay(val: string, disabled?: boolean) {
-    if (disabled || !val || !isValid(val)) return { label: "—", style: "bg-gray-50 border-gray-200 text-gray-400" };
-    const n = parseFloat(val);
-    return n >= 1.0 && n <= 3.0
+  function statusDisplay(avg: number | null, disabled?: boolean) {
+    if (disabled || avg === null) return { label: "—", style: "bg-gray-50 border-gray-200 text-gray-400" };
+    return avg >= 1.0 && avg <= 3.0
       ? { label: "Passed", style: "bg-green-50 border-green-200 text-green-700" }
       : { label: "Failed", style: "bg-red-50 border-red-200 text-red-700" };
   }
 
-  const ms1Status = statusDisplay(ms1Input);
-  const ms2Status = statusDisplay(ms2Input, ms2Disabled);
+  const ms1Status = statusDisplay(ms1Avg);
+  const ms2Status = statusDisplay(ms2Avg, ms2Disabled);
+
+  const inputClass = (val: string, disabled?: boolean) =>
+    disabled
+      ? "border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed"
+      : val && !isValid(val)
+        ? "border-red-300 bg-red-50 text-red-700"
+        : "border-gray-200 bg-gray-50 text-gray-800";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/30" onClick={onClose} />
 
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="bg-gray-100 border-b border-gray-200 px-5 py-4">
+        <div className="bg-gray-100 border-b border-gray-200 px-5 py-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
@@ -353,33 +374,49 @@ function GradeModal({ student, program, ms1Grade, ms2Grade, onClose, onSaved }: 
 
         {/* Body */}
         <div className="p-5 space-y-4">
-          {/* MS 1 */}
+          {/* NSTP 1 */}
           <div className="rounded-xl border border-gray-100 p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600">1</span>
                 <span className="text-xs font-bold text-gray-700">NSTP 1</span>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${ms1Status.style}`}>
-                {ms1Status.label}
-              </span>
+              <div className="flex items-center gap-2">
+                {ms1Avg !== null && (
+                  <span className="text-[10px] font-bold text-gray-500">Avg: {ms1Avg.toFixed(2)}</span>
+                )}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${ms1Status.style}`}>
+                  {ms1Status.label}
+                </span>
+              </div>
             </div>
-            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 block">Grade</label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={ms1Input}
-              onChange={(e) => handleInputChange(e.target.value, setMs1Input)}
-              placeholder="1.0 - 5.0"
-              className={`w-full px-3 py-2 rounded-lg border text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-gray-400 transition ${
-                ms1Input && !isValid(ms1Input)
-                  ? "border-red-300 bg-red-50 text-red-700"
-                  : "border-gray-200 bg-gray-50 text-gray-800"
-              }`}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 block">Midterm</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={ms1Mid}
+                  onChange={(e) => handleInputChange(e.target.value, setMs1Mid)}
+                  placeholder="1.0 - 5.0"
+                  className={`w-full px-3 py-2 rounded-lg border text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-gray-400 transition ${inputClass(ms1Mid)}`}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 block">Final Term</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={ms1Final}
+                  onChange={(e) => handleInputChange(e.target.value, setMs1Final)}
+                  placeholder="1.0 - 5.0"
+                  className={`w-full px-3 py-2 rounded-lg border text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-gray-400 transition ${inputClass(ms1Final)}`}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* MS 2 */}
+          {/* NSTP 2 */}
           <div className={`rounded-xl border p-4 ${ms2Disabled ? "border-gray-100 bg-gray-50" : "border-gray-100"}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -390,27 +427,42 @@ function GradeModal({ student, program, ms1Grade, ms2Grade, onClose, onSaved }: 
                 )}
               </div>
               {!ms2Disabled && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${ms2Status.style}`}>
-                  {ms2Status.label}
-                </span>
+                <div className="flex items-center gap-2">
+                  {ms2Avg !== null && (
+                    <span className="text-[10px] font-bold text-gray-500">Avg: {ms2Avg.toFixed(2)}</span>
+                  )}
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${ms2Status.style}`}>
+                    {ms2Status.label}
+                  </span>
+                </div>
               )}
             </div>
-            <label className={`text-[10px] font-semibold uppercase tracking-wide mb-1 block ${ms2Disabled ? "text-gray-300" : "text-gray-400"}`}>Grade</label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={ms2Disabled ? "" : ms2Input}
-              onChange={(e) => handleInputChange(e.target.value, setMs2Input)}
-              placeholder={ms2Disabled ? "N/A" : "1.0 - 5.0"}
-              disabled={ms2Disabled}
-              className={`w-full px-3 py-2 rounded-lg border text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-gray-400 transition ${
-                ms2Disabled
-                  ? "border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed"
-                  : ms2Input && !isValid(ms2Input)
-                    ? "border-red-300 bg-red-50 text-red-700"
-                    : "border-gray-200 bg-gray-50 text-gray-800"
-              }`}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={`text-[10px] font-semibold uppercase tracking-wide mb-1 block ${ms2Disabled ? "text-gray-300" : "text-gray-400"}`}>Midterm</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={ms2Disabled ? "" : ms2Mid}
+                  onChange={(e) => handleInputChange(e.target.value, setMs2Mid)}
+                  placeholder={ms2Disabled ? "N/A" : "1.0 - 5.0"}
+                  disabled={ms2Disabled}
+                  className={`w-full px-3 py-2 rounded-lg border text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-gray-400 transition ${inputClass(ms2Mid, ms2Disabled)}`}
+                />
+              </div>
+              <div>
+                <label className={`text-[10px] font-semibold uppercase tracking-wide mb-1 block ${ms2Disabled ? "text-gray-300" : "text-gray-400"}`}>Final Term</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={ms2Disabled ? "" : ms2Final}
+                  onChange={(e) => handleInputChange(e.target.value, setMs2Final)}
+                  placeholder={ms2Disabled ? "N/A" : "1.0 - 5.0"}
+                  disabled={ms2Disabled}
+                  className={`w-full px-3 py-2 rounded-lg border text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-gray-400 transition ${inputClass(ms2Final, ms2Disabled)}`}
+                />
+              </div>
+            </div>
           </div>
 
           {saveResult && (
