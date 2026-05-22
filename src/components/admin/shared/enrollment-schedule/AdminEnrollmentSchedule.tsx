@@ -17,7 +17,9 @@ function formatDisplayDate(dateStr: string) {
   return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${hh}:${mm}:${ss}`;
 }
 
-function getScheduleStatus(openDate: string, deadline: string): { label: string; className: string; dot: string } {
+type ScheduleStatusLabel = "Not Set" | "Upcoming" | "Open" | "Closed";
+
+function getScheduleStatus(openDate: string, deadline: string): { label: ScheduleStatusLabel; className: string; dot: string } {
   if (!openDate || !deadline) return { label: "Not Set", className: "bg-gray-100 text-gray-500 border-gray-200", dot: "bg-gray-400" };
   const now = new Date();
   const open = new Date(openDate);
@@ -45,52 +47,80 @@ interface AdminEnrollmentScheduleProps {
   program: NSTProgram;
 }
 
+const currentYear = new Date().getFullYear();
+const SY_OPTIONS = Array.from({ length: 6 }, (_, i) => {
+  const start = currentYear + i;
+  return `${start}-${start + 1}`;
+});
+
 export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentScheduleProps) {
   const { schedules, isLoading, save, isSaving } = useEnrollmentSchedule(program);
 
   const [showForm, setShowForm] = useState(false);
-  const [editingMs, setEditingMs] = useState<MSLevel | null>(null);
   const [formMs, setFormMs] = useState<MSLevel>("1");
+  const [formYear, setFormYear] = useState(`${currentYear}-${currentYear + 1}`);
   const [formOpen, setFormOpen] = useState("");
   const [formDeadline, setFormDeadline] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const ms1 = schedules.find((s) => s.msLevel === "1") ?? null;
-  const ms2 = schedules.find((s) => s.msLevel === "2") ?? null;
+  const activeSchedules = schedules.filter((s) => {
+    const status = getScheduleStatus(s.openDate, s.deadline);
+    return status.label === "Open" || status.label === "Upcoming";
+  });
+
+  const closedSchedules = schedules
+    .filter((s) => {
+      const status = getScheduleStatus(s.openDate, s.deadline);
+      return status.label === "Closed";
+    })
+    .sort((a, b) => {
+      const yearDiff = (b.year || "0").localeCompare(a.year || "0");
+      if (yearDiff !== 0) return yearDiff;
+      return a.msLevel.localeCompare(b.msLevel);
+    });
+
+  const hasActiveSchedule = activeSchedules.length > 0;
+
+  function getNextMsAndYear(): { ms: MSLevel; year: string } {
+    if (schedules.length === 0) return { ms: "1", year: `${currentYear}-${currentYear + 1}` };
+
+    const sorted = [...schedules].sort((a, b) => {
+      const yearDiff = (b.year || "0").localeCompare(a.year || "0");
+      if (yearDiff !== 0) return yearDiff;
+      return b.msLevel.localeCompare(a.msLevel);
+    });
+
+    const latest = sorted[0];
+    const latestYearStart = parseInt(latest.year?.split("-")[0] || `${currentYear}`, 10);
+    const nextYearStart = latestYearStart + 1;
+    const nextMs: MSLevel = latest.msLevel === "1" ? "2" : "1";
+
+    return { ms: nextMs, year: `${nextYearStart}-${nextYearStart + 1}` };
+  }
 
   function openCreate() {
-    const takenLevels = schedules.map((s) => s.msLevel);
-    const defaultMs = !takenLevels.includes("1") ? "1" : !takenLevels.includes("2") ? "2" : "1";
-    setEditingMs(null);
-    setFormMs(defaultMs);
+    const next = getNextMsAndYear();
+    setFormMs(next.ms);
+    setFormYear(next.year);
     setFormOpen("");
     setFormDeadline("");
     setShowForm(true);
     setSuccess(false);
   }
 
-  function openEdit(schedule: EnrollmentSchedule) {
-    setEditingMs(schedule.msLevel);
-    setFormMs(schedule.msLevel);
-    setFormOpen(schedule.openDate.split("T")[0]);
-    setFormDeadline(schedule.deadline.split("T")[0]);
-    setShowForm(true);
-    setSuccess(false);
-  }
-
   function closeForm() {
     setShowForm(false);
-    setEditingMs(null);
   }
 
-  const isValid = formOpen !== "" && formDeadline !== "" && new Date(formDeadline) >= new Date(formOpen);
+  const duplicateExists = schedules.some((s) => s.msLevel === formMs && s.year === formYear);
+  const isValid = formOpen !== "" && formDeadline !== "" && formYear !== "" && new Date(formDeadline) >= new Date(formOpen) && !duplicateExists;
 
   async function handleSave() {
     if (!isValid) return;
     setSuccess(false);
     const openWithTime = `${formOpen}T00:00:00`;
     const deadlineWithTime = `${formDeadline}T23:59:59`;
-    await save({ program, msLevel: formMs, openDate: openWithTime, deadline: deadlineWithTime, updatedAt: "" });
+    await save({ program, msLevel: formMs, year: formYear, openDate: openWithTime, deadline: deadlineWithTime, updatedAt: "" });
     setSuccess(true);
     setTimeout(() => {
       setSuccess(false);
@@ -116,12 +146,17 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">{program} Enrollment Schedule</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage enrollment schedules per MS level.</p>
+            <p className="text-sm text-gray-500 mt-1">Manage enrollment schedules per MS level and school year.</p>
           </div>
           {!showForm && (
             <button
-              onClick={openCreate}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition shadow-sm"
+              onClick={hasActiveSchedule ? undefined : openCreate}
+              disabled={hasActiveSchedule}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition shadow-sm ${
+                hasActiveSchedule
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -131,19 +166,46 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
           )}
         </div>
 
-        {/* Schedule cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ScheduleCard label="MS 1" schedule={ms1} onEdit={() => ms1 && openEdit(ms1)} />
-          <ScheduleCard label="MS 2" schedule={ms2} onEdit={() => ms2 && openEdit(ms2)} />
+        {hasActiveSchedule && !showForm && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+            <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-xs text-amber-700 font-medium">
+              You cannot create a new schedule while there is an active (open or upcoming) enrollment. Wait until the current schedule is closed.
+            </p>
+          </div>
+        )}
+
+        {/* Current / Active Section */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Current Enrollment</h2>
+          </div>
+          {activeSchedules.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {activeSchedules.map((s) => (
+                <ScheduleCard
+                  key={`${s.msLevel}_${s.year}`}
+                  label={`MS ${s.msLevel} — SY ${s.year || "N/A"}`}
+                  schedule={s}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center">
+              <p className="text-sm text-gray-400 font-medium">No active enrollment schedule.</p>
+              <p className="text-xs text-gray-300 mt-1">Create a new schedule to open enrollment.</p>
+            </div>
+          )}
         </div>
 
-        {/* Create / Edit form */}
+        {/* Create form */}
         {showForm && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-gray-800">
-                {editingMs ? `Edit MS ${editingMs} Schedule` : "Create New Schedule"}
-              </p>
+              <p className="text-sm font-bold text-gray-800">Create New Schedule</p>
               <button onClick={closeForm} className="text-gray-400 hover:text-gray-600 transition">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -151,24 +213,30 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
               </button>
             </div>
 
-            {/* MS Level selector */}
-            <div>
-              <label className={labelClass}>MS Level</label>
-              <select
-                value={formMs}
-                onChange={(e) => setFormMs(e.target.value as MSLevel)}
-                disabled={!!editingMs}
-                className={inputClass + (editingMs ? " bg-gray-50 text-gray-400 cursor-not-allowed" : "")}
-              >
-                {(["1", "2"] as MSLevel[]).map((ms) => {
-                  const exists = !editingMs && schedules.some((s) => s.msLevel === ms);
-                  return (
-                    <option key={ms} value={ms} disabled={exists}>
-                      MS {ms}{exists ? " (already exists)" : ""}
-                    </option>
-                  );
-                })}
-              </select>
+            {/* MS Level + Year */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>MS Level</label>
+                <select
+                  value={formMs}
+                  disabled
+                  className={inputClass + " bg-gray-50 text-gray-400 cursor-not-allowed"}
+                >
+                  <option value={formMs}>MS {formMs}</option>
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1">Auto-determined by sequence (MS 1 → MS 2)</p>
+              </div>
+              <div>
+                <label className={labelClass}>School Year</label>
+                <select
+                  value={formYear}
+                  disabled
+                  className={inputClass + " bg-gray-50 text-gray-400 cursor-not-allowed"}
+                >
+                  <option value={formYear}>SY {formYear}</option>
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1">Auto-determined by sequence</p>
+              </div>
             </div>
 
             {/* Dates */}
@@ -176,6 +244,10 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
               <DateWithTime label="Open Date" value={formOpen} time="00:00:00" onChange={setFormOpen} />
               <DateWithTime label="Deadline" value={formDeadline} time="23:59:59" onChange={setFormDeadline} min={formOpen || undefined} />
             </div>
+
+            {duplicateExists && (
+              <p className="text-xs text-red-500 font-medium">A schedule for MS {formMs} — SY {formYear} already exists.</p>
+            )}
 
             {formOpen && formDeadline && new Date(formDeadline) < new Date(formOpen) && (
               <p className="text-xs text-red-500 font-medium">Deadline must not be before the open date.</p>
@@ -190,8 +262,29 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
                 Cancel
               </Button>
               <Button onClick={handleSave} disabled={!isValid} loading={isSaving} fullWidth className="!py-2.5 !text-sm">
-                {editingMs ? "Update Schedule" : "Create Schedule"}
+                Create Schedule
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Past / Closed Section */}
+        {closedSchedules.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wide">Past Schedules</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {closedSchedules.map((s) => (
+                <ScheduleCard
+                  key={`${s.msLevel}_${s.year}`}
+                  label={`MS ${s.msLevel} — SY ${s.year || "N/A"}`}
+                  schedule={s}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -251,23 +344,15 @@ function DateWithTime({ label, value, time, onChange, min }: { label: string; va
   );
 }
 
-function ScheduleCard({ label, schedule, onEdit }: { label: string; schedule: EnrollmentSchedule | null; onEdit: () => void }) {
-  if (!schedule) {
-    return (
-      <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-5 flex flex-col items-center justify-center min-h-[140px]">
-        <p className="text-sm font-semibold text-gray-300">{label}</p>
-        <p className="text-xs text-gray-300 mt-1">No schedule set</p>
-      </div>
-    );
-  }
-
+function ScheduleCard({ label, schedule }: { label: string; schedule: EnrollmentSchedule }) {
   const status = getScheduleStatus(schedule.openDate, schedule.deadline);
   const daysRemaining = getDaysRemaining(schedule.deadline);
+  const isClosed = status.label === "Closed";
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+    <div className={`rounded-2xl border shadow-sm p-5 space-y-3 ${isClosed ? "bg-gray-50 border-gray-200" : "bg-white border-gray-100"}`}>
       <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-gray-800">{label}</p>
+        <p className={`text-sm font-bold ${isClosed ? "text-gray-500" : "text-gray-800"}`}>{label}</p>
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold ${status.className}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
           {status.label}
@@ -277,24 +362,17 @@ function ScheduleCard({ label, schedule, onEdit }: { label: string; schedule: En
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Opens</p>
-          <p className="text-sm font-semibold text-gray-800 mt-0.5">{formatDisplayDate(schedule.openDate)}</p>
+          <p className={`text-sm font-semibold mt-0.5 ${isClosed ? "text-gray-500" : "text-gray-800"}`}>{formatDisplayDate(schedule.openDate)}</p>
         </div>
         <div>
           <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Deadline</p>
-          <p className="text-sm font-semibold text-gray-800 mt-0.5">{formatDisplayDate(schedule.deadline)}</p>
+          <p className={`text-sm font-semibold mt-0.5 ${isClosed ? "text-gray-500" : "text-gray-800"}`}>{formatDisplayDate(schedule.deadline)}</p>
         </div>
       </div>
 
-      {daysRemaining && (
+      {daysRemaining && !isClosed && (
         <p className="text-[10px] text-gray-500 pt-2 border-t border-gray-100">{daysRemaining}</p>
       )}
-
-      <button
-        onClick={onEdit}
-        className="w-full py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition"
-      >
-        Edit Schedule
-      </button>
     </div>
   );
 }

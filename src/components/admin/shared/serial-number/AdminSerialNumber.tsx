@@ -5,7 +5,7 @@ import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { adminService } from "@/services/admin.service";
 import {
   NSTProgram,
-  EnrollmentDocument,
+  EnrollmentWithMs,
   StudentGrade,
   ROTC_BATTALION_1_COMPANIES,
   ROTC_BATTALION_2_COMPANIES,
@@ -15,7 +15,7 @@ import {
 type BattalionFilter = "All" | "Battalion 1" | "Battalion 2" | "Special Platoon" | "Advance Course";
 type EligibilityFilter = "All" | "Eligible" | "Not Eligible" | "Assigned";
 
-interface StudentWithGrades extends EnrollmentDocument {
+interface StudentWithGrades extends EnrollmentWithMs {
   ms1Grade?: StudentGrade;
   ms2Grade?: StudentGrade;
   serialCreatedAt?: string;
@@ -94,7 +94,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
   const [sigBccPresidentFile, setSigBccPresidentFile] = useState<File | null>(null);
 
   const approvedStudents = useMemo(
-    () => enrollments.filter((e) => e.status === "approved"),
+    () => enrollments.filter((e) => e.msRecords.some((r) => r.status === "approved")),
     [enrollments]
   );
 
@@ -1051,7 +1051,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
 }
 
 function matchBattalion(
-  s: EnrollmentDocument,
+  s: EnrollmentWithMs,
   battalion: 1 | 2,
   companyFilter: string,
   platoonFilter: string
@@ -1064,7 +1064,7 @@ function matchBattalion(
   return true;
 }
 
-function matchSpecialPlatoon(s: EnrollmentDocument, companyFilter: string): boolean {
+function matchSpecialPlatoon(s: EnrollmentWithMs, companyFilter: string): boolean {
   if (!s.specialUnit) return false;
   if (companyFilter !== "All" && s.specialUnit !== companyFilter) return false;
   return true;

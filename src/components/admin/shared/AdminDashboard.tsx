@@ -27,10 +27,11 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
   useAutoCloseExpiredSessions();
 
   const base = `/admin/${program.toLowerCase()}`;
-  const pending = enrollments.filter((e) => e.status === "pending").length;
-  const approved = enrollments.filter((e) => e.status === "approved").length;
-  const rejected = enrollments.filter((e) => e.status === "rejected").length;
-  const total = enrollments.length;
+  const allMsRecords = enrollments.flatMap((e) => e.msRecords);
+  const pending = allMsRecords.filter((r) => r.status === "pending").length;
+  const approved = allMsRecords.filter((r) => r.status === "approved").length;
+  const rejected = allMsRecords.filter((r) => r.status === "rejected").length;
+  const total = allMsRecords.length;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">

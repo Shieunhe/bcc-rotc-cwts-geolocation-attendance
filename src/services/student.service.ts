@@ -1,12 +1,35 @@
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { EnrollmentDocument, AttendanceSession, AttendanceRecord, AttendanceRecordStatus, StudentGrade, AttendanceOffense } from "@/types";
+import { EnrollmentDocument, EnrollmentWithMs, StudentMsRecord, AttendanceSession, AttendanceRecord, AttendanceRecordStatus, StudentGrade, AttendanceOffense } from "@/types";
+
+function mergeWithMsRecords(enrollment: EnrollmentDocument, msRecords: StudentMsRecord[]): EnrollmentWithMs {
+  const records = msRecords.filter((r) => r.uid === enrollment.uid);
+  const msLevelOne = records.some((r) => r.msLevel === "1");
+  const msLevelTwo = records.some((r) => r.msLevel === "2");
+  const latest = [...records].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  return {
+    ...enrollment,
+    status: latest?.status ?? "pending",
+    msLevelOne,
+    msLevelTwo,
+    rejectionReason: latest?.rejectionReason,
+    msRecords: records,
+  };
+}
 
 export const studentService = {
-  async getProfile(uid: string): Promise<EnrollmentDocument | null> {
+  async getProfile(uid: string): Promise<EnrollmentWithMs | null> {
     const snap = await getDoc(doc(db, "account_reservations", uid));
     if (!snap.exists()) return null;
-    return snap.data() as EnrollmentDocument;
+    const enrollment = snap.data() as EnrollmentDocument;
+    const msSnap = await getDocs(query(collection(db, "student_ms_records"), where("uid", "==", uid)));
+    const msRecords = msSnap.docs.map((d) => d.data() as StudentMsRecord);
+    return mergeWithMsRecords(enrollment, msRecords);
+  },
+
+  async getStudentMsRecords(uid: string): Promise<StudentMsRecord[]> {
+    const snap = await getDocs(query(collection(db, "student_ms_records"), where("uid", "==", uid)));
+    return snap.docs.map((d) => d.data() as StudentMsRecord);
   },
 
   async getAttendanceSessions(): Promise<AttendanceSession[]> {
@@ -15,10 +38,28 @@ export const studentService = {
   },
 
   async markAbsentStudents(sessionId: string, program: string, isAdvanceCourse?: boolean, miNumber?: number, miType?: "in" | "out"): Promise<void> {
-    const enrolledSnap = await getDocs(
-      query(collection(db, "account_reservations"), where("nstpComponent", "==", program), where("status", "==", "approved"))
-    );
-    if (enrolledSnap.empty) return;
+    const msSnap = await getDocs(query(collection(db, "student_ms_records"), where("program", "==", program)));
+    const msRecords = msSnap.docs.map((d) => d.data() as StudentMsRecord);
+    const byUid = new Map<string, StudentMsRecord[]>();
+    for (const r of msRecords) {
+      if (!byUid.has(r.uid)) byUid.set(r.uid, []);
+      byUid.get(r.uid)!.push(r);
+    }
+    const approvedUids: string[] = [];
+    for (const [uid, records] of byUid) {
+      const latest = [...records].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      if (latest?.status === "approved") approvedUids.push(uid);
+    }
+    if (approvedUids.length === 0) return;
+    const profiles: EnrollmentDocument[] = [];
+    const bSize = 30;
+    for (let i = 0; i < approvedUids.length; i += bSize) {
+      const batch = approvedUids.slice(i, i + bSize);
+      const q2 = query(collection(db, "account_reservations"), where("uid", "in", batch));
+      const snap2 = await getDocs(q2);
+      profiles.push(...snap2.docs.map((d) => d.data() as EnrollmentDocument));
+    }
+    if (profiles.length === 0) return;
 
     const recordsSnap = await getDocs(
       query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))
@@ -29,8 +70,7 @@ export const studentService = {
     const batch = writeBatch(db);
     let count = 0;
 
-    for (const enrolled of enrolledSnap.docs) {
-      const data = enrolled.data() as EnrollmentDocument;
+    for (const data of profiles) {
       if (markedUids.has(data.uid)) continue;
 
       if (program === "ROTC") {

@@ -2,18 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { adminService } from "@/services/admin.service";
-import { NSTProgram, EnrollmentDocument, AttendanceRecord, StudentGrade } from "@/types";
+import { NSTProgram, EnrollmentWithMs, StudentMsRecord, AttendanceRecord, StudentGrade } from "@/types";
 
 interface StudentRecordModalProps {
-  student: EnrollmentDocument;
+  student: EnrollmentWithMs;
   program: NSTProgram;
+  msLevel: string;
   onClose: () => void;
 }
 
-export default function StudentRecordModal({ student, program, onClose }: StudentRecordModalProps) {
+function extractSY(scheduleId: string): string {
+  const parts = scheduleId.split("_");
+  return parts.length >= 3 ? parts.slice(2).join("_") : "";
+}
+
+export default function StudentRecordModal({ student, program, msLevel, onClose }: StudentRecordModalProps) {
   const [loading, setLoading] = useState(true);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [grades, setGrades] = useState<{ ms1?: StudentGrade; ms2?: StudentGrade }>({});
+
+  const msRecord = student.msRecords.find((r) => r.msLevel === msLevel);
+  const sy = msRecord ? extractSY(msRecord.scheduleId) : "";
+  const msLabel = `MS ${msLevel}`;
+  const gradeData = msLevel === "1" ? grades.ms1 : grades.ms2;
 
   useEffect(() => {
     async function fetchData() {
@@ -46,8 +57,11 @@ export default function StudentRecordModal({ student, program, onClose }: Studen
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">Student Record</h2>
-            <p className="text-sm text-gray-500">{student.firstName} {student.lastName}</p>
+            <h2 className="text-lg font-bold text-gray-800">Student Record — {msLabel}</h2>
+            <p className="text-sm text-gray-500">
+              {student.firstName} {student.lastName}
+              {sy && <span className="ml-2 text-xs text-gray-400">SY {sy}</span>}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -80,8 +94,10 @@ export default function StudentRecordModal({ student, program, onClose }: Studen
                   <InfoItem label="Name" value={`${student.lastName}, ${student.firstName} ${student.middleName}`} />
                   <InfoItem label="Course" value={student.course} />
                   <InfoItem label="Year Level" value={student.yearLevel} />
-                  <InfoItem label="MS Level" value={student.msLevel} />
                   <InfoItem label="Program" value={student.nstpComponent} />
+                  <InfoItem label="MS Level" value={msLabel} />
+                  <InfoItem label="School Year" value={sy ? `SY ${sy}` : "—"} />
+                  <InfoItem label="Serial Number" value={student.serialNumber || "N/A"} />
                 </div>
               </section>
 
@@ -104,13 +120,13 @@ export default function StudentRecordModal({ student, program, onClose }: Studen
                 </section>
               )}
 
-              {/* Grades */}
+              {/* Grade for selected MS level */}
               <section>
                 <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
-                  Grades
+                  Grade — NSTP {msLevel}
                 </h3>
                 <div className="bg-gray-50 rounded-xl overflow-hidden">
                   <table className="w-full text-sm">
@@ -124,31 +140,29 @@ export default function StudentRecordModal({ student, program, onClose }: Studen
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {[{ label: "NSTP 1", data: grades.ms1 }, { label: "NSTP 2", data: grades.ms2 }].map((item) => (
-                        <tr key={item.label}>
-                          <td className="px-4 py-2.5 text-gray-700">{item.label}</td>
-                          <td className="px-4 py-2.5 text-center font-medium text-gray-700">
-                            {item.data?.midterm != null ? item.data.midterm.toFixed(1) : "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-center font-medium text-gray-700">
-                            {item.data?.finalTerm != null ? item.data.finalTerm.toFixed(1) : "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-center font-medium text-gray-700">
-                            {item.data ? item.data.grade.toFixed(1) : "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            {item.data ? (
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                item.data.status === "Passed"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}>
-                                {item.data.status}
-                              </span>
-                            ) : "—"}
-                          </td>
-                        </tr>
-                      ))}
+                      <tr>
+                        <td className="px-4 py-2.5 text-gray-700">NSTP {msLevel}</td>
+                        <td className="px-4 py-2.5 text-center font-medium text-gray-700">
+                          {gradeData?.midterm != null ? gradeData.midterm.toFixed(1) : "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-center font-medium text-gray-700">
+                          {gradeData?.finalTerm != null ? gradeData.finalTerm.toFixed(1) : "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-center font-medium text-gray-700">
+                          {gradeData ? gradeData.grade.toFixed(1) : "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {gradeData ? (
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              gradeData.status === "Passed"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                              {gradeData.status}
+                            </span>
+                          ) : "—"}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -177,7 +191,6 @@ export default function StudentRecordModal({ student, program, onClose }: Studen
                   </div>
                 </div>
 
-                {/* Attendance Details Table */}
                 {totalRecords > 0 ? (
                   <div className="bg-gray-50 rounded-xl overflow-hidden">
                     <table className="w-full text-sm">

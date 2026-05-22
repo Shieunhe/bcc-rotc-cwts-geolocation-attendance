@@ -1,7 +1,7 @@
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { EnrollmentDocument } from "@/types";
+import { EnrollmentDocument, EnrollmentSchedule } from "@/types";
 import { EnrollmentFormData } from "@/types/enrollmentTypes";
 
 const MAX_WIDTH = 800;
@@ -119,7 +119,6 @@ export const enrollmentService = {
         course: formData.course,
         yearLevel: formData.yearLevel,
         nstpComponent: formData.nstpComponent,
-        msLevel: formData.msLevel,
         // Physical & Health
         height: formData.height,
         weight: formData.weight,
@@ -138,11 +137,23 @@ export const enrollmentService = {
         // Metadata
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        status: "pending",
       };
 
       // 4. Save to Firestore with UID as document ID
       await setDoc(doc(db, "account_reservations", uid), firestoreData);
+
+      // 5. Create student_ms_records document
+      const scheduleId = await this._findOpenScheduleId(formData.nstpComponent, formData.msLevel);
+      const now = new Date().toISOString();
+      await addDoc(collection(db, "student_ms_records"), {
+        uid,
+        scheduleId,
+        msLevel: formData.msLevel,
+        status: "pending",
+        program: formData.nstpComponent,
+        createdAt: now,
+        updatedAt: now,
+      });
 
       return { success: true, uid };
     } catch (err: unknown) {
@@ -201,7 +212,6 @@ export const enrollmentService = {
         willingToTakeAdvanceCourse: formData.willingToTakeAdvanceCourse,
         course: formData.course,
         yearLevel: formData.yearLevel,
-        msLevel: formData.msLevel,
         height: formData.height,
         weight: formData.weight,
         bloodType: formData.bloodType,
@@ -213,15 +223,43 @@ export const enrollmentService = {
         medicalCertificate: medicalCertBase64 || existingDoc.medicalCertificate,
         xrayFile: xrayBase64 || existingDoc.xrayFile,
         updatedAt: new Date().toISOString(),
-        status: "pending",
       };
 
       await updateDoc(doc(db, "account_reservations", uid), updateData as Record<string, unknown>);
+
+      // Create student_ms_records document for re-enrollment
+      const scheduleId = await this._findOpenScheduleId(formData.nstpComponent, formData.msLevel);
+      const now = new Date().toISOString();
+      await addDoc(collection(db, "student_ms_records"), {
+        uid,
+        scheduleId,
+        msLevel: formData.msLevel,
+        status: "pending",
+        program: formData.nstpComponent,
+        createdAt: now,
+        updatedAt: now,
+      });
+
       return { success: true, uid };
     } catch (err: unknown) {
       console.error("Re-enrollment error:", err);
       const errorMessage = err instanceof Error ? err.message : "Re-enrollment failed.";
       return { success: false, error: errorMessage };
     }
+  },
+
+  async _findOpenScheduleId(program: string, msLevel: string): Promise<string> {
+    const q = query(
+      collection(db, "enrollment_schedules"),
+      where("program", "==", program),
+      where("msLevel", "==", msLevel),
+    );
+    const snap = await getDocs(q);
+    const now = new Date();
+    const open = snap.docs
+      .map((d) => d.data() as EnrollmentSchedule)
+      .find((s) => now >= new Date(s.openDate) && now <= new Date(s.deadline));
+    if (open) return `${open.program}_${open.msLevel}_${open.year}`;
+    return "";
   },
 };

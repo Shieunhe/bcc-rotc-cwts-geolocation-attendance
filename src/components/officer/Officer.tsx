@@ -7,6 +7,7 @@ import ROTCBattalionTwo from "@/components/officer/dashboard/ROTCBattalionTwo";
 import CWTSCard from "@/components/officer/dashboard/CWTSCard";
 import CreateAttendanceCard from "@/components/officer/dashboard/CreateAttendanceCard";
 import ViewAttendanceCard from "@/components/officer/dashboard/ViewAttendanceCard";
+import ViewRecordsCard from "@/components/officer/dashboard/ViewRecordsCard";
 import SettingsDashboardCard from "@/components/settings/SettingsDashboardCard";
 import AdvanceCourseCard from "@/components/officer/dashboard/AdvanceCourseCard";
 import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
@@ -47,6 +48,7 @@ export default function Officer() {
             <CWTSCard />
             <CreateAttendanceCard />
             <ViewAttendanceCard />
+            <ViewRecordsCard />
             <SettingsDashboardCard href="/officer/settings" />
           </div>
         </main>

@@ -53,7 +53,9 @@ export default function EnrollmentStatus() {
   useAuthGuard({ authLoading, uid });
   const [reEnrollAvailable, setReEnrollAvailable] = useState(false);
 
-  const nextMs = profile?.msLevel === "1" && profile?.status === "approved" ? "2" : null;
+  const ms1Approved = profile?.msRecords.some((r) => r.msLevel === "1" && r.status === "approved");
+  const hasMs2 = profile?.msRecords.some((r) => r.msLevel === "2");
+  const nextMs = ms1Approved && !hasMs2 ? "2" : null;
 
   useEffect(() => {
     if (!nextMs || !profile?.nstpComponent) return;
@@ -90,7 +92,9 @@ export default function EnrollmentStatus() {
     );
   }
 
-  const status = statusConfig[profile.status] ?? statusConfig.pending;
+  const latestRecord = [...profile.msRecords].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  const currentStatus = latestRecord?.status ?? profile.status;
+  const status = statusConfig[currentStatus] ?? statusConfig.pending;
 
   return (
     <StudentPageLayout>
@@ -105,7 +109,7 @@ export default function EnrollmentStatus() {
         </div>
 
         {/* Status banner */}
-        <EnrollmentStatusBanner status={status} rejectionReason={profile.rejectionReason} />
+        <EnrollmentStatusBanner status={status} rejectionReason={latestRecord?.rejectionReason} />
 
         {/* Re-enrollment banner */}
         {reEnrollAvailable && nextMs && (
@@ -130,7 +134,7 @@ export default function EnrollmentStatus() {
         )}
 
         {/* Timeline */}
-        <EnrollmentTimeline timelineSteps={timelineSteps} status={status} profileStatus={profile.status} />
+        <EnrollmentTimeline timelineSteps={timelineSteps} status={status} profileStatus={currentStatus} />
 
         <EnrollmentPersonalInfo profile={profile} />
         <EnrollmentAcademic profile={profile} />

@@ -87,7 +87,9 @@ export default function ReEnrollmentForm() {
   const [scheduleError, setScheduleError] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
 
-  const nextMs = profile?.msLevel === "1" ? "2" : null;
+  const ms1Approved = profile?.msRecords.some((r) => r.msLevel === "1" && r.status === "approved");
+  const hasMs2 = profile?.msRecords.some((r) => r.msLevel === "2");
+  const nextMs = ms1Approved && !hasMs2 ? "2" : null;
 
   useEffect(() => {
     if (profile && nextMs && !formData) {

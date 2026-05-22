@@ -26,6 +26,7 @@ export const SPECIAL_UNIT_SLOT_LIMITS: Record<SpecialUnit, number> = { Medics: 3
 export interface EnrollmentSchedule {
   program: NSTProgram;
   msLevel: MSLevel;
+  year: string;
   openDate: string;
   deadline: string;
   updatedAt: string;
@@ -62,7 +63,6 @@ export interface EnrollmentDocument {
   course: string;
   yearLevel: YearLevel | "";
   nstpComponent: NSTProgram | "";
-  msLevel: MSLevel | "";
   // Physical & Health
   height: string;
   weight: string;
@@ -81,8 +81,6 @@ export interface EnrollmentDocument {
   // Metadata
   createdAt: string;
   updatedAt: string;
-  status: EnrollmentStatus;
-  rejectionReason?: string;
   company?: CWTSCompany;
   // ROTC assignment
   battalion?: ROTCBattalion;
@@ -142,6 +140,25 @@ export interface StudentGrade {
   program: NSTProgram;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StudentMsRecord {
+  uid: string;
+  scheduleId: string;
+  msLevel: MSLevel;
+  status: EnrollmentStatus;
+  rejectionReason?: string;
+  program: NSTProgram;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EnrollmentWithMs extends EnrollmentDocument {
+  status: EnrollmentStatus;
+  msLevelOne: boolean;
+  msLevelTwo: boolean;
+  rejectionReason?: string;
+  msRecords: StudentMsRecord[];
 }
 
 export interface AttendanceOffense {

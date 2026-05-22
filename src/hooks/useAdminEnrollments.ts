@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { adminService } from "@/services/admin.service";
-import { NSTProgram, EnrollmentDocument } from "@/types";
+import { NSTProgram, EnrollmentWithMs } from "@/types";
 
-const EMPTY: EnrollmentDocument[] = [];
+const EMPTY: EnrollmentWithMs[] = [];
 
 export function useAdminEnrollments(program: NSTProgram) {
   const query_ = useQuery({

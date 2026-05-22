@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { adminService } from "@/services/admin.service";
-import { AttendanceOffense, EnrollmentDocument, NSTProgram } from "@/types";
+import { AttendanceOffense, EnrollmentWithMs, NSTProgram } from "@/types";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 
-type OffenseWithStudent = AttendanceOffense & { student?: EnrollmentDocument };
+type OffenseWithStudent = AttendanceOffense & { student?: EnrollmentWithMs };
 type OffenseFilter = "" | "warning" | "settlement";
 
 interface Props {
