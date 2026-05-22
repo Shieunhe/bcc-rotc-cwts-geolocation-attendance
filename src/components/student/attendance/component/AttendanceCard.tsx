@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, lazy, Suspense } from "react";
-import { AttendanceSession, AttendanceRecord, StudentGrade } from "@/types";
+import { AttendanceSession, AttendanceRecord, StudentGrade, StudentMsRecord } from "@/types";
 import { studentService } from "@/services/student.service";
 import { auth } from "@/lib/firebase";
 
@@ -109,16 +109,25 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
 
   const [ms1, setMs1] = useState<StudentGrade | null>(null);
   const [ms2, setMs2] = useState<StudentGrade | null>(null);
+  const [msRecords, setMsRecords] = useState<StudentMsRecord[]>([]);
   const [showGraduatedModal, setShowGraduatedModal] = useState(false);
+  const [showNotEligibleModal, setShowNotEligibleModal] = useState(false);
 
   const isGraduated = ms1 !== null && ms2 !== null;
+  const hasMs1Grade = ms1 !== null;
+  const ms2Approved = msRecords.some((r) => r.msLevel === "2" && r.status === "approved");
+  const isNotEligible = hasMs1Grade && !ms2Approved && !isGraduated;
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
-    studentService.getStudentGrades(uid).then((g) => {
+    Promise.all([
+      studentService.getStudentGrades(uid),
+      studentService.getStudentMsRecords(uid),
+    ]).then(([g, records]) => {
       setMs1(g.ms1);
       setMs2(g.ms2);
+      setMsRecords(records);
     });
   }, []);
 
@@ -204,6 +213,11 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
 
     if (isGraduated) {
       setShowGraduatedModal(true);
+      return;
+    }
+
+    if (isNotEligible) {
+      setShowNotEligibleModal(true);
       return;
     }
 
@@ -484,6 +498,46 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
           {buttonLabel}
         </button>
       </div>
+
+      {/* Not Eligible Modal */}
+      {showNotEligibleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNotEligibleModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-6 pt-8 pb-6 text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 border-2 border-amber-200 flex items-center justify-center mx-auto mb-5 shadow-sm">
+                <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-800">Not Eligible</h2>
+              <p className="text-sm text-gray-500 mt-3 leading-relaxed">
+                You have completed <span className="font-semibold text-amber-700">NSTP 1</span> but you are not yet enrolled in <span className="font-semibold text-amber-700">NSTP 2</span>.
+              </p>
+            </div>
+
+            <div className="px-6 pb-6 pt-4 space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                  You are not eligible to mark attendance at this time. Please enroll in NSTP 2 and wait for approval before attending sessions.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowNotEligibleModal(false)}
+                className="w-full py-3 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 active:scale-[0.98] transition shadow-sm"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Graduated Modal */}
       {showGraduatedModal && (
