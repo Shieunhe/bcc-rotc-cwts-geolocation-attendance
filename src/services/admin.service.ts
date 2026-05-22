@@ -2,7 +2,8 @@ import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, writ
 import { db } from "@/lib/firebase";
 import {
   CWTSCompany, CWTS_COMPANIES, CWTS_COMPANY_SLOT_LIMIT,
-  EnrollmentDocument, EnrollmentSchedule, EnrollmentStatus, NSTProgram,
+  EnrollmentDocument, EnrollmentWithMs, EnrollmentSchedule, EnrollmentStatus, NSTProgram,
+  StudentMsRecord,
   ROTCBattalion, ROTCCompany, ROTCPlatoon,
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
@@ -11,39 +12,114 @@ import {
   AttendanceRecord, AttendanceRecordStatus, StudentGrade, AttendanceOffense,
 } from "@/types";
 
+function mergeWithMsRecords(enrollment: EnrollmentDocument, allMsRecords: StudentMsRecord[]): EnrollmentWithMs {
+  const records = allMsRecords.filter((r) => r.uid === enrollment.uid);
+  const msLevelOne = records.some((r) => r.msLevel === "1");
+  const msLevelTwo = records.some((r) => r.msLevel === "2");
+  const latest = [...records].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  return {
+    ...enrollment,
+    status: latest?.status ?? "pending",
+    msLevelOne,
+    msLevelTwo,
+    rejectionReason: latest?.rejectionReason,
+    msRecords: records,
+  };
+}
+
+async function fetchMsRecordsByProgram(program: NSTProgram): Promise<StudentMsRecord[]> {
+  const snap = await getDocs(query(collection(db, "student_ms_records"), where("program", "==", program)));
+  return snap.docs.map((d) => d.data() as StudentMsRecord);
+}
+
+async function fetchMsRecordsByUid(uid: string): Promise<StudentMsRecord[]> {
+  const snap = await getDocs(query(collection(db, "student_ms_records"), where("uid", "==", uid)));
+  return snap.docs.map((d) => d.data() as StudentMsRecord);
+}
+
+async function fetchApprovedUids(program: NSTProgram): Promise<{ uids: string[]; msRecords: StudentMsRecord[] }> {
+  const msRecords = await fetchMsRecordsByProgram(program);
+  const byUid = new Map<string, StudentMsRecord[]>();
+  for (const r of msRecords) {
+    if (!byUid.has(r.uid)) byUid.set(r.uid, []);
+    byUid.get(r.uid)!.push(r);
+  }
+  const uids: string[] = [];
+  for (const [uid, records] of byUid) {
+    const latest = [...records].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    if (latest?.status === "approved") uids.push(uid);
+  }
+  return { uids, msRecords };
+}
+
+async function batchFetchProfiles(uids: string[]): Promise<EnrollmentDocument[]> {
+  if (uids.length === 0) return [];
+  const profiles: EnrollmentDocument[] = [];
+  const batchSize = 30;
+  for (let i = 0; i < uids.length; i += batchSize) {
+    const batch = uids.slice(i, i + batchSize);
+    const q = query(collection(db, "account_reservations"), where("uid", "in", batch));
+    const snap = await getDocs(q);
+    profiles.push(...snap.docs.map((d) => d.data() as EnrollmentDocument));
+  }
+  return profiles;
+}
+
+async function findLatestMsRecordDoc(uid: string): Promise<{ docId: string; data: StudentMsRecord } | null> {
+  const snap = await getDocs(query(collection(db, "student_ms_records"), where("uid", "==", uid)));
+  if (snap.empty) return null;
+  let latest: { docId: string; data: StudentMsRecord } | null = null;
+  for (const d of snap.docs) {
+    const data = d.data() as StudentMsRecord;
+    if (!latest || new Date(data.createdAt).getTime() > new Date(latest.data.createdAt).getTime()) {
+      latest = { docId: d.id, data };
+    }
+  }
+  return latest;
+}
+
 export const adminService = {
-  async getEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentDocument[]> {
-    const q = query(
-      collection(db, "account_reservations"),
-      where("nstpComponent", "==", program)
-    );
-    const snapshot = await getDocs(q);
-    const enrollments = snapshot.docs.map((doc) => doc.data() as EnrollmentDocument);
-    
-    return enrollments.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+  async getEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentWithMs[]> {
+    const [enrollmentSnap, msRecords] = await Promise.all([
+      getDocs(query(collection(db, "account_reservations"), where("nstpComponent", "==", program))),
+      fetchMsRecordsByProgram(program),
+    ]);
+    const enrollments = enrollmentSnap.docs.map((d) => d.data() as EnrollmentDocument);
+    return enrollments
+      .map((e) => mergeWithMsRecords(e, msRecords))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
   async getEnrollmentSchedule(program: NSTProgram, msLevel: string): Promise<EnrollmentSchedule | null> {
-    const ref = doc(db, "enrollment_schedules", `${program}_${msLevel}`);
-    const snapshot = await getDoc(ref);
-    if (!snapshot.exists()) return null;
-    return snapshot.data() as EnrollmentSchedule;
+    const q = query(
+      collection(db, "enrollment_schedules"),
+      where("program", "==", program),
+      where("msLevel", "==", msLevel),
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    const now = new Date();
+    const open = snapshot.docs
+      .map((d) => d.data() as EnrollmentSchedule)
+      .find((s) => now >= new Date(s.openDate) && now <= new Date(s.deadline));
+    return open ?? (snapshot.docs[0].data() as EnrollmentSchedule);
   },
 
   async getEnrollmentSchedules(program: NSTProgram): Promise<EnrollmentSchedule[]> {
-    const results: EnrollmentSchedule[] = [];
-    for (const ms of ["1", "2"] as const) {
-      const ref = doc(db, "enrollment_schedules", `${program}_${ms}`);
-      const snapshot = await getDoc(ref);
-      if (snapshot.exists()) results.push(snapshot.data() as EnrollmentSchedule);
-    }
-    return results;
+    const q = query(
+      collection(db, "enrollment_schedules"),
+      where("program", "==", program),
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => d.data() as EnrollmentSchedule);
   },
 
   async saveEnrollmentSchedule(schedule: EnrollmentSchedule): Promise<void> {
-    const ref = doc(db, "enrollment_schedules", `${schedule.program}_${schedule.msLevel}`);
+    const ref = doc(db, "enrollment_schedules", `${schedule.program}_${schedule.msLevel}_${schedule.year}`);
+    const existing = await getDoc(ref);
+    if (existing.exists()) {
+      throw new Error(`Schedule for MS ${schedule.msLevel} — SY ${schedule.year} already exists.`);
+    }
     const deadline = schedule.deadline.includes("T")
       ? schedule.deadline
       : `${schedule.deadline}T23:59:59`;
@@ -51,7 +127,8 @@ export const adminService = {
   },
 
   async updateEnrollmentStatus(uid: string, status: EnrollmentStatus, rejectionReason?: string): Promise<void> {
-    const ref = doc(db, "account_reservations", uid);
+    const latest = await findLatestMsRecordDoc(uid);
+    if (!latest) return;
     const data: Record<string, string> = {
       status,
       updatedAt: new Date().toISOString(),
@@ -59,62 +136,48 @@ export const adminService = {
     if (rejectionReason !== undefined) {
       data.rejectionReason = rejectionReason;
     }
-    await updateDoc(ref, data);
+    await updateDoc(doc(db, "student_ms_records", latest.docId), data);
   },
 
-  async getSpecialUnitEnrollments(): Promise<Record<SpecialUnit, EnrollmentDocument[]>> {
-    const q = query(
-      collection(db, "account_reservations"),
-      where("status", "==", "approved"),
-      where("nstpComponent", "==", "ROTC")
-    );
-    const snapshot = await getDocs(q);
-    const result: Record<SpecialUnit, EnrollmentDocument[]> = { Medics: [], HQ: [], MP: [] };
-    for (const d of snapshot.docs) {
-      const enrollment = d.data() as EnrollmentDocument;
-      if (enrollment.specialUnit && result[enrollment.specialUnit]) {
-        result[enrollment.specialUnit].push(enrollment);
+  async getSpecialUnitEnrollments(): Promise<Record<SpecialUnit, EnrollmentWithMs[]>> {
+    const { uids, msRecords } = await fetchApprovedUids("ROTC");
+    const profiles = await batchFetchProfiles(uids);
+    const result: Record<SpecialUnit, EnrollmentWithMs[]> = { Medics: [], HQ: [], MP: [] };
+    for (const p of profiles) {
+      const merged = mergeWithMsRecords(p, msRecords);
+      if (merged.specialUnit && result[merged.specialUnit]) {
+        result[merged.specialUnit].push(merged);
       }
     }
     return result;
   },
 
   async getSpecialUnitCount(unit: SpecialUnit): Promise<number> {
-    const q = query(
-      collection(db, "account_reservations"),
-      where("status", "==", "approved"),
-      where("specialUnit", "==", unit)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.size;
+    const { uids } = await fetchApprovedUids("ROTC");
+    const profiles = await batchFetchProfiles(uids);
+    return profiles.filter((p) => p.specialUnit === unit).length;
   },
 
   async approveWithSpecialUnit(uid: string, specialUnit: SpecialUnit): Promise<string | null> {
     const count = await this.getSpecialUnitCount(specialUnit);
     if (count >= SPECIAL_UNIT_SLOT_LIMITS[specialUnit]) return null;
 
-    const ref = doc(db, "account_reservations", uid);
-    await updateDoc(ref, {
-      status: "approved",
+    await updateDoc(doc(db, "account_reservations", uid), {
       specialUnit,
       updatedAt: new Date().toISOString(),
     });
+    await this.updateEnrollmentStatus(uid, "approved");
     return specialUnit;
   },
 
   async getNextAvailableCWTSCompany(): Promise<CWTSCompany | null> {
-    const q = query(
-      collection(db, "account_reservations"),
-      where("nstpComponent", "==", "CWTS"),
-      where("status", "==", "approved")
-    );
-    const snapshot = await getDocs(q);
-    const enrollments = snapshot.docs.map((d) => d.data() as EnrollmentDocument);
+    const { uids } = await fetchApprovedUids("CWTS");
+    const profiles = await batchFetchProfiles(uids);
 
     const counts: Record<CWTSCompany, number> = {
       Alpha: 0, Bravo: 0, Charlie: 0, Delta: 0, Echo: 0, Foxtrot: 0,
     };
-    for (const e of enrollments) {
+    for (const e of profiles) {
       if (e.company && counts[e.company] !== undefined) {
         counts[e.company]++;
       }
@@ -123,21 +186,17 @@ export const adminService = {
     return CWTS_COMPANIES.find((c) => counts[c] < CWTS_COMPANY_SLOT_LIMIT) ?? null;
   },
 
-  async getCWTSCompanyCounts(): Promise<Record<CWTSCompany, EnrollmentDocument[]>> {
-    const q = query(
-      collection(db, "account_reservations"),
-      where("nstpComponent", "==", "CWTS"),
-      where("status", "==", "approved")
-    );
-    const snapshot = await getDocs(q);
-    const enrollments = snapshot.docs.map((d) => d.data() as EnrollmentDocument);
+  async getCWTSCompanyCounts(): Promise<Record<CWTSCompany, EnrollmentWithMs[]>> {
+    const { uids, msRecords } = await fetchApprovedUids("CWTS");
+    const profiles = await batchFetchProfiles(uids);
 
-    const grouped: Record<CWTSCompany, EnrollmentDocument[]> = {
+    const grouped: Record<CWTSCompany, EnrollmentWithMs[]> = {
       Alpha: [], Bravo: [], Charlie: [], Delta: [], Echo: [], Foxtrot: [],
     };
-    for (const e of enrollments) {
-      if (e.company && grouped[e.company]) {
-        grouped[e.company].push(e);
+    for (const p of profiles) {
+      const merged = mergeWithMsRecords(p, msRecords);
+      if (merged.company && grouped[merged.company]) {
+        grouped[merged.company].push(merged);
       }
     }
     return grouped;
@@ -147,25 +206,20 @@ export const adminService = {
     const company = await this.getNextAvailableCWTSCompany();
     if (!company) return null;
 
-    const ref = doc(db, "account_reservations", uid);
-    await updateDoc(ref, {
-      status: "approved",
+    await updateDoc(doc(db, "account_reservations", uid), {
       company,
       updatedAt: new Date().toISOString(),
     });
+    await this.updateEnrollmentStatus(uid, "approved");
     return company;
   },
 
   // ─── ROTC ───
 
-  async getROTCApprovedEnrollments(): Promise<EnrollmentDocument[]> {
-    const q = query(
-      collection(db, "account_reservations"),
-      where("nstpComponent", "==", "ROTC"),
-      where("status", "==", "approved")
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => d.data() as EnrollmentDocument);
+  async getROTCApprovedEnrollments(): Promise<EnrollmentWithMs[]> {
+    const { uids, msRecords } = await fetchApprovedUids("ROTC");
+    const profiles = await batchFetchProfiles(uids);
+    return profiles.map((p) => mergeWithMsRecords(p, msRecords));
   },
 
   async assignROTCPlatoons(): Promise<{ assigned: number; alreadyAssigned: number }> {
@@ -210,7 +264,7 @@ export const adminService = {
   },
 
   buildROTCSlotCounts(
-    assigned: EnrollmentDocument[],
+    assigned: EnrollmentWithMs[],
     companies: ROTCCompany[]
   ): Record<string, number> {
     const counts: Record<string, number> = {};
@@ -227,7 +281,7 @@ export const adminService = {
   },
 
   computeROTCAssignments(
-    cadets: EnrollmentDocument[],
+    cadets: EnrollmentWithMs[],
     battalion: ROTCBattalion,
     companies: ROTCCompany[],
     slotCounts: Record<string, number>
@@ -273,28 +327,28 @@ export const adminService = {
   },
 
   async getROTCRosterGrouped(): Promise<{
-    battalion1: Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
-    battalion2: Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
-    advanceCourseMale: EnrollmentDocument[];
-    advanceCourseFemale: EnrollmentDocument[];
+    battalion1: Record<ROTCCompany, Record<number, EnrollmentWithMs[]>>;
+    battalion2: Record<ROTCCompany, Record<number, EnrollmentWithMs[]>>;
+    advanceCourseMale: EnrollmentWithMs[];
+    advanceCourseFemale: EnrollmentWithMs[];
   }> {
     const enrollments = await this.getROTCApprovedEnrollments();
 
     const buildEmpty = (companies: ROTCCompany[]) => {
-      const result: Record<string, Record<number, EnrollmentDocument[]>> = {};
+      const result: Record<string, Record<number, EnrollmentWithMs[]>> = {};
       for (const c of companies) {
         result[c] = {};
         for (let p = 1; p <= ROTC_PLATOONS_PER_COMPANY; p++) {
           result[c][p] = [];
         }
       }
-      return result as Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
+      return result as Record<ROTCCompany, Record<number, EnrollmentWithMs[]>>;
     };
 
     const battalion1 = buildEmpty(ROTC_BATTALION_1_COMPANIES);
     const battalion2 = buildEmpty(ROTC_BATTALION_2_COMPANIES);
-    const advanceCourseMale: EnrollmentDocument[] = [];
-    const advanceCourseFemale: EnrollmentDocument[] = [];
+    const advanceCourseMale: EnrollmentWithMs[] = [];
+    const advanceCourseFemale: EnrollmentWithMs[] = [];
 
     for (const e of enrollments) {
       if (e.specialUnit || e.medicalCondition) continue;
@@ -371,10 +425,9 @@ export const adminService = {
   },
 
   async markAbsentStudents(sessionId: string, program: string, isAdvanceCourse?: boolean, miNumber?: number, miType?: "in" | "out"): Promise<void> {
-    const enrolledSnap = await getDocs(
-      query(collection(db, "account_reservations"), where("nstpComponent", "==", program), where("status", "==", "approved"))
-    );
-    if (enrolledSnap.empty) return;
+    const { uids } = await fetchApprovedUids(program as NSTProgram);
+    const profiles = await batchFetchProfiles(uids);
+    if (profiles.length === 0) return;
 
     const recordsSnap = await getDocs(
       query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))
@@ -385,8 +438,7 @@ export const adminService = {
     const batch = writeBatch(db);
     let count = 0;
 
-    for (const enrolled of enrolledSnap.docs) {
-      const data = enrolled.data() as EnrollmentDocument;
+    for (const data of profiles) {
       if (markedUids.has(data.uid)) continue;
 
       if (program === "ROTC") {
@@ -412,18 +464,23 @@ export const adminService = {
     if (count > 0) await batch.commit();
   },
 
-  async getSessionAttendanceRecords(sessionId: string): Promise<(AttendanceRecord & { student?: EnrollmentDocument })[]> {
+  async getSessionAttendanceRecords(sessionId: string): Promise<(AttendanceRecord & { student?: EnrollmentWithMs })[]> {
     const recordsSnap = await getDocs(
       query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))
     );
     const records = recordsSnap.docs.map((d) => d.data() as AttendanceRecord);
 
     const studentUids = [...new Set(records.map((r) => r.studentUid))];
-    const studentMap = new Map<string, EnrollmentDocument>();
+    const studentMap = new Map<string, EnrollmentWithMs>();
 
     for (const uid of studentUids) {
-      const snap = await getDoc(doc(db, "account_reservations", uid));
-      if (snap.exists()) studentMap.set(uid, snap.data() as EnrollmentDocument);
+      const [snap, msRecords] = await Promise.all([
+        getDoc(doc(db, "account_reservations", uid)),
+        fetchMsRecordsByUid(uid),
+      ]);
+      if (snap.exists()) {
+        studentMap.set(uid, mergeWithMsRecords(snap.data() as EnrollmentDocument, msRecords));
+      }
     }
 
     return records.map((r) => ({ ...r, student: studentMap.get(r.studentUid) }));
@@ -440,15 +497,16 @@ export const adminService = {
   },
 
   async getAttendanceSummary(sessionId: string, program: string): Promise<{
-    records: (AttendanceRecord & { student?: EnrollmentDocument })[];
-    enrolledStudents: EnrollmentDocument[];
+    records: (AttendanceRecord & { student?: EnrollmentWithMs })[];
+    enrolledStudents: EnrollmentWithMs[];
   }> {
-    const [recordsSnap, enrolledSnap] = await Promise.all([
+    const { uids, msRecords } = await fetchApprovedUids(program as NSTProgram);
+    const [recordsSnap, profiles] = await Promise.all([
       getDocs(query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))),
-      getDocs(query(collection(db, "account_reservations"), where("nstpComponent", "==", program), where("status", "==", "approved"))),
+      batchFetchProfiles(uids),
     ]);
 
-    const enrolledStudents = enrolledSnap.docs.map((d) => d.data() as EnrollmentDocument);
+    const enrolledStudents = profiles.map((p) => mergeWithMsRecords(p, msRecords));
     const studentMap = new Map(enrolledStudents.map((s) => [s.uid, s]));
 
     const records = recordsSnap.docs.map((d) => {
@@ -500,15 +558,11 @@ export const adminService = {
 
   // ─── Grades ─────────────────────────────────────────────────────
 
-  async getApprovedEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentDocument[]> {
-    const q = query(
-      collection(db, "account_reservations"),
-      where("nstpComponent", "==", program),
-      where("status", "==", "approved"),
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-      .map((d) => d.data() as EnrollmentDocument)
+  async getApprovedEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentWithMs[]> {
+    const { uids, msRecords } = await fetchApprovedUids(program);
+    const profiles = await batchFetchProfiles(uids);
+    return profiles
+      .map((p) => mergeWithMsRecords(p, msRecords))
       .sort((a, b) => a.lastName.localeCompare(b.lastName));
   },
 
@@ -558,23 +612,24 @@ export const adminService = {
     await updateDoc(ref, { status: newStatus, updatedAt: new Date().toISOString() });
   },
 
-  async getAllAttendanceOffenses(): Promise<(AttendanceOffense & { student?: EnrollmentDocument })[]> {
+  async getAllAttendanceOffenses(): Promise<(AttendanceOffense & { student?: EnrollmentWithMs })[]> {
     const offenseSnap = await getDocs(collection(db, "attendance_offenses"));
     if (offenseSnap.empty) return [];
 
     const offenses = offenseSnap.docs.map((d) => d.data() as AttendanceOffense);
     const uids = offenses.map((o) => o.student_uid);
 
-    const enrollmentMap = new Map<string, EnrollmentDocument>();
+    const enrollmentMap = new Map<string, EnrollmentWithMs>();
     const batchSize = 10;
     for (let i = 0; i < uids.length; i += batchSize) {
       const batch = uids.slice(i, i + batchSize);
       const q = query(collection(db, "account_reservations"), where("uid", "in", batch));
       const snap = await getDocs(q);
-      snap.docs.forEach((d) => {
+      for (const d of snap.docs) {
         const data = d.data() as EnrollmentDocument;
-        enrollmentMap.set(data.uid, data);
-      });
+        const msRecords = await fetchMsRecordsByUid(data.uid);
+        enrollmentMap.set(data.uid, mergeWithMsRecords(data, msRecords));
+      }
     }
 
     return offenses.map((o) => ({ ...o, student: enrollmentMap.get(o.student_uid) }));

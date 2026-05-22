@@ -26,8 +26,12 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
   const [filters, setFilters] = useState<EnrollmentFilters>(defaultFilters);
 
   const filtered = enrollments.filter((e) => {
-    if (filters.status !== "all" && e.status !== filters.status) return false;
-    if (filters.msLevel && e.msLevel !== filters.msLevel) return false;
+    if (filters.status !== "all") {
+      const hasMatchingRecord = e.msRecords.some((r) => r.status === filters.status);
+      if (!hasMatchingRecord) return false;
+    }
+    if (filters.msLevel === "1" && !e.msRecords.some((r) => r.msLevel === "1")) return false;
+    if (filters.msLevel === "2" && !e.msRecords.some((r) => r.msLevel === "2")) return false;
     if (filters.yearLevel && e.yearLevel !== filters.yearLevel) return false;
     if (filters.course && e.course !== filters.course) return false;
     if (filters.medicalCondition === "yes" && e.hasMedicalCondition !== true) return false;
@@ -82,7 +86,7 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
             </p>
           </div>
         ) : (
-          <AdminEnrollmentTable enrollments={filtered} onStatusChange={refetch} />
+          <AdminEnrollmentTable enrollments={filtered} onStatusChange={refetch} statusFilter={filters.status} />
         )}
       </div>
     </AdminPageLayout>

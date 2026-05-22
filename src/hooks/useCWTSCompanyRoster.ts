@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { adminService } from "@/services/admin.service";
-import { CWTSCompany, EnrollmentDocument } from "@/types";
+import { CWTSCompany, EnrollmentWithMs } from "@/types";
 
 export function useCWTSCompanyRoster() {
   const query_ = useQuery({
@@ -16,7 +16,7 @@ export function useCWTSCompanyRoster() {
     error: query_.error,
     refetch: query_.refetch,
   } as {
-    companies: Record<CWTSCompany, EnrollmentDocument[]> | null;
+    companies: Record<CWTSCompany, EnrollmentWithMs[]> | null;
     isLoading: boolean;
     error: Error | null;
     refetch: () => void;

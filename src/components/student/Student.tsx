@@ -77,7 +77,9 @@ export default function Student() {
     );
   }
 
-  const status = statusConfig[profile.status] ?? statusConfig.pending;
+  const latestRecord = [...profile.msRecords].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  const currentStatus = latestRecord?.status ?? profile.status;
+  const status = statusConfig[currentStatus] ?? statusConfig.pending;
   const lastName = profile.lastName ?? "Student";
 
   return (
@@ -112,7 +114,7 @@ export default function Student() {
             {/* Enrollment Status */}
             <EnrollmentStatus status={status} />
             {/* Assigned Platoon */}
-            <AssignedPlatoon company={profile.company} rotcCompany={profile.rotcCompany} battalion={profile.battalion} rotcPlatoon={profile.rotcPlatoon} program={profile.nstpComponent} status={profile.status} willingToTakeAdvanceCourse={profile.willingToTakeAdvanceCourse} specialUnit={profile.specialUnit} />
+            <AssignedPlatoon company={profile.company} rotcCompany={profile.rotcCompany} battalion={profile.battalion} rotcPlatoon={profile.rotcPlatoon} program={profile.nstpComponent} status={currentStatus} willingToTakeAdvanceCourse={profile.willingToTakeAdvanceCourse} specialUnit={profile.specialUnit} />
             {/* Attendance */}
             <Attendance/>
             {/* <Link href="/student/attendance" className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">

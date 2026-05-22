@@ -3,20 +3,20 @@
 import { useEffect, useState, useCallback } from "react";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 import { adminService } from "@/services/admin.service";
-import { EnrollmentDocument, NSTProgram, StudentGrade } from "@/types";
+import { EnrollmentWithMs, NSTProgram, StudentGrade } from "@/types";
 
 interface AdminGradesProps {
   program: NSTProgram;
 }
 
 export default function AdminGrades({ program }: AdminGradesProps) {
-  const [students, setStudents] = useState<EnrollmentDocument[]>([]);
+  const [students, setStudents] = useState<EnrollmentWithMs[]>([]);
   const [ms1Map, setMs1Map] = useState<Map<string, StudentGrade>>(new Map());
   const [ms2Map, setMs2Map] = useState<Map<string, StudentGrade>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [filterYear, setFilterYear] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState<EnrollmentDocument | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<EnrollmentWithMs | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -209,7 +209,7 @@ export default function AdminGrades({ program }: AdminGradesProps) {
                       </p>
                       <p className="text-[10px] text-gray-400 mt-0.5">
                         {s.studentId} &middot; {s.course} &middot; {s.yearLevel}
-                        {program === "ROTC" ? ` · MS ${s.msLevel || "—"}` : ""}
+                        {program === "ROTC" ? ` · ${s.msRecords.map((r) => `MS ${r.msLevel}`).join(", ") || "—"}` : ""}
                       </p>
                     </div>
                     <button
@@ -249,7 +249,7 @@ export default function AdminGrades({ program }: AdminGradesProps) {
 }
 
 interface GradeModalProps {
-  student: EnrollmentDocument;
+  student: EnrollmentWithMs;
   program: NSTProgram;
   ms1Data?: StudentGrade;
   ms2Data?: StudentGrade;
@@ -265,7 +265,7 @@ function GradeModal({ student, program, ms1Data, ms2Data, onClose, onSaved }: Gr
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<string | null>(null);
 
-  const ms2Disabled = student.msLevel === "1";
+  const ms2Disabled = !student.msRecords.some((r) => r.msLevel === "2" && r.status === "approved");
 
   const isValid = (val: string) => {
     if (!val) return false;

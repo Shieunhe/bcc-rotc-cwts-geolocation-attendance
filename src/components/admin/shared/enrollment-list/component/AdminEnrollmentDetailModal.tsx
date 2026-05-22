@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { EnrollmentDocument, EnrollmentStatus, SpecialUnit, SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, Sex } from "@/types";
+import { EnrollmentDocument, EnrollmentWithMs, EnrollmentStatus, SpecialUnit, SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, Sex } from "@/types";
 import { adminService } from "@/services/admin.service";
 import FilePreview from "@/components/common/FilePreview";
 import Button from "@/components/common/Button";
@@ -20,7 +20,7 @@ const STATUS_CONFIG: Record<EnrollmentStatus, { label: string; className: string
 };
 
 interface AdminEnrollmentDetailModalProps {
-  enrollment: EnrollmentDocument;
+  enrollment: EnrollmentWithMs;
   onClose: () => void;
   onStatusChange?: () => void;
 }
@@ -199,7 +199,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
     }
   }
 
-  const isReEnrollment = enrollment.msLevel === "2" && !!(
+  const isReEnrollment = enrollment.msLevelTwo && !!(
     enrollment.company || enrollment.battalion || enrollment.rotcCompany || enrollment.specialUnit
   );
 
@@ -344,7 +344,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
             <Field label="Year Level" value={e.yearLevel} editing={isEditing} editValue={formData.yearLevel as string} onChange={(v) => updateField("yearLevel", v as typeof formData.yearLevel)} type="select"
               options={[{ value: "", label: "Select" }, { value: "1st Year", label: "1st Year" }, { value: "2nd Year", label: "2nd Year" }, { value: "3rd Year", label: "3rd Year" }, { value: "4th Year", label: "4th Year" }]} />
             <Field label="NSTP Component" value={enrollment.nstpComponent} />
-            <Field label="MS Level" value={enrollment.msLevel} />
+            <Field label="MS Level" value={[enrollment.msLevelOne && "MS 1", enrollment.msLevelTwo && "MS 2"].filter(Boolean).join(", ") || "—"} />
             <Field label="Advance Course" value={e.willingToTakeAdvanceCourse ? "Yes" : "No"}
               editing={isEditing} editValue={formData.willingToTakeAdvanceCourse ? "yes" : "no"}
               onChange={(v) => updateField("willingToTakeAdvanceCourse", v === "yes")}

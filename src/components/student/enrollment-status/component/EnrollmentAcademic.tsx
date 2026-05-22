@@ -1,8 +1,8 @@
-import { EnrollmentDocument } from "@/types";
+import { EnrollmentWithMs } from "@/types";
 import EnrollmentDetailRow from "./EnrollmentDetailRow";
 
 interface Props {
-  profile: EnrollmentDocument;
+  profile: EnrollmentWithMs;
 }
 
 export default function EnrollmentAcademic({ profile }: Props) {
@@ -12,7 +12,7 @@ export default function EnrollmentAcademic({ profile }: Props) {
       <EnrollmentDetailRow label="Course" value={profile.course} />
       <EnrollmentDetailRow label="Year Level" value={profile.yearLevel} />
       <EnrollmentDetailRow label="NSTP Component" value={profile.nstpComponent} />
-      <EnrollmentDetailRow label="MS Level" value={profile.msLevel} />
+      <EnrollmentDetailRow label="MS Level" value={profile.msRecords.map((r) => `MS ${r.msLevel}`).join(", ") || "—"} />
     </div>
   );
 }
