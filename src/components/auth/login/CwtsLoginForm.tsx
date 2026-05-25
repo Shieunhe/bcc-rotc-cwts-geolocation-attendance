@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import ForgotPasswordFlow, { EmailIcon, LockIcon, FormInput, AlertBox, PrimaryButton } from "./ForgotPasswordFlow";
 
-export default function LoginForm() {
+export default function CwtsLoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,34 +21,27 @@ export default function LoginForm() {
     setSuccessBanner("");
     setLoading(true);
 
-    const adminEmails = ["rotc@admin.com", "cwts@admin.com", "officer@admin.com"];
-    if (adminEmails.includes(email.toLowerCase())) {
+    if (email.toLowerCase() !== "cwts@admin.com") {
       setLoading(false);
-      setError("This portal is for students only. Admin and officer accounts must use different portal.");
+      setError("This portal is for the CWTS Admin only.");
       return;
     }
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/student/dashboard");
+      router.push("/admin/cwts/dashboard");
     } catch (err: unknown) {
       setLoading(false);
       if (err instanceof Error) {
         if (err.message.includes("user-not-found") || err.message.includes("invalid-credential")) {
-          setError("No account found with this email.");
+          setError("Invalid credentials. Please try again.");
         } else if (err.message.includes("wrong-password")) {
           setError("Incorrect password. Please try again.");
         } else if (err.message.includes("too-many-requests")) {
           setError("Too many failed attempts. Please try again later.");
-        } else if (err.message.includes("user-disabled")) {
-          setError("This account has been disabled. Contact support.");
-        } else if (err.message.includes("invalid-email")) {
-          setError("Invalid email address.");
         } else {
-          setError("Login failed. Please check your credentials.");
+          setError("Login failed. Please try again.");
         }
-      } else {
-        setError("Login failed. Please try again.");
       }
     }
   }
@@ -58,8 +50,8 @@ export default function LoginForm() {
     <div className="min-h-screen flex">
       <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 overflow-hidden">
         <img
-          src="/image/student-login.png"
-          alt="BCC ROTC Unit"
+          src="/image/cwts-login.png"
+          alt="CWTS"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-black/60" />
@@ -73,10 +65,10 @@ export default function LoginForm() {
             />
           </div>
           <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">
-            NSTP Enrollment & Attendance
+            CWTS Admin Portal
           </h2>
           <p className="text-gray-200 text-base leading-relaxed drop-shadow-md">
-            Buenavista Community College&apos;s ROTC & CWTS management system for enrollment, attendance tracking, and platoon coordination.
+            Buenavista Community College&apos;s CWTS management system for enrollment, attendance tracking, and student records.
           </p>
           <div className="mt-10 flex items-center justify-center gap-3">
             <div className="w-2 h-2 rounded-full bg-white/60" />
@@ -89,8 +81,8 @@ export default function LoginForm() {
       <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-gray-50 relative">
         <div className="lg:hidden absolute inset-0">
           <img
-            src="/image/student-login.png"
-            alt="BCC ROTC Unit"
+            src="/image/cwts-login.png"
+            alt="CWTS"
             className="absolute inset-0 w-full h-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-black/55" />
@@ -106,7 +98,7 @@ export default function LoginForm() {
               />
             </div>
             <h1 className="text-base font-bold text-white text-center drop-shadow-lg">
-              NSTP Enrollment & Attendance
+              CWTS Admin Portal
             </h1>
           </div>
 
@@ -114,8 +106,17 @@ export default function LoginForm() {
             {!showForgot ? (
               <>
                 <div className="mb-7">
-                  <h2 className="text-xl font-bold text-gray-900">Welcome back</h2>
-                  <p className="text-sm text-gray-500 mt-1">Sign in to continue to your dashboard</p>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">CWTS Admin</h2>
+                      <p className="text-sm text-gray-500">Sign in to access the CWTS dashboard</p>
+                    </div>
+                  </div>
                 </div>
 
                 {successBanner && <AlertBox type="success">{successBanner}</AlertBox>}
@@ -128,7 +129,7 @@ export default function LoginForm() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder="Enter your email"
                     icon={EmailIcon}
                   />
 
@@ -145,7 +146,7 @@ export default function LoginForm() {
                   <div className="flex justify-end -mt-1">
                     <button
                       type="button"
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                      className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition-colors"
                       onClick={() => {
                         setShowForgot(true);
                         setError("");
@@ -158,23 +159,14 @@ export default function LoginForm() {
 
                   {error && <AlertBox type="error">{error}</AlertBox>}
 
-                  <PrimaryButton type="submit" loading={loading}>
+                  <PrimaryButton
+                    type="submit"
+                    loading={loading}
+                    className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 active:from-emerald-800 active:to-emerald-900 shadow-emerald-200/50 hover:shadow-emerald-200/60"
+                  >
                     Sign In
                   </PrimaryButton>
                 </form>
-
-                <div className="flex items-center gap-3 my-7">
-                  <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-xs font-medium text-gray-400">OR</span>
-                  <div className="flex-1 h-px bg-gray-200" />
-                </div>
-
-                <p className="text-center text-sm text-gray-600">
-                  Don&apos;t have an account?{" "}
-                  <Link href="/enrollment" className="text-blue-600 font-semibold hover:text-blue-800 hover:underline underline-offset-2 transition-colors">
-                    Enroll Now
-                  </Link>
-                </p>
               </>
             ) : (
               <ForgotPasswordFlow
@@ -184,8 +176,8 @@ export default function LoginForm() {
                   setEmail(savedEmail);
                   setSuccessBanner(message);
                 }}
-                blockedEmails={["rotc@admin.com", "cwts@admin.com", "officer@admin.com"]}
-                blockedMessage="This portal is for students only. Admin and officer accounts must use their respective portals."
+                restrictEmail="cwts@admin.com"
+                restrictMessage="This portal is for the CWTS Admin only."
               />
             )}
           </div>
