@@ -114,7 +114,7 @@ export default function OfficerLoginForm() {
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-gray-900">NSTP Director</h2>
-                      <p className="text-sm text-gray-500">Sign in to access the officer dashboard</p>
+                      <p className="text-sm text-gray-500">Sign in to access the director dashboard</p>
                     </div>
                   </div>
                 </div>
