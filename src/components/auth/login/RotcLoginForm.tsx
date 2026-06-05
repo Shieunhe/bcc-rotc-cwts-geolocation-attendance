@@ -21,7 +21,7 @@ export default function RotcLoginForm() {
     setSuccessBanner("");
     setLoading(true);
 
-    if (email.toLowerCase() !== "rotc@admin.com") {
+    if (email.toLowerCase() !== "bcc.rotc.admin@gmail.com") {
       setLoading(false);
       setError("This portal is for the ROTC Admin only.");
       return;
@@ -176,7 +176,7 @@ export default function RotcLoginForm() {
                   setEmail(savedEmail);
                   setSuccessBanner(message);
                 }}
-                restrictEmail="rotc@admin.com"
+                restrictEmail="bcc.rotc.admin@gmail.com"
                 restrictMessage="This portal is for the ROTC Admin only."
               />
             )}

@@ -21,7 +21,7 @@ export default function CwtsLoginForm() {
     setSuccessBanner("");
     setLoading(true);
 
-    if (email.toLowerCase() !== "cwts@admin.com") {
+    if (email.toLowerCase() !== "bcc.cwts.admin@gmail.com") {
       setLoading(false);
       setError("This portal is for the CWTS Admin only.");
       return;
@@ -176,7 +176,7 @@ export default function CwtsLoginForm() {
                   setEmail(savedEmail);
                   setSuccessBanner(message);
                 }}
-                restrictEmail="cwts@admin.com"
+                restrictEmail="bcc.cwts.admin@gmail.com"
                 restrictMessage="This portal is for the CWTS Admin only."
               />
             )}

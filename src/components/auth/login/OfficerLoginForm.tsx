@@ -21,7 +21,7 @@ export default function OfficerLoginForm() {
     setSuccessBanner("");
     setLoading(true);
 
-    if (email.toLowerCase() !== "officer@admin.com") {
+    if (email.toLowerCase() !== "bcc.officer.admin@gmail.com") {
       setLoading(false);
       setError("This portal is for the NSTP Director only.");
       return;
@@ -176,7 +176,7 @@ export default function OfficerLoginForm() {
                   setEmail(savedEmail);
                   setSuccessBanner(message);
                 }}
-                restrictEmail="officer@admin.com"
+                restrictEmail="bcc.officer.admin@gmail.com"
                 restrictMessage="This portal is for the NSTP Director only."
               />
             )}

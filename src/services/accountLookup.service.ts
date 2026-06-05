@@ -12,7 +12,7 @@ import type { EnrollmentDocument } from "@/types";
  * Same emails routed in LoginForm — these users exist in Firebase Auth and may not have a Firestore enrollment doc.
  * Keep in sync with `LoginForm` admin redirects.
  */
-const ADMIN_AUTH_EMAILS = new Set(["rotc@admin.com", "cwts@admin.com", "officer@admin.com"]);
+const ADMIN_AUTH_EMAILS = new Set(["bcc.rotc.admin@gmail.com", "bcc.cwts.admin@gmail.com", "bcc.officer.admin@gmail.com"]);
 
 export interface AccountLookupResult {
   found: boolean;

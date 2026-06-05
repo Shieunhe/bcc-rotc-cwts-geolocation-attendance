@@ -22,7 +22,7 @@ export default function LoginForm() {
     setSuccessBanner("");
     setLoading(true);
 
-    const adminEmails = ["rotc@admin.com", "cwts@admin.com", "officer@admin.com"];
+    const adminEmails = ["bcc.rotc.admin@gmail.com", "bcc.cwts.admin@gmail.com", "bcc.officer.admin@gmail.com"];
     if (adminEmails.includes(email.toLowerCase())) {
       setLoading(false);
       setError("This portal is for students only. Admin and officer accounts must use different portal.");
@@ -184,7 +184,7 @@ export default function LoginForm() {
                   setEmail(savedEmail);
                   setSuccessBanner(message);
                 }}
-                blockedEmails={["rotc@admin.com", "cwts@admin.com", "officer@admin.com"]}
+                blockedEmails={["bcc.rotc.admin@gmail.com", "bcc.cwts.admin@gmail.com", "bcc.officer.admin@gmail.com"]}
                 blockedMessage="This portal is for students only. Admin and officer accounts must use their respective portals."
               />
             )}
