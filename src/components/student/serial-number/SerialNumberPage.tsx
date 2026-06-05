@@ -260,7 +260,7 @@ function CWTSCertificate({ serialData, studentFullName }: {
               </div>
             </div>
 
-            <p className="mb-1 ml-6 text-base italic font-semibold text-gray-600" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+            <p className="mb-1 text-center text-base italic font-semibold text-gray-600" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
               Present this
             </p>
 

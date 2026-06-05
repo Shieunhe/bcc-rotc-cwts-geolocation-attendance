@@ -260,8 +260,6 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
   const isEligible = (s: StudentWithGrades) => !!s.ms1Grade && !!s.ms2Grade;
   const hasSerial = (s: StudentWithGrades) => !!s.serialNumber;
 
-  const SERIAL_REGEX = /^[A-Z]{2}-[A-Z]\d{2}-\d{6}$/;
-
   const handleOpenAssign = (student: StudentWithGrades) => {
     setAssignStudent(student);
     setSerialInput("");
@@ -270,11 +268,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
 
   const handleSaveSerial = async () => {
     if (!assignStudent || !serialInput.trim() || !isSettingsComplete) return;
-    const value = serialInput.trim();
-    if (!SERIAL_REGEX.test(value)) {
-      setSerialError("Invalid format. Must match: XX-X00-000000 (e.g. BO-R00-000000)");
-      return;
-    }
+    const value = serialInput.trim().toUpperCase();
     setSerialError("");
     setSaving(true);
     try {
@@ -975,7 +969,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                   type="text"
                   value={serialInput}
                   onChange={(e) => { setSerialInput(e.target.value.toUpperCase()); setSerialError(""); }}
-                  placeholder="e.g. BO-R00-000000"
+                  placeholder="Enter serial number"
                   className={`w-full px-4 py-3 text-sm border rounded-xl focus:ring-2 focus:border-transparent outline-none font-mono font-semibold text-gray-800 tracking-wider placeholder:font-normal placeholder:tracking-normal placeholder:text-gray-400 ${
                     serialError ? "border-red-300 focus:ring-red-500" : "border-gray-200 focus:ring-violet-500"
                   }`}
