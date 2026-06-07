@@ -42,7 +42,7 @@ export default function AdminGrades({ program }: AdminGradesProps) {
     if (filterYear && s.yearLevel !== filterYear) return false;
     if (search) {
       const q = search.toLowerCase();
-      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
+      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -173,7 +173,7 @@ export default function AdminGrades({ program }: AdminGradesProps) {
                         <td className="px-5 py-2.5 text-xs text-gray-600">{s.studentId}</td>
                         <td className="px-5 py-2.5">
                           <p className="text-xs font-semibold text-gray-800">
-                            {s.lastName}, {s.firstName} {s.middleName ? `${s.middleName[0]}.` : ""}
+                            {s.lastName}, {s.firstName} {s.middleName ? `${s.middleName[0]}.` : ""}{s.suffix ? ` ${s.suffix}` : ""}
                           </p>
                         </td>
                         <td className="px-5 py-2.5 text-xs text-gray-600">{s.course} &middot; {s.yearLevel}</td>
@@ -205,7 +205,7 @@ export default function AdminGrades({ program }: AdminGradesProps) {
                     <span className="text-[11px] text-gray-400 font-medium w-5 shrink-0">{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-800 truncate">
-                        {s.lastName}, {s.firstName} {s.middleName ? `${s.middleName[0]}.` : ""}
+                        {s.lastName}, {s.firstName} {s.middleName ? `${s.middleName[0]}.` : ""}{s.suffix ? ` ${s.suffix}` : ""}
                       </p>
                       <p className="text-[10px] text-gray-400 mt-0.5">
                         {s.studentId} &middot; {s.course} &middot; {s.yearLevel}
@@ -356,7 +356,7 @@ function GradeModal({ student, program, ms1Data, ms2Data, onClose, onSaved }: Gr
               <div>
                 <p className="text-[11px] text-gray-400 font-medium">{student.studentId}</p>
                 <p className="text-sm font-bold text-gray-800">
-                  {student.lastName}, {student.firstName}{student.middleName ? ` ${student.middleName[0]}.` : ""}
+                  {student.lastName}, {student.firstName}{student.middleName ? ` ${student.middleName[0]}.` : ""}{student.suffix ? ` ${student.suffix}` : ""}
                 </p>
                 <p className="text-[11px] text-gray-400 font-medium">{student.course} &middot; {student.yearLevel}</p>
               </div>

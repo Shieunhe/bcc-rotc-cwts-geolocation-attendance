@@ -6,6 +6,7 @@ export interface EnrollmentFormData {
   lastName: string;
   firstName: string;
   middleName?: string;
+  suffix?: string;
   religion: string;
   birthdate: string;
   sex: Sex | "";
@@ -54,6 +55,7 @@ export const defaultEnrollmentForm: EnrollmentFormData = {
   lastName: "",
   firstName: "",
   middleName: "",
+  suffix: "",
   birthdate: "",
   sex: "",
   contactNumber: "",

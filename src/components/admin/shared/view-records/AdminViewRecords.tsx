@@ -104,6 +104,7 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
         "Surname": row.enrollment.lastName,
         "First Name": row.enrollment.firstName,
         "Middle Name": row.enrollment.middleName || "",
+        "Suffix": row.enrollment.suffix || "",
         "Course": courseAcronym || row.enrollment.course,
         "Platoon": program === "ROTC"
           ? (row.enrollment.rotcPlatoon ? String(row.enrollment.rotcPlatoon) : "—")
@@ -221,7 +222,7 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
                   <tr key={`${row.enrollment.uid}-${row.msRecord.msLevel}`} className="hover:bg-gray-50/50 transition">
                     <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
                     <td className="px-4 py-3 font-medium text-gray-700">{row.enrollment.studentId}</td>
-                    <td className="px-4 py-3 text-gray-700">{row.enrollment.lastName}, {row.enrollment.firstName}</td>
+                    <td className="px-4 py-3 text-gray-700">{row.enrollment.lastName}, {row.enrollment.firstName}{row.enrollment.suffix ? ` ${row.enrollment.suffix}` : ""}</td>
                     <td className="px-4 py-3 text-gray-500">{row.enrollment.course}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-semibold bg-green-50 text-green-700 border-green-200">

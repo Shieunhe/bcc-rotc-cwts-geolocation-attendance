@@ -24,7 +24,7 @@ export default function UpdateStatusModal({ recordId, currentStatus, student, st
   const [saving, setSaving] = useState(false);
 
   const name = student
-    ? `${student.lastName}, ${student.firstName}${student.middleName ? ` ${student.middleName[0]}.` : ""}`
+    ? `${student.lastName}, ${student.firstName}${student.middleName ? ` ${student.middleName[0]}.` : ""}${student.suffix ? ` ${student.suffix}` : ""}`
     : studentUid;
 
   const hasChanged = selected !== currentStatus;

@@ -113,7 +113,7 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange, stat
                       )}
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <p className="font-medium text-gray-800">{enrollment.lastName}, {enrollment.firstName}</p>
+                          <p className="font-medium text-gray-800">{enrollment.lastName}, {enrollment.firstName}{enrollment.suffix ? ` ${enrollment.suffix}` : ""}</p>
                           {hasMedical && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500 text-[9px] font-bold text-white uppercase tracking-wide shadow-sm">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,7 +181,7 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange, stat
                     {enrollment.firstName?.[0]}{enrollment.lastName?.[0]}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800 text-sm">{enrollment.lastName}, {enrollment.firstName}</p>
+                    <p className="font-medium text-gray-800 text-sm">{enrollment.lastName}, {enrollment.firstName}{enrollment.suffix ? ` ${enrollment.suffix}` : ""}</p>
                     <p className="text-xs text-gray-400">{enrollment.studentId} • {enrollment.course} • {enrollment.yearLevel}</p>
                   </div>
                 </div>

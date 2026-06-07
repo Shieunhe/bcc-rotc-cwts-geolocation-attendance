@@ -124,7 +124,7 @@ const ICONS = {
 };
 
 type EditableFields = Pick<EnrollmentDocument,
-  "lastName" | "firstName" | "middleName" | "sex" | "birthdate" | "placeOfBirth" | "religion" | "contactNumber" |
+  "lastName" | "firstName" | "middleName" | "suffix" | "sex" | "birthdate" | "placeOfBirth" | "religion" | "contactNumber" |
   "temporaryBarangay" | "temporaryMunicipality" | "temporaryProvince" |
   "permanentBarangay" | "permanentMunicipality" | "permanentProvince" |
   "fatherName" | "fatherOccupation" | "motherName" | "motherOccupation" |
@@ -134,7 +134,7 @@ type EditableFields = Pick<EnrollmentDocument,
 
 function getEditableFields(e: EnrollmentDocument): EditableFields {
   return {
-    lastName: e.lastName, firstName: e.firstName, middleName: e.middleName,
+    lastName: e.lastName, firstName: e.firstName, middleName: e.middleName, suffix: e.suffix ?? "",
     sex: e.sex, birthdate: e.birthdate, placeOfBirth: e.placeOfBirth,
     religion: e.religion, contactNumber: e.contactNumber,
     temporaryBarangay: e.temporaryBarangay, temporaryMunicipality: e.temporaryMunicipality, temporaryProvince: e.temporaryProvince,
@@ -268,7 +268,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
               </div>
             )}
             <div>
-              <h2 className="text-base font-bold text-gray-900">{e.lastName}, {e.firstName} {e.middleName}</h2>
+              <h2 className="text-base font-bold text-gray-900">{e.lastName}, {e.firstName} {e.middleName}{e.suffix ? ` ${e.suffix}` : ""}</h2>
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-xs text-gray-400">{enrollment.studentId} • {enrollment.email}</p>
               </div>
@@ -304,6 +304,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
             <Field label="Last Name" value={e.lastName} editing={isEditing} editValue={formData.lastName} onChange={(v) => updateField("lastName", v)} />
             <Field label="First Name" value={e.firstName} editing={isEditing} editValue={formData.firstName} onChange={(v) => updateField("firstName", v)} />
             <Field label="Middle Name" value={e.middleName} editing={isEditing} editValue={formData.middleName} onChange={(v) => updateField("middleName", v)} />
+            <Field label="Suffix" value={e.suffix || "—"} editing={isEditing} editValue={formData.suffix ?? ""} onChange={(v) => updateField("suffix", v)} />
             <Field label="Sex" value={e.sex} editing={isEditing} editValue={formData.sex} onChange={(v) => updateField("sex", v as Sex | "")} type="select"
               options={[{ value: "", label: "Select" }, { value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
             <Field label="Birthdate" value={e.birthdate} editing={isEditing} editValue={formData.birthdate} onChange={(v) => updateField("birthdate", v)} type="date" />

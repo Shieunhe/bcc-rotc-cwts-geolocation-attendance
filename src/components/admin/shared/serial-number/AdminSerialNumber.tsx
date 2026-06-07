@@ -532,7 +532,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="font-medium text-gray-800">{student.lastName}, {student.firstName} {student.middleName}</p>
+                        <p className="font-medium text-gray-800">{student.lastName}, {student.firstName} {student.middleName}{student.suffix ? ` ${student.suffix}` : ""}</p>
                       </td>
                       {program === "ROTC" ? (
                         <>
@@ -940,7 +940,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                   </span>
                 </div>
                 <p className="text-sm font-semibold text-gray-800">
-                  {assignStudent.lastName}, {assignStudent.firstName} {assignStudent.middleName}
+                  {assignStudent.lastName}, {assignStudent.firstName} {assignStudent.middleName}{assignStudent.suffix ? ` ${assignStudent.suffix}` : ""}
                 </p>
                 <div className="flex gap-3 pt-1">
                   <div>

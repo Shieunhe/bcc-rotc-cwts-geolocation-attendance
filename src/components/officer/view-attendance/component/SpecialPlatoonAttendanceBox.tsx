@@ -81,7 +81,7 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
     if (search) {
       const q = search.toLowerCase();
       const haystack = s
-        ? `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase()
+        ? `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase()
         : r.studentUid.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
@@ -249,7 +249,7 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
                         {filtered.map((r) => {
                           const s = r.student;
                           const cfg = statusConfig[r.status] ?? statusConfig.absent;
-                          const name = s ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}` : r.studentUid;
+                          const name = s ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}` : r.studentUid;
                           const unit = s?.specialUnit as SpecialUnit;
                           const theme = unit ? UNIT_THEME[unit] : null;
 
@@ -292,7 +292,7 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
                         {filtered.map((r) => {
                           const s = r.student;
                           const cfg = statusConfig[r.status] ?? statusConfig.absent;
-                          const name = s ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}` : r.studentUid;
+                          const name = s ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}` : r.studentUid;
                           const unit = s?.specialUnit as SpecialUnit;
                           const theme = unit ? UNIT_THEME[unit] : null;
 

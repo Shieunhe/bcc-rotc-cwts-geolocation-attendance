@@ -6,6 +6,7 @@ import {
   AttendanceSession, AttendanceRecord, AttendanceRecordStatus, EnrollmentDocument,
   ROTCCompany, SpecialUnit, SPECIAL_UNITS,
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
+  getSchoolYearFromDate,
 } from "@/types";
 import UpdateStatusModal from "./UpdateStatusModal";
 
@@ -60,8 +61,21 @@ function getMIOptionLabel(mi: number, entry?: { in?: AttendanceSession; out?: At
   return `MI ${mi}  ${inLabel} | ${outLabel}`;
 }
 
+function getSessionSY(s: AttendanceSession): string {
+  return s.schoolYear ?? getSchoolYearFromDate(s.openDate);
+}
+
+function getUniqueSYs(sessions: AttendanceSession[]): string[] {
+  const set = new Set(sessions.map(getSessionSY));
+  return Array.from(set).sort().reverse();
+}
+
 export default function ROTCAttendanceBox({ sessions }: Props) {
-  const miSessions = getMISessions(sessions);
+  const allSYs = getUniqueSYs(sessions);
+  const [selectedSY, setSelectedSY] = useState<string>(() => allSYs[0] ?? "");
+
+  const filteredSessions = sessions.filter((s) => getSessionSY(s) === selectedSY);
+  const miSessions = getMISessions(filteredSessions);
 
   const [selectedMI, setSelectedMI] = useState<number>(0);
   const [selectedType, setSelectedType] = useState<"in" | "out">("in");
@@ -149,7 +163,7 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
     if (search) {
       const q = search.toLowerCase();
       const haystack = s
-        ? `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase()
+        ? `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase()
         : r.studentUid.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
@@ -189,7 +203,30 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
       </div>
 
       <div className="p-5 space-y-4">
-        {/* MI selector — always visible */}
+        {/* SY selector */}
+        <div>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">School Year</label>
+          <div className="relative">
+            <select
+              value={selectedSY}
+              onChange={(e) => {
+                setSelectedSY(e.target.value);
+                setSelectedMI(0);
+              }}
+              className="w-full appearance-none px-3.5 py-2.5 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            >
+              {allSYs.length === 0 && <option value="">No sessions found</option>}
+              {allSYs.map((sy) => (
+                <option key={sy} value={sy}>SY {sy}</option>
+              ))}
+            </select>
+            <svg className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+
+        {/* MI selector */}
         <div>
           <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Select Military Instruction</label>
           <div className="relative">
@@ -361,7 +398,7 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
                           const cfg = statusConfig[record.status] ?? statusConfig.absent;
                           const s = record.student;
                           const name = s
-                            ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`
+                            ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`
                             : record.studentUid;
                           const unit = s?.specialUnit as SpecialUnit | undefined;
                           const unitTheme = unit ? UNIT_THEME[unit] : null;
@@ -428,7 +465,7 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
                           const cfg = statusConfig[record.status] ?? statusConfig.absent;
                           const s = record.student;
                           const name = s
-                            ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`
+                            ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`
                             : record.studentUid;
                           const unit = s?.specialUnit as SpecialUnit | undefined;
                           const unitTheme = unit ? UNIT_THEME[unit] : null;

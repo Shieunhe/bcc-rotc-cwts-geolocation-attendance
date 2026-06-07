@@ -21,6 +21,7 @@ function profileToFormData(p: EnrollmentDocument, nextMs: string): EnrollmentFor
     lastName: p.lastName,
     firstName: p.firstName,
     middleName: p.middleName || "",
+    suffix: p.suffix || "",
     religion: p.religion,
     birthdate: p.birthdate,
     sex: p.sex,

@@ -53,7 +53,7 @@ export default function AdvanceCourseAttendanceBox({
     if (filterYear && s.yearLevel !== filterYear) return false;
     if (search) {
       const q = search.toLowerCase();
-      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
+      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -213,7 +213,7 @@ export default function AdvanceCourseAttendanceBox({
                       const status = getStatus(s.uid, recordMap, graceOver);
                       const cfg = statusConfig[status] ?? statusConfig.absent;
                       const record = recordMap.get(s.uid);
-                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
 
                       return (
                         <div key={s.uid} className={`grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-l-3 ${cfg.border}`}>
@@ -263,7 +263,7 @@ export default function AdvanceCourseAttendanceBox({
                       const status = getStatus(s.uid, recordMap, graceOver);
                       const cfg = statusConfig[status] ?? statusConfig.absent;
                       const record = recordMap.get(s.uid);
-                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
                       const timeStr = status === "present" || status === "late"
                         ? (record ? formatTimeDisplay(record.createdAt) : "—")
                         : status === "absent" && lateDeadlineStr

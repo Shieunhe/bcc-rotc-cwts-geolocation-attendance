@@ -125,7 +125,7 @@ export default function OfficerCWTS() {
                                   <td className="px-5 py-3 text-xs text-gray-400">{i + 1}</td>
                                   <td className="px-5 py-3 text-xs font-medium text-gray-700">{m.studentId}</td>
                                   <td className="px-5 py-3 text-xs font-medium text-gray-800">
-                                    {m.lastName}, {m.firstName} {m.middleName?.[0] ? `${m.middleName[0]}.` : ""}
+                                    {m.lastName}, {m.firstName} {m.middleName?.[0] ? `${m.middleName[0]}.` : ""}{m.suffix ? ` ${m.suffix}` : ""}
                                   </td>
                                   <td className="px-5 py-3 text-xs text-gray-600">{m.course}</td>
                                   <td className="px-5 py-3 text-xs text-gray-600">{m.yearLevel}</td>
@@ -141,7 +141,7 @@ export default function OfficerCWTS() {
                               <span className="text-[11px] text-gray-400 w-5 shrink-0">{i + 1}</span>
                               <div className="min-w-0">
                                 <p className="text-xs font-medium text-gray-800 truncate">
-                                  {m.lastName}, {m.firstName}
+                                  {m.lastName}, {m.firstName}{m.suffix ? ` ${m.suffix}` : ""}
                                 </p>
                                 <p className="text-[11px] text-gray-400">{m.studentId} • {m.course}</p>
                               </div>

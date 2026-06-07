@@ -13,8 +13,8 @@ export default function ViewRecordsCard() {
           </svg>
         </div>
         <div>
-          <h3 className="text-sm font-bold text-gray-800">View Attendance Records</h3>
-          <p className="text-xs text-gray-400">View complete student attendance records</p>
+          <h3 className="text-sm font-bold text-gray-800">View Student Records</h3>
+          <p className="text-xs text-gray-400">View complete student records</p>
         </div>
         <svg className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 ml-auto transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

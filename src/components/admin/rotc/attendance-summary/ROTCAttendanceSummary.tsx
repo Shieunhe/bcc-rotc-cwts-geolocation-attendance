@@ -9,6 +9,7 @@ import {
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
   ROTC_PLATOONS_PER_COMPANY,
   ROTCCompany, EnrollmentDocument, SpecialUnit, SPECIAL_UNITS,
+  EnrollmentSchedule, getSchoolYearFromDate,
 } from "@/types";
 import BattalionAttendanceBox from "./components/BattalionAttendanceBox";
 import AdvanceCourseAttendanceBox from "./components/AdvanceCourseAttendanceBox";
@@ -79,9 +80,46 @@ interface Props {
   section: AttendanceSummarySection;
 }
 
+function getSessionSY(s: AttendanceSession): string {
+  return s.schoolYear ?? getSchoolYearFromDate(s.openDate);
+}
+
+function getUniqueSYs(sessions: AttendanceSession[]): string[] {
+  const set = new Set(sessions.map(getSessionSY));
+  return Array.from(set).sort().reverse();
+}
+
+type SYOption = { value: string; label: string };
+
+function buildSYOptions(sessions: AttendanceSession[], schedules: EnrollmentSchedule[]): SYOption[] {
+  const sySet = getUniqueSYs(sessions);
+  const scheduleMap = new Map<string, string[]>();
+  for (const sch of schedules) {
+    const list = scheduleMap.get(sch.year) ?? [];
+    list.push(sch.msLevel);
+    scheduleMap.set(sch.year, list);
+  }
+
+  const options: SYOption[] = [];
+  for (const sy of sySet) {
+    const msLevels = scheduleMap.get(sy);
+    if (msLevels && msLevels.length > 0) {
+      const sorted = [...msLevels].sort();
+      for (const ms of sorted) {
+        options.push({ value: sy, label: `MS ${ms} — SY ${sy}` });
+      }
+    } else {
+      options.push({ value: sy, label: `SY ${sy}` });
+    }
+  }
+  return options;
+}
+
 export default function ROTCAttendanceSummary({ section }: Props) {
   const meta = SECTION_META[section];
   const [allSessions, setAllSessions] = useState<AttendanceSession[]>([]);
+  const [schedules, setSchedules] = useState<EnrollmentSchedule[]>([]);
+  const [selectedSY, setSelectedSY] = useState<string>("");
   const [selectedMI, setSelectedMI] = useState<number>(0);
   const [selectedType, setSelectedType] = useState<"in" | "out">("in");
   const [recordMap, setRecordMap] = useState<Map<string, AttendanceRecord>>(new Map());
@@ -105,18 +143,26 @@ export default function ROTCAttendanceSummary({ section }: Props) {
     setSelectedMI(0);
     setRecordMap(new Map());
     const isAdvance = section === "advance-course";
-    adminService.getSessionsByProgram("ROTC", isAdvance).then((data) => {
+    Promise.all([
+      adminService.getSessionsByProgram("ROTC", isAdvance),
+      adminService.getEnrollmentSchedules("ROTC"),
+    ]).then(([data, scheds]) => {
       const filtered = section === "advance-course"
         ? data.filter((s) => s.isAdvanceCourse)
         : section === "battalion-1" || section === "battalion-2" || section === "overall"
           ? data.filter((s) => !s.isAdvanceCourse)
           : data;
       setAllSessions(filtered);
+      setSchedules(scheds);
+      const syList = getUniqueSYs(filtered);
+      setSelectedSY(syList[0] ?? "");
       setLoadingSessions(false);
     }).catch(() => setLoadingSessions(false));
   }, [section]);
 
-  const miSessions = getMISessions(allSessions);
+  const syOptions = buildSYOptions(allSessions, schedules);
+  const sessionsBySY = allSessions.filter((s) => getSessionSY(s) === selectedSY);
+  const miSessions = getMISessions(sessionsBySY);
   const currentMI = miSessions.get(selectedMI);
   const selectedSession = currentMI?.[selectedType] ?? null;
   const selectedSessionId = selectedSession?.id ?? null;
@@ -158,6 +204,30 @@ export default function ROTCAttendanceSummary({ section }: Props) {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{meta.title}</h1>
             <p className="text-sm text-gray-500 mt-0.5">{meta.subtitle}</p>
           </div>
+        </div>
+      </div>
+
+      {/* SY selector */}
+      <div className="mb-4">
+        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">School Year</label>
+        <div className="relative max-w-xs">
+          <select
+            value={selectedSY}
+            onChange={(e) => {
+              setSelectedSY(e.target.value);
+              setSelectedMI(0);
+              setRecordMap(new Map());
+            }}
+            className="w-full appearance-none px-3.5 py-2.5 pr-8 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+          >
+            {syOptions.length === 0 && <option value="">No sessions found</option>}
+            {syOptions.map((opt, i) => (
+              <option key={`${opt.value}-${i}`} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <svg className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
       </div>
 
@@ -274,6 +344,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               specialUnitStudents={specialUnitStudents}
               recordMap={recordMap}
               graceOver={graceOver}
+              sessionOpenDate={selectedSession?.openDate ?? null}
               sessionCloseDate={selectedSession?.closeDate ?? null}
               selectedType={selectedType}
               onTypeChange={setSelectedType}

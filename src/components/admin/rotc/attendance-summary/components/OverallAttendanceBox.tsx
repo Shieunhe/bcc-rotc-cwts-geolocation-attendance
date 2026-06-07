@@ -4,6 +4,8 @@ import { useState } from "react";
 import {
   AttendanceRecord, EnrollmentDocument,
   ROTCCompany, SpecialUnit, SPECIAL_UNITS,
+  ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
+  ROTC_PLATOONS_PER_COMPANY,
 } from "@/types";
 import {
   Document, Packer, Paragraph, Table, TableRow, TableCell,
@@ -45,12 +47,17 @@ function formatTimeDisplay(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
+function formatDateDisplay(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 interface Props {
   b1Students: StudentRow[];
   b2Students: StudentRow[];
   specialUnitStudents: Record<SpecialUnit, EnrollmentDocument[]>;
   recordMap: Map<string, AttendanceRecord>;
   graceOver: boolean;
+  sessionOpenDate: string | null;
   sessionCloseDate: string | null;
   selectedType: "in" | "out";
   onTypeChange: (type: "in" | "out") => void;
@@ -68,7 +75,7 @@ const GROUP_LABELS: Record<string, string> = {
 };
 
 export default function OverallAttendanceBox({
-  b1Students, b2Students, specialUnitStudents, recordMap, graceOver, sessionCloseDate,
+  b1Students, b2Students, specialUnitStudents, recordMap, graceOver, sessionOpenDate, sessionCloseDate,
   selectedType, onTypeChange, hasIn, hasOut, selectedMI,
 }: Props) {
   const lateDeadlineStr = sessionCloseDate
@@ -99,52 +106,113 @@ export default function OverallAttendanceBox({
   const pct = overallCounts.total > 0 ? Math.round((attended / overallCounts.total) * 100) : 0;
 
   async function downloadWord() {
-    const headers = ["#", "Name", "Student ID", "Course", "Year Level", "Battalion", "Assignment", "Status", "Time"];
-    const rows = sorted.map((row, i) => {
-      const s = row.student;
-      const status = getStatus(s.uid, recordMap, graceOver);
-      const cfg = statusConfig[status] ?? statusConfig.absent;
-      const record = recordMap.get(s.uid);
-      const time = status === "present" || status === "late"
-        ? (record ? formatTimeDisplay(record.createdAt) : "")
-        : status === "absent" && lateDeadlineStr
-          ? formatTimeDisplay(lateDeadlineStr)
-          : "";
-      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
-      return [String(i + 1), name, s.studentId ?? "", s.course ?? "", s.yearLevel ?? "", GROUP_LABELS[row.group] ?? row.group, row.info, cfg.label, time];
-    });
-
     const borderStyle = { style: BorderStyle.SINGLE, size: 1, color: "999999" };
     const borders = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+    const headers = ["No.", "Name", "ID Number", "Status", selectedType === "in" ? "Time In" : "Time Out"];
 
-    const headerRow = new TableRow({
-      tableHeader: true,
-      children: headers.map((h) =>
-        new TableCell({
-          borders,
-          shading: { fill: "1F2937" },
-          children: [new Paragraph({
-            spacing: { before: 40, after: 40 },
-            children: [new TextRun({ text: h, bold: true, size: 18, font: "Arial", color: "FFFFFF" })],
-          })],
-        })
-      ),
-    });
-
-    const dataRows = rows.map((cells, idx) =>
-      new TableRow({
-        children: cells.map((text) =>
+    function makeHeaderRow() {
+      return new TableRow({
+        tableHeader: true,
+        children: headers.map((h) =>
           new TableCell({
             borders,
-            ...(idx % 2 === 1 ? { shading: { fill: "F9FAFB" } } : {}),
+            shading: { fill: "1F2937" },
             children: [new Paragraph({
-              spacing: { before: 30, after: 30 },
-              children: [new TextRun({ text, size: 18, font: "Arial" })],
+              spacing: { before: 40, after: 40 },
+              children: [new TextRun({ text: h, bold: true, size: 18, font: "Arial", color: "FFFFFF" })],
             })],
           })
         ),
-      })
-    );
+      });
+    }
+
+    function makeDataRows(students: EnrollmentDocument[]) {
+      return students.map((s, idx) => {
+        const status = getStatus(s.uid, recordMap, graceOver);
+        const cfg = statusConfig[status] ?? statusConfig.absent;
+        const record = recordMap.get(s.uid);
+        const time = status === "present" || status === "late"
+          ? (record ? formatTimeDisplay(record.createdAt) : "")
+          : status === "absent" && lateDeadlineStr
+            ? formatTimeDisplay(lateDeadlineStr)
+            : "";
+        const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
+        const cells = [String(idx + 1), name, s.studentId ?? "", cfg.label, time];
+        return new TableRow({
+          children: cells.map((text) =>
+            new TableCell({
+              borders,
+              ...(idx % 2 === 1 ? { shading: { fill: "F9FAFB" } } : {}),
+              children: [new Paragraph({
+                spacing: { before: 30, after: 30 },
+                children: [new TextRun({ text, size: 18, font: "Arial" })],
+              })],
+            })
+          ),
+        });
+      });
+    }
+
+    function buildBattalionSections(label: string, companies: ROTCCompany[], students: StudentRow[]): (Paragraph | Table)[] {
+      const sections: (Paragraph | Table)[] = [
+        new Paragraph({
+          spacing: { before: 400, after: 150 },
+          children: [new TextRun({ text: label, bold: true, size: 26, font: "Arial", color: "1F2937" })],
+        }),
+      ];
+      for (const company of companies) {
+        const companyStudents = students.filter((r) => r.company === company);
+        if (companyStudents.length === 0) continue;
+        sections.push(
+          new Paragraph({
+            spacing: { before: 250, after: 100 },
+            children: [new TextRun({ text: `${company.toUpperCase()} COMPANY`, bold: true, size: 22, font: "Arial", color: "1E40AF" })],
+          }),
+        );
+        for (let p = 1; p <= ROTC_PLATOONS_PER_COMPANY; p++) {
+          const platoonStudents = companyStudents.filter((r) => r.platoon === p).map((r) => r.student);
+          if (platoonStudents.length === 0) continue;
+          sections.push(
+            new Paragraph({
+              spacing: { before: 150, after: 80 },
+              children: [new TextRun({ text: `PLATOON ${p}`, bold: true, size: 20, font: "Arial", color: "555555" })],
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [makeHeaderRow(), ...makeDataRows(platoonStudents)],
+            }),
+          );
+        }
+      }
+      return sections;
+    }
+
+    const b1Sections = buildBattalionSections("BATTALION 1", ROTC_BATTALION_1_COMPANIES, b1Students);
+    const b2Sections = buildBattalionSections("BATTALION 2", ROTC_BATTALION_2_COMPANIES, b2Students);
+
+    const specialSections: (Paragraph | Table)[] = [];
+    if (specialAll.length > 0) {
+      specialSections.push(
+        new Paragraph({
+          spacing: { before: 400, after: 150 },
+          children: [new TextRun({ text: "SPECIAL PLATOON", bold: true, size: 26, font: "Arial", color: "1F2937" })],
+        }),
+      );
+      for (const unit of SPECIAL_UNITS) {
+        const unitStudents = specialUnitStudents[unit];
+        if (unitStudents.length === 0) continue;
+        specialSections.push(
+          new Paragraph({
+            spacing: { before: 200, after: 80 },
+            children: [new TextRun({ text: unit.toUpperCase(), bold: true, size: 22, font: "Arial", color: "1E40AF" })],
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [makeHeaderRow(), ...makeDataRows(unitStudents)],
+          }),
+        );
+      }
+    }
 
     const doc = new Document({
       sections: [{
@@ -156,7 +224,7 @@ export default function OverallAttendanceBox({
           }),
           new Paragraph({
             spacing: { after: 60 },
-            children: [new TextRun({ text: `MI ${selectedMI} — ${selectedType === "in" ? "Time In" : "Time Out"}`, size: 22, font: "Arial", color: "555555" })],
+            children: [new TextRun({ text: `MI ${selectedMI} — ${selectedType === "in" ? "Time In" : "Time Out"}${sessionOpenDate && sessionCloseDate ? `  |  ${formatDateDisplay(sessionOpenDate)}  |  ${formatTimeDisplay(sessionOpenDate)} - ${formatTimeDisplay(sessionCloseDate)}` : ""}`, size: 22, font: "Arial", color: "555555" })],
           }),
           new Paragraph({
             spacing: { after: 200 },
@@ -167,14 +235,13 @@ export default function OverallAttendanceBox({
               new TextRun({ text: `Absent: ${overallCounts.absent}`, size: 20, font: "Arial", color: "B91C1C" }),
             ],
           }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [headerRow, ...dataRows],
-          }),
+          ...b1Sections,
+          ...b2Sections,
+          ...specialSections,
           new Paragraph({
             spacing: { before: 200 },
             alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: `${sorted.length} of ${allStudents.length} cadets shown`, size: 16, font: "Arial", color: "999999" })],
+            children: [new TextRun({ text: `${allStudents.length} cadets total`, size: 16, font: "Arial", color: "999999" })],
           }),
         ],
       }],
@@ -200,7 +267,7 @@ export default function OverallAttendanceBox({
     if (filterYear && s.yearLevel !== filterYear) return false;
     if (search) {
       const q = search.toLowerCase();
-      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
+      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -429,7 +496,7 @@ export default function OverallAttendanceBox({
                     const status = getStatus(s.uid, recordMap, graceOver);
                     const cfg = statusConfig[status] ?? statusConfig.absent;
                     const record = recordMap.get(s.uid);
-                    const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+                    const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
 
                     return (
                       <div key={s.uid} className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-l-3 ${cfg.border}`}>
@@ -475,7 +542,7 @@ export default function OverallAttendanceBox({
                     const status = getStatus(s.uid, recordMap, graceOver);
                     const cfg = statusConfig[status] ?? statusConfig.absent;
                     const record = recordMap.get(s.uid);
-                    const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+                    const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
                     const timeStr = status === "present" || status === "late"
                       ? (record ? formatTimeDisplay(record.createdAt) : "—")
                       : status === "absent" && lateDeadlineStr

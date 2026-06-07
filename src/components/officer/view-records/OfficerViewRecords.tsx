@@ -15,9 +15,9 @@ export default function OfficerViewRecords() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-gray-800">View Attendance Records</h1>
+        <h1 className="text-xl font-bold text-gray-800">View Student Records</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          View complete attendance records of all ROTC and CWTS students.
+          View complete student records of all ROTC and CWTS students.
         </p>
       </div>
 

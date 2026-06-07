@@ -6,6 +6,7 @@ import { adminService } from "@/services/admin.service";
 import {
   AttendanceSession, AttendanceRecord, EnrollmentDocument,
   CWTSCompany, CWTS_COMPANIES,
+  EnrollmentSchedule, getSchoolYearFromDate,
 } from "@/types";
 import {
   Document, Packer, Paragraph, Table, TableRow, TableCell,
@@ -25,6 +26,10 @@ function isGracePeriodOver(session: AttendanceSession | null): boolean {
 
 function formatTimeDisplay(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+}
+
+function formatDateDisplay(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function getMISessions(sessions: AttendanceSession[]) {
@@ -61,8 +66,45 @@ function getStatus(uid: string, recordMap: Map<string, AttendanceRecord>, graceO
   return graceOver ? "absent" : "unmarked";
 }
 
+function getSessionSY(s: AttendanceSession): string {
+  return s.schoolYear ?? getSchoolYearFromDate(s.openDate);
+}
+
+function getUniqueSYs(sessions: AttendanceSession[]): string[] {
+  const set = new Set(sessions.map(getSessionSY));
+  return Array.from(set).sort().reverse();
+}
+
+type SYOption = { value: string; label: string };
+
+function buildSYOptions(sessions: AttendanceSession[], schedules: EnrollmentSchedule[]): SYOption[] {
+  const sySet = getUniqueSYs(sessions);
+  const scheduleMap = new Map<string, string[]>();
+  for (const sch of schedules) {
+    const list = scheduleMap.get(sch.year) ?? [];
+    list.push(sch.msLevel);
+    scheduleMap.set(sch.year, list);
+  }
+
+  const options: SYOption[] = [];
+  for (const sy of sySet) {
+    const msLevels = scheduleMap.get(sy);
+    if (msLevels && msLevels.length > 0) {
+      const sorted = [...msLevels].sort();
+      for (const ms of sorted) {
+        options.push({ value: sy, label: `MS ${ms} — SY ${sy}` });
+      }
+    } else {
+      options.push({ value: sy, label: `SY ${sy}` });
+    }
+  }
+  return options;
+}
+
 export default function CWTSAttendanceSummary() {
   const [allSessions, setAllSessions] = useState<AttendanceSession[]>([]);
+  const [schedules, setSchedules] = useState<EnrollmentSchedule[]>([]);
+  const [selectedSY, setSelectedSY] = useState<string>("");
   const [selectedMI, setSelectedMI] = useState<number>(0);
   const [selectedType, setSelectedType] = useState<"in" | "out">("in");
   const [enrolledStudents, setEnrolledStudents] = useState<EnrollmentDocument[]>([]);
@@ -80,13 +122,21 @@ export default function CWTSAttendanceSummary() {
     setSelectedMI(0);
     setRecordMap(new Map());
     setEnrolledStudents([]);
-    adminService.getSessionsByProgram("CWTS").then((data) => {
+    Promise.all([
+      adminService.getSessionsByProgram("CWTS"),
+      adminService.getEnrollmentSchedules("CWTS"),
+    ]).then(([data, scheds]) => {
       setAllSessions(data);
+      setSchedules(scheds);
+      const syList = getUniqueSYs(data);
+      setSelectedSY(syList[0] ?? "");
       setLoadingSessions(false);
     }).catch(() => setLoadingSessions(false));
   }, []);
 
-  const miSessions = getMISessions(allSessions);
+  const syOptions = buildSYOptions(allSessions, schedules);
+  const sessionsBySY = allSessions.filter((s) => getSessionSY(s) === selectedSY);
+  const miSessions = getMISessions(sessionsBySY);
   const currentMI = miSessions.get(selectedMI);
   const selectedSession = currentMI?.[selectedType] ?? null;
   const selectedSessionId = selectedSession?.id ?? null;
@@ -122,7 +172,7 @@ export default function CWTSAttendanceSummary() {
     if (filterYear && s.yearLevel !== filterYear) return false;
     if (search) {
       const q = search.toLowerCase();
-      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
+      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -165,51 +215,84 @@ export default function CWTSAttendanceSummary() {
   ];
 
   async function downloadWord() {
-    const headers = ["#", "Name", "Student ID", "Course", "Year Level", "Company", "Status", "Time"];
-    const rows = sorted.map((s, i) => {
-      const status = getStatus(s.uid, recordMap, graceOver);
-      const cfg = statusConfig[status] ?? statusConfig.absent;
-      const record = recordMap.get(s.uid);
-      const time = status === "present" || status === "late"
-        ? (record ? formatTimeDisplay(record.createdAt) : "")
-        : status === "absent" && lateDeadlineStr
-          ? formatTimeDisplay(lateDeadlineStr)
-          : "";
-      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
-      return [String(i + 1), name, s.studentId ?? "", s.course ?? "", s.yearLevel ?? "", s.company ?? "", cfg.label, time];
-    });
-
     const borderStyle = { style: BorderStyle.SINGLE, size: 1, color: "999999" };
     const borders = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+    const headers = ["No.", "Name", "ID Number", "Status", selectedType === "in" ? "Time In" : "Time Out"];
 
-    const headerRow = new TableRow({
-      tableHeader: true,
-      children: headers.map((h) =>
-        new TableCell({
-          borders,
-          shading: { fill: "065F46" },
-          children: [new Paragraph({
-            spacing: { before: 40, after: 40 },
-            children: [new TextRun({ text: h, bold: true, size: 18, font: "Arial", color: "FFFFFF" })],
-          })],
-        })
-      ),
-    });
-
-    const dataRows = rows.map((cells, idx) =>
-      new TableRow({
-        children: cells.map((text) =>
+    function makeHeaderRow() {
+      return new TableRow({
+        tableHeader: true,
+        children: headers.map((h) =>
           new TableCell({
             borders,
-            ...(idx % 2 === 1 ? { shading: { fill: "F9FAFB" } } : {}),
+            shading: { fill: "065F46" },
             children: [new Paragraph({
-              spacing: { before: 30, after: 30 },
-              children: [new TextRun({ text, size: 18, font: "Arial" })],
+              spacing: { before: 40, after: 40 },
+              children: [new TextRun({ text: h, bold: true, size: 18, font: "Arial", color: "FFFFFF" })],
             })],
           })
         ),
-      })
-    );
+      });
+    }
+
+    function makeDataRows(students: EnrollmentDocument[]) {
+      return students.map((s, idx) => {
+        const status = getStatus(s.uid, recordMap, graceOver);
+        const cfg = statusConfig[status] ?? statusConfig.absent;
+        const record = recordMap.get(s.uid);
+        const time = status === "present" || status === "late"
+          ? (record ? formatTimeDisplay(record.createdAt) : "")
+          : status === "absent" && lateDeadlineStr
+            ? formatTimeDisplay(lateDeadlineStr)
+            : "";
+        const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
+        const cells = [String(idx + 1), name, s.studentId ?? "", cfg.label, time];
+
+        return new TableRow({
+          children: cells.map((text) =>
+            new TableCell({
+              borders,
+              ...(idx % 2 === 1 ? { shading: { fill: "F9FAFB" } } : {}),
+              children: [new Paragraph({
+                spacing: { before: 30, after: 30 },
+                children: [new TextRun({ text, size: 18, font: "Arial" })],
+              })],
+            })
+          ),
+        });
+      });
+    }
+
+    const companySections: (Paragraph | Table)[] = [];
+    for (const company of CWTS_COMPANIES) {
+      const students = sorted.filter((s) => s.company === company);
+      if (students.length === 0) continue;
+
+      companySections.push(
+        new Paragraph({
+          spacing: { before: 300, after: 120 },
+          children: [new TextRun({ text: `${company.toUpperCase()} COMPANY`, bold: true, size: 24, font: "Arial", color: "065F46" })],
+        }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [makeHeaderRow(), ...makeDataRows(students)],
+        }),
+      );
+    }
+
+    const unassigned = sorted.filter((s) => !s.company);
+    if (unassigned.length > 0) {
+      companySections.push(
+        new Paragraph({
+          spacing: { before: 300, after: 120 },
+          children: [new TextRun({ text: "UNASSIGNED", bold: true, size: 24, font: "Arial", color: "666666" })],
+        }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [makeHeaderRow(), ...makeDataRows(unassigned)],
+        }),
+      );
+    }
 
     const doc = new Document({
       sections: [{
@@ -221,7 +304,7 @@ export default function CWTSAttendanceSummary() {
           }),
           new Paragraph({
             spacing: { after: 60 },
-            children: [new TextRun({ text: `MI ${selectedMI} — ${selectedType === "in" ? "Time In" : "Time Out"}`, size: 22, font: "Arial", color: "555555" })],
+            children: [new TextRun({ text: `MI ${selectedMI} — ${selectedType === "in" ? "Time In" : "Time Out"}${selectedSession ? `  |  ${formatDateDisplay(selectedSession.openDate)}  |  ${formatTimeDisplay(selectedSession.openDate)} - ${formatTimeDisplay(selectedSession.closeDate)}` : ""}`, size: 22, font: "Arial", color: "555555" })],
           }),
           new Paragraph({
             spacing: { after: 200 },
@@ -232,10 +315,7 @@ export default function CWTSAttendanceSummary() {
               new TextRun({ text: `Absent: ${counts.absent}`, size: 20, font: "Arial", color: "B91C1C" }),
             ],
           }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [headerRow, ...dataRows],
-          }),
+          ...companySections,
           new Paragraph({
             spacing: { before: 200 },
             alignment: AlignmentType.RIGHT,
@@ -262,6 +342,31 @@ export default function CWTSAttendanceSummary() {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800">CWTS Attendance Summary</h1>
             <p className="text-sm text-gray-500 mt-0.5">View attendance records for CWTS students.</p>
           </div>
+        </div>
+      </div>
+
+      {/* SY selector */}
+      <div className="mb-4">
+        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">School Year</label>
+        <div className="relative max-w-xs">
+          <select
+            value={selectedSY}
+            onChange={(e) => {
+              setSelectedSY(e.target.value);
+              setSelectedMI(0);
+              setRecordMap(new Map());
+              setEnrolledStudents([]);
+            }}
+            className="w-full appearance-none px-3.5 py-2.5 pr-8 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+          >
+            {syOptions.length === 0 && <option value="">No sessions found</option>}
+            {syOptions.map((opt, i) => (
+              <option key={`${opt.value}-${i}`} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <svg className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
       </div>
 
@@ -458,7 +563,7 @@ export default function CWTSAttendanceSummary() {
                       const status = getStatus(s.uid, recordMap, graceOver);
                       const cfg = statusConfig[status] ?? statusConfig.absent;
                       const record = recordMap.get(s.uid);
-                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
 
                       return (
                         <div key={s.uid} className={`grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-4 py-2.5 border-l-3 ${cfg.border}`}>
@@ -502,7 +607,7 @@ export default function CWTSAttendanceSummary() {
                       const status = getStatus(s.uid, recordMap, graceOver);
                       const cfg = statusConfig[status] ?? statusConfig.absent;
                       const record = recordMap.get(s.uid);
-                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
                       const timeStr = status === "present" || status === "late"
                         ? (record ? formatTimeDisplay(record.createdAt) : "—")
                         : status === "absent" && lateDeadlineStr
