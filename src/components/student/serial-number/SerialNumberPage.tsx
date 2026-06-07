@@ -390,7 +390,7 @@ export default function SerialNumberPage() {
   const isROTC = profile?.nstpComponent === "ROTC";
 
   const studentFullName = profile
-    ? `${profile.firstName} ${profile.middleName ? `${profile.middleName.charAt(0)}` : ""} ${profile.lastName}`.replace(/\s+/g, " ").trim()
+    ? `${profile.firstName} ${profile.middleName ? `${profile.middleName.charAt(0)}` : ""} ${profile.lastName}${profile.suffix ? ` ${profile.suffix}` : ""}`.replace(/\s+/g, " ").trim()
     : "";
 
   const handleDownloadCertificate = async () => {

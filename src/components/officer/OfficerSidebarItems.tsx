@@ -117,7 +117,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: "View Attendance Records",
+    label: "View Student Records",
     href: `${BASE}/view-records`,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

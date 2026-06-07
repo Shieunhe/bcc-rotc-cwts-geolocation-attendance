@@ -45,7 +45,7 @@ export default function PlatoonAttendanceList({ members, recordMap, graceOver }:
           <div key={m.uid} className={`flex items-center gap-3 px-4 py-2.5 border-l-3 ${cfg.border}`}>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-gray-700">
-                {m.lastName}, {m.firstName}{middleInitial}
+                {m.lastName}, {m.firstName}{middleInitial}{m.suffix ? ` ${m.suffix}` : ""}
               </p>
               {m.studentId && (
                 <p className="text-[10px] text-gray-400 mt-0.5">{m.studentId}</p>

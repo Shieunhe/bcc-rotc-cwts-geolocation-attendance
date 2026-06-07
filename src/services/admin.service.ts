@@ -10,6 +10,7 @@ import {
   SpecialUnit, SPECIAL_UNIT_SLOT_LIMITS,
   AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
   AttendanceRecord, AttendanceRecordStatus, StudentGrade, AttendanceOffense,
+  getSchoolYearFromDate,
 } from "@/types";
 
 function mergeWithMsRecords(enrollment: EnrollmentDocument, allMsRecords: StudentMsRecord[]): EnrollmentWithMs {
@@ -541,6 +542,7 @@ export const adminService = {
       id: ref.id,
       program: data.program,
       ...(data.isAdvanceCourse ? { isAdvanceCourse: true } : {}),
+      schoolYear: getSchoolYearFromDate(data.openDate),
       ...(data.miNumber ? { miNumber: data.miNumber } : {}),
       ...(data.miType ? { miType: data.miType } : {}),
       openDate: data.openDate,

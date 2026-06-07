@@ -59,7 +59,7 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
           <div>
             <h2 className="text-lg font-bold text-gray-800">Student Record — {msLabel}</h2>
             <p className="text-sm text-gray-500">
-              {student.firstName} {student.lastName}
+              {student.firstName} {student.lastName}{student.suffix ? ` ${student.suffix}` : ""}
               {sy && <span className="ml-2 text-xs text-gray-400">SY {sy}</span>}
             </p>
           </div>
@@ -91,7 +91,7 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
                 </h3>
                 <div className="grid grid-cols-2 gap-3 bg-gray-50 rounded-xl p-4">
                   <InfoItem label="Student ID" value={student.studentId} />
-                  <InfoItem label="Name" value={`${student.lastName}, ${student.firstName} ${student.middleName}`} />
+                  <InfoItem label="Name" value={`${student.lastName}, ${student.firstName} ${student.middleName}${student.suffix ? ` ${student.suffix}` : ""}`} />
                   <InfoItem label="Course" value={student.course} />
                   <InfoItem label="Year Level" value={student.yearLevel} />
                   <InfoItem label="Program" value={student.nstpComponent} />

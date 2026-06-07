@@ -81,7 +81,7 @@ function UnitSection({ unit, enrollments }: { unit: SpecialUnit; enrollments: En
                       <tr key={e.uid} className="hover:bg-gray-50/50 transition">
                         <td className="px-5 py-2.5 text-gray-400 font-medium">{i + 1}</td>
                         <td className="px-5 py-2.5 font-semibold text-gray-800">
-                          {e.lastName}, {e.firstName} {e.middleName ? e.middleName[0] + "." : ""}
+                          {e.lastName}, {e.firstName} {e.middleName ? e.middleName[0] + "." : ""}{e.suffix ? ` ${e.suffix}` : ""}
                         </td>
                         <td className="px-5 py-2.5 text-gray-600">{e.studentId}</td>
                         <td className="px-5 py-2.5 text-gray-600">{e.course}</td>
@@ -102,7 +102,7 @@ function UnitSection({ unit, enrollments }: { unit: SpecialUnit; enrollments: En
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800 truncate">
-                        {e.lastName}, {e.firstName}
+                        {e.lastName}, {e.firstName}{e.suffix ? ` ${e.suffix}` : ""}
                       </p>
                       <p className="text-xs text-gray-400">{e.studentId} &middot; {e.course} &middot; {e.yearLevel}</p>
                     </div>

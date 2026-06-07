@@ -77,7 +77,7 @@ export default function SpecialPlatoonAttendanceBox({
     if (filterStatus && status !== filterStatus) return false;
     if (search) {
       const q = search.toLowerCase();
-      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
+      const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -233,7 +233,7 @@ export default function SpecialPlatoonAttendanceBox({
                       const status = getStatus(s.uid, recordMap, graceOver);
                       const cfg = statusConfig[status] ?? statusConfig.absent;
                       const record = recordMap.get(s.uid);
-                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
                       const unit = s.specialUnit as SpecialUnit;
 
                       return (
@@ -275,7 +275,7 @@ export default function SpecialPlatoonAttendanceBox({
                       const status = getStatus(s.uid, recordMap, graceOver);
                       const cfg = statusConfig[status] ?? statusConfig.absent;
                       const record = recordMap.get(s.uid);
-                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`;
+                      const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
                       const unit = s.specialUnit as SpecialUnit;
                       const timeStr = status === "present" || status === "late"
                         ? (record ? formatTimeDisplay(record.createdAt) : "—")

@@ -39,7 +39,7 @@ export async function lookupAccountByEmail(rawEmail: string): Promise<AccountLoo
       const snap = await getDocs(q);
       if (!snap.empty) {
         const data = snap.docs[0].data() as EnrollmentDocument;
-        const name = [data.firstName, data.lastName].filter(Boolean).join(" ").trim();
+        const name = [data.firstName, data.lastName, data.suffix].filter(Boolean).join(" ").trim();
         const displayName = name || data.username || data.email || trimmed;
         return { found: true, email: data.email ?? trimmed, displayName };
       }

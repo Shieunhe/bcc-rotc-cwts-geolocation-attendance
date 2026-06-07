@@ -59,7 +59,7 @@ export default function OfficerSpecialPlatoon() {
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((s) => {
-        const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId} ${s.course}`.toLowerCase();
+        const haystack = `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId} ${s.course}`.toLowerCase();
         return haystack.includes(q);
       });
     }
@@ -203,7 +203,7 @@ export default function OfficerSpecialPlatoon() {
                         </td>
                         <td className="px-5 py-2.5 text-xs font-medium text-gray-700">{s.studentId}</td>
                         <td className="px-5 py-2.5 text-xs font-medium text-gray-800">
-                          {s.lastName}, {s.firstName} {s.middleName?.[0] ? `${s.middleName[0]}.` : ""}
+                          {s.lastName}, {s.firstName} {s.middleName?.[0] ? `${s.middleName[0]}.` : ""}{s.suffix ? ` ${s.suffix}` : ""}
                         </td>
                         <td className="px-5 py-2.5 text-xs text-gray-600">{s.course}</td>
                         <td className="px-5 py-2.5 text-xs text-gray-600">{s.yearLevel}</td>
@@ -233,7 +233,7 @@ export default function OfficerSpecialPlatoon() {
                     <span className="text-[11px] text-gray-400 w-5 shrink-0">{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-gray-800 truncate">
-                        {s.lastName}, {s.firstName}
+                        {s.lastName}, {s.firstName}{s.suffix ? ` ${s.suffix}` : ""}
                       </p>
                       <p className="text-[11px] text-gray-400">{s.studentId} &middot; {s.course} &middot; {s.yearLevel}</p>
                       <div className="flex items-center gap-1.5 mt-1">

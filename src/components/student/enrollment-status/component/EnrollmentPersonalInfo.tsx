@@ -13,6 +13,7 @@ export default function EnrollmentPersonalInfo({ profile }: Props) {
       <EnrollmentDetailRow label="Last Name" value={profile.lastName} />
       <EnrollmentDetailRow label="First Name" value={profile.firstName} />
       <EnrollmentDetailRow label="Middle Name" value={profile.middleName} />
+      {profile.suffix && <EnrollmentDetailRow label="Suffix" value={profile.suffix} />}
       <EnrollmentDetailRow label="Sex" value={profile.sex} />
       <EnrollmentDetailRow label="Birthdate" value={profile.birthdate} />
       <EnrollmentDetailRow label="Contact Number" value={profile.contactNumber} />

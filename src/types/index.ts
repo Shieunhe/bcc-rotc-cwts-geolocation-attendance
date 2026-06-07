@@ -39,6 +39,7 @@ export interface EnrollmentDocument {
   lastName: string;
   firstName: string;
   middleName: string;
+  suffix?: string;
   religion: string;
   birthdate: string;
   sex: Sex | "";
@@ -107,6 +108,7 @@ export interface AttendanceSession {
   id: string;
   program: NSTProgram;
   isAdvanceCourse?: boolean;
+  schoolYear?: string;
   miNumber?: number;
   miType?: "in" | "out";
   openDate: string;
@@ -116,6 +118,14 @@ export interface AttendanceSession {
   status: AttendanceStatus;
   createdAt: string;
   createdBy: string;
+}
+
+export function getSchoolYearFromDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const month = d.getMonth();
+  const year = d.getFullYear();
+  if (month >= 5) return `${year}-${year + 1}`;
+  return `${year - 1}-${year}`;
 }
 
 export type AttendanceRecordStatus = "present" | "late" | "absent";

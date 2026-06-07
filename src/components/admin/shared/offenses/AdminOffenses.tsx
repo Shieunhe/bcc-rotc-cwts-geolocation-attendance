@@ -35,7 +35,7 @@ export default function AdminOffenses({ program }: Props) {
       const q = search.toLowerCase();
       const s = o.student;
       const haystack = s
-        ? `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase()
+        ? `${s.lastName} ${s.firstName} ${s.middleName ?? ""} ${s.suffix ?? ""} ${s.studentId ?? ""} ${s.course ?? ""}`.toLowerCase()
         : o.student_uid.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
@@ -179,7 +179,7 @@ export default function AdminOffenses({ program }: Props) {
                   {filtered.map((o, idx) => {
                     const s = o.student;
                     const name = s
-                      ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`
+                      ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`
                       : o.student_uid;
                     const isSettlement = o.offend >= 2;
                     const status = getStatusDisplay(o);
@@ -242,7 +242,7 @@ export default function AdminOffenses({ program }: Props) {
               {filtered.map((o, idx) => {
                 const s = o.student;
                 const name = s
-                  ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`
+                  ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`
                   : o.student_uid;
                 const isSettlement = o.offend >= 2;
                 const status = getStatusDisplay(o);
@@ -305,7 +305,7 @@ export default function AdminOffenses({ program }: Props) {
     {detailOffense && (() => {
       const s = detailOffense.student;
       const name = s
-        ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}`
+        ? `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`
         : detailOffense.student_uid;
       const isSettlement = detailOffense.offend >= 2;
 

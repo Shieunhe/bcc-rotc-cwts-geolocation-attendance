@@ -36,6 +36,11 @@ export default function PersonalInfoStep({ form, updateField, updateBoolean }: E
           value={form.middleName ?? ""}
           onChange={(e) => updateField("middleName", e.target.value.toUpperCase())} />
       </div>
+      <div>
+        <Input label="Suffix (optional)" type="text" placeholder="e.g. JR., SR., III"
+          value={form.suffix ?? ""}
+          onChange={(e) => updateField("suffix", e.target.value.toUpperCase())} />
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input label="Contact Number" type="tel" placeholder="09XXXXXXXXX"
           value={form.contactNumber}

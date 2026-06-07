@@ -119,7 +119,7 @@ export default function AttendanceRecordList({ sessionId }: Props) {
             {filtered.map((record) => {
               const cfg = statusConfig[record.status] ?? statusConfig.absent;
               const name = record.student
-                ? `${record.student.lastName}, ${record.student.firstName}${record.student.middleName ? ` ${record.student.middleName[0]}.` : ""}`
+                ? `${record.student.lastName}, ${record.student.firstName}${record.student.middleName ? ` ${record.student.middleName[0]}.` : ""}${record.student.suffix ? ` ${record.student.suffix}` : ""}`
                 : record.studentUid;
               const studentId = record.student?.studentId;
 
