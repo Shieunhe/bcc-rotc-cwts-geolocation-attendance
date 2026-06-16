@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { studentService } from "@/services/student.service";
 import { AttendanceSession } from "@/types";
@@ -57,19 +58,11 @@ export default function AttendancePage() {
 
   return (
     <StudentPageLayout>
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Attendance</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Check in to your active attendance session.</p>
-          </div>
-        </div>
-      </div>
+      <PageIntroPanel
+        title="Attendance"
+        subtitle="Check in to your active attendance session."
+        variant="sky"
+      />
 
       <div className="max-w-md">
         {!hasProgram && <NoProgramCard />}
@@ -89,3 +82,6 @@ export default function AttendancePage() {
     </StudentPageLayout>
   );
 }
+
+
+

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { studentService } from "@/services/student.service";
 
@@ -435,6 +436,11 @@ export default function SerialNumberPage() {
           </div>
         ) : serialData && profile ? (
           <div className="space-y-5">
+            <PageIntroPanel
+              title="Serial Number & Certificate"
+              subtitle="View and download your NSTP completion certificate."
+              variant="sky"
+            />
             {/* Mobile only: pan/zoom frame + stone border. Desktop: certificate only (sm:contents unwraps these wrappers). */}
             <div className="w-full min-w-0 max-sm:overflow-hidden max-sm:rounded-xl max-sm:border max-sm:border-gray-200/80 max-sm:bg-stone-100/60 max-sm:shadow-inner sm:contents">
               <div
@@ -501,18 +507,12 @@ export default function SerialNumberPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 px-6 py-5 border-b border-purple-100/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-gray-800">Serial Number & Certificate</h1>
-                  <p className="text-sm text-gray-500">Your NSTP completion details</p>
-                </div>
-              </div>
+            <div className="p-4 pb-0">
+              <PageIntroPanel
+                title="Serial Number & Certificate"
+                subtitle="Your NSTP completion details."
+                variant="sky"
+              />
             </div>
 
             <div className="px-6 py-12 text-center">
@@ -532,3 +532,7 @@ export default function SerialNumberPage() {
     </StudentPageLayout>
   );
 }
+
+
+
+

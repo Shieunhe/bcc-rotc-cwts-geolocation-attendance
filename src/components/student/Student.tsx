@@ -13,6 +13,7 @@ import SerialNumber from "./dashboard/SerialNumber";
 import SettingsDashboardCard from "@/components/settings/SettingsDashboardCard";
 import AttendanceWarningModal from "./AttendanceWarningModal";
 import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 const statusConfig = {
   pending: {  
@@ -53,7 +54,7 @@ export default function Student() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <div className="flex h-screen bg-[linear-gradient(180deg,_#f7faff_0%,_#eef5ff_100%)] overflow-hidden">
         <StudentSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -65,7 +66,7 @@ export default function Student() {
 
   if (error || !profile) {
     return (
-      <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <div className="flex h-screen bg-[linear-gradient(180deg,_#f7faff_0%,_#eef5ff_100%)] overflow-hidden">
         <StudentSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
           <p className="text-base font-semibold text-red-500">Could not load your profile.</p>
@@ -83,7 +84,7 @@ export default function Student() {
   const lastName = profile.lastName ?? "Student";
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-[linear-gradient(180deg,_#f7faff_0%,_#eef5ff_100%)] overflow-hidden">
       <StudentSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <AttendanceWarningModal />
 
@@ -101,14 +102,11 @@ export default function Student() {
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Greeting */}
-          <div className="mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-              Welcome back, {lastName}
-            </h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {profile.studentId} • {profile.course} • {profile.yearLevel} • {profile.nstpComponent}
-            </p>
-          </div>
+          <PageIntroPanel
+            title={`Welcome back, ${lastName}`} 
+            subtitle={`${profile.studentId} - ${profile.course} - ${profile.yearLevel} - ${profile.nstpComponent}`} 
+            variant="sky"
+          />
           {/* Cards grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {/* Enrollment Status */}
@@ -147,3 +145,7 @@ export default function Student() {
     </div>
   );
 }
+
+
+
+

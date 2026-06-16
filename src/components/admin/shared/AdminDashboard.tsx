@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import AdminSidebarItems from "@/components/admin/shared/AdminSidebarItems";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { NSTProgram } from "@/types";
@@ -32,9 +31,17 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
   const approved = allMsRecords.filter((r) => r.status === "approved").length;
   const rejected = allMsRecords.filter((r) => r.status === "rejected").length;
   const total = allMsRecords.length;
+  const shellClass =
+    program === "ROTC"
+      ? "bg-[linear-gradient(180deg,_#f7faff_0%,_#eef5ff_100%)]"
+      : "bg-[linear-gradient(180deg,_#f7fbfa_0%,_#edf7f4_100%)]";
+  const welcomePanelClass =
+    program === "ROTC"
+      ? "from-white via-sky-50/70 to-indigo-50/70 border-sky-100"
+      : "from-white via-emerald-50/70 to-cyan-50/70 border-emerald-100";
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className={`flex h-screen overflow-hidden ${shellClass}`}>
       <AdminSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} program={program} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -44,16 +51,18 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="text-sm font-semibold text-gray-700">BCC NSTP — {program} Admin</span>
+          <span className="text-sm font-semibold text-gray-700">BCC NSTP - {program} Admin</span>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="mb-6">
+          <div className={`mb-6 rounded-3xl border bg-gradient-to-r px-5 py-5 shadow-sm ${welcomePanelClass}`}>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
               Welcome, {program} Admin
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              Manage {program} enrollments and cadet/cadette records.
+              {program === "CWTS"
+                ? "Manage CWTS enrollments and cadette records."
+                : "Manage ROTC enrollments and cadette records."}
             </p>
           </div>
 

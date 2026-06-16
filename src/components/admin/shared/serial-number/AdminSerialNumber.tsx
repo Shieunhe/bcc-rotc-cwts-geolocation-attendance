@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { adminService } from "@/services/admin.service";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import {
   NSTProgram,
   EnrollmentWithMs,
@@ -346,32 +347,28 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-2xl p-5 border border-violet-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+      <div className="space-y-4">
+        <PageIntroPanel
+          title="Serial Number"
+          subtitle={`Assign serial numbers to ${program} students who have completed all grades.`}
+          variant={program === "CWTS" ? "emerald" : "sky"}
+          actions={
+            <button
+              onClick={() => setShowSettings(true)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium bg-white rounded-lg transition shadow-sm ${
+                program === "CWTS"
+                  ? "text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+                  : "text-blue-700 border border-blue-200 hover:bg-blue-50"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">Serial Number</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Assign serial numbers to {program} students who have completed all grades.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 bg-white border border-violet-200 rounded-lg hover:bg-violet-50 transition shadow-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Certificate Settings
-          </button>
-        </div>
+              Certificate Settings
+            </button>
+          }
+        />
 
         {!settingsLoading && !isSettingsComplete && (
           <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">

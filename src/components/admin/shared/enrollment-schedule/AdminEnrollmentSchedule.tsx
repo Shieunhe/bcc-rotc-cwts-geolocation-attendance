@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 import Button from "@/components/common/Button";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { EnrollmentSchedule, MSLevel, NSTProgram } from "@/types";
 import { useEnrollmentSchedule } from "@/hooks/useEnrollmentSchedule";
 
@@ -142,20 +143,20 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
   return (
     <AdminPageLayout program={program}>
       <div className="max-w-3xl w-full mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{program} Enrollment Schedule</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage enrollment schedules per MS level and school year.</p>
-          </div>
-          {!showForm && (
+        <PageIntroPanel
+          title={`${program} Enrollment Schedule`}
+          subtitle="Manage enrollment schedules per MS level and school year."
+          variant={program === "CWTS" ? "emerald" : "sky"}
+          actions={!showForm ? (
             <button
               onClick={hasActiveSchedule ? undefined : openCreate}
               disabled={hasActiveSchedule}
               className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition shadow-sm ${
                 hasActiveSchedule
                   ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
+                  : program === "CWTS"
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,8 +164,8 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
               </svg>
               Create Schedule
             </button>
-          )}
-        </div>
+          ) : undefined}
+        />
 
         {hasActiveSchedule && !showForm && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">

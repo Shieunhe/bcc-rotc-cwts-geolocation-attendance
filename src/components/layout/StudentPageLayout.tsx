@@ -14,7 +14,7 @@ export default function StudentPageLayout({ children }: StudentPageLayoutProps) 
   useAutoCloseExpiredSessions();
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-[linear-gradient(180deg,_#f7faff_0%,_#eef5ff_100%)] overflow-hidden">
       <StudentSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <AttendanceWarningModal />
 

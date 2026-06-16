@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { adminService } from "@/services/admin.service";
 import { EnrollmentWithMs, NSTProgram, StudentGrade } from "@/types";
 
@@ -65,23 +66,13 @@ export default function AdminGrades({ program }: AdminGradesProps) {
 
   return (
     <AdminPageLayout program={program}>
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Encode Grades</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {program === "ROTC"
-                ? "Assign NSTP 1 and NSTP 2 midterm & final term grades for ROTC cadets."
-                : "Assign NSTP 1 and NSTP 2 midterm & final term grades for CWTS students."}
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageIntroPanel
+        title="Encode Grades"
+        subtitle={program === "ROTC"
+          ? "Assign NSTP 1 and NSTP 2 midterm and final term grades for ROTC cadets."
+          : "Assign NSTP 1 and NSTP 2 midterm and final term grades for CWTS students."}
+        variant={program === "CWTS" ? "emerald" : "sky"}
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">

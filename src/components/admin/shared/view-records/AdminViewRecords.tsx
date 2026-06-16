@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { NSTProgram, EnrollmentWithMs, StudentMsRecord } from "@/types";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import StudentRecordModal from "./StudentRecordModal";
 import * as XLSX from "xlsx";
 
@@ -140,12 +141,11 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-800">View Records</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          View complete records of all {program} students.
-        </p>
-      </div>
+      <PageIntroPanel
+        title="View Records"
+        subtitle={`View complete records of all ${program} students.`}
+        variant={program === "CWTS" ? "emerald" : "sky"}
+      />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">

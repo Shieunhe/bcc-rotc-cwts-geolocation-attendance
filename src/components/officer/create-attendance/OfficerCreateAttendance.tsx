@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { auth } from "@/lib/firebase";
 import { adminService } from "@/services/admin.service";
 import { AttendanceLocation, AttendanceSession, ATTENDANCE_RADIUS_METERS } from "@/types";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 const LocationMap = lazy(() => import("@/components/common/LocationMap"));
 
@@ -252,21 +253,11 @@ export default function OfficerCreateAttendance() {
 
   return (
     <>
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Create Attendance</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Set up MI attendance sessions for ROTC, CWTS, and Advance Course.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageIntroPanel
+        title="Create Attendance"
+        subtitle="Set up MI attendance sessions for ROTC, CWTS, and Advance Course."
+        variant="sky"
+      />
 
       {success && (
         <div className="mb-4 max-w-xl flex items-center gap-2.5 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-sm font-medium text-green-700">
