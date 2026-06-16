@@ -78,7 +78,7 @@ export default function CwtsLoginForm() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-gray-50 relative">
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-gray-200 relative">
         <div className="lg:hidden absolute inset-0">
           <img
             src="/image/cwts-login.png"
@@ -88,7 +88,10 @@ export default function CwtsLoginForm() {
           <div className="absolute inset-0 bg-black/55" />
         </div>
 
-        <div className="relative z-10 w-full max-w-[420px]">
+        {/* subtle page overlay to dim everything behind the card */}
+        <div className="absolute inset-0 bg-black/8 backdrop-blur-sm pointer-events-none" />
+
+        <div className="relative z-20 w-full max-w-[420px]">
           <div className="lg:hidden flex flex-col items-center mb-6">
             <div className="w-28 h-28 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center ring-1 ring-white/20 mb-3">
               <img
@@ -102,7 +105,7 @@ export default function CwtsLoginForm() {
             </h1>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-6 sm:p-8">
+          <div className="bg-white rounded-2xl shadow-2xl ring-1 ring-gray-100 p-6 sm:p-8 relative z-30">
             {!showForgot ? (
               <>
                 <div className="mb-7">
