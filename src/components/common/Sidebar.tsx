@@ -216,15 +216,15 @@ export default function Sidebar({
       <aside
         className={`
           fixed top-0 left-0 z-30 h-full w-72 overflow-hidden border-r border-sky-200/70
-          bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.24),transparent_34%),linear-gradient(180deg,_rgba(248,251,255,0.98)_0%,_rgba(232,241,255,0.96)_45%,_rgba(217,229,248,0.98)_100%)]
-          shadow-2xl shadow-sky-900/10 backdrop-blur-xl
+         bg-[linear-gradient(180deg,_#E5F0FA_0%,_#D7E6F5_45%,_#C8D9EC_100%)]
+          shadow-2xl shadow-sky-900/14 backdrop-blur-xl
           flex flex-col transition-[width,transform] duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           ${collapsed ? "lg:w-24" : "lg:w-72"}
           lg:translate-x-0 lg:static lg:z-auto lg:overflow-visible
         `}
       >
-        <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-r from-sky-200/60 via-white/70 to-indigo-200/60 blur-3xl pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-r from-white/40 via-sky-100/35 to-blue-200/35 blur-3xl pointer-events-none" />
         <div
           className={`
             relative flex items-center border-b border-white/60 px-5 py-6
@@ -265,7 +265,7 @@ export default function Sidebar({
 
         <nav
           className={`
-            mx-3 my-4 flex-1 space-y-1 overflow-y-auto rounded-[28px] border border-white/70 bg-white/55 p-2.5
+          mx-3 my-4 flex-1 space-y-1 overflow-y-auto rounded-[28px] border border-white/60 bg-white/45 p-2.5
             shadow-[0_24px_60px_-36px_rgba(14,116,144,0.45)]
             ${collapsed ? "px-2 py-3" : "px-2.5 py-3"}
           `}
