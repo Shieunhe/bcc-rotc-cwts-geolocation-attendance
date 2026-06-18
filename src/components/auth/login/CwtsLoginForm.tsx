@@ -47,7 +47,13 @@ export default function CwtsLoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div
+      className="min-h-screen flex"
+      style={{
+        background:
+          "radial-gradient(circle at 18% 20%, rgba(45, 212, 191, 0.16) 0%, rgba(45, 212, 191, 0) 24%), radial-gradient(circle at 82% 18%, rgba(96, 165, 250, 0.18) 0%, rgba(96, 165, 250, 0) 24%), radial-gradient(circle at 22% 84%, rgba(20, 184, 166, 0.14) 0%, rgba(20, 184, 166, 0) 24%), radial-gradient(circle at 84% 78%, rgba(74, 222, 128, 0.12) 0%, rgba(74, 222, 128, 0) 26%), linear-gradient(135deg, #071827 0%, #0c2a3d 45%, #134457 100%)",
+      }}
+    >
       <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 overflow-hidden">
         <img
           src="/image/cwts-login.png"
@@ -78,7 +84,13 @@ export default function CwtsLoginForm() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-gray-200 relative">
+      <div
+        className="flex-1 flex items-center justify-center p-6 sm:p-8 relative"
+        style={{
+          background:
+            "radial-gradient(circle at 24% 24%, rgba(45, 212, 191, 0.14) 0%, rgba(45, 212, 191, 0) 22%), radial-gradient(circle at 82% 20%, rgba(96, 165, 250, 0.12) 0%, rgba(96, 165, 250, 0) 22%), linear-gradient(135deg, #092032 0%, #103349 48%, #175064 100%)",
+        }}
+      >
         <div className="lg:hidden absolute inset-0">
           <img
             src="/image/cwts-login.png"
@@ -89,7 +101,7 @@ export default function CwtsLoginForm() {
         </div>
 
         {/* subtle page overlay to dim everything behind the card */}
-        <div className="absolute inset-0 bg-black/8 backdrop-blur-sm pointer-events-none" />
+        <div className="absolute inset-0 bg-white/10 pointer-events-none lg:bg-black/0" />
 
         <div className="relative z-20 w-full max-w-[420px]">
           <div className="lg:hidden flex flex-col items-center mb-6">
@@ -105,7 +117,7 @@ export default function CwtsLoginForm() {
             </h1>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-2xl ring-1 ring-gray-100 p-6 sm:p-8 relative z-30">
+          <div className="bg-white rounded-2xl shadow-[0_28px_70px_rgba(15,23,42,0.22)] p-6 sm:p-8 relative z-30">
             {!showForgot ? (
               <>
                 <div className="mb-7">

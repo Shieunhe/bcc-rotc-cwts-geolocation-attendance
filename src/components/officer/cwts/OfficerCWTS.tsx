@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CWTS_COMPANIES, CWTS_COMPANY_SLOT_LIMIT, CWTSCompany } from "@/types";
 import { useCWTSCompanyRoster } from "@/hooks/useCWTSCompanyRoster";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 const COMPANY_COLORS: Record<CWTSCompany, { bg: string; text: string; bar: string }> = {
   Alpha:   { bg: "bg-blue-50",    text: "text-blue-700",    bar: "bg-blue-500" },
@@ -24,17 +25,16 @@ export default function OfficerCWTS() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">CWTS Company List</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          View all CWTS company assignments and member rosters.
-        </p>
-      </div>
+      <PageIntroPanel
+        title="CWTS Company List"
+        subtitle="View all CWTS company assignments and member rosters."
+        variant="emerald"
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 tracking-wide font-medium">Total Assigned</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{isLoading ? "—" : totalAssigned}</p>
+          <p className="text-2xl font-bold text-gray-800 mt-1">{isLoading ? "-" : totalAssigned}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 tracking-wide font-medium">Total Capacity</p>
@@ -42,7 +42,7 @@ export default function OfficerCWTS() {
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 tracking-wide font-medium">Available Slots</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{isLoading ? "—" : totalSlots - totalAssigned}</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">{isLoading ? "-" : totalSlots - totalAssigned}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 tracking-wide font-medium">Companies</p>
@@ -143,7 +143,7 @@ export default function OfficerCWTS() {
                                 <p className="text-xs font-medium text-gray-800 truncate">
                                   {m.lastName}, {m.firstName}{m.suffix ? ` ${m.suffix}` : ""}
                                 </p>
-                                <p className="text-[11px] text-gray-400">{m.studentId} • {m.course}</p>
+                                <p className="text-[11px] text-gray-400">{m.studentId} - {m.course}</p>
                               </div>
                             </div>
                           ))}
