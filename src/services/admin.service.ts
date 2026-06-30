@@ -121,10 +121,13 @@ export const adminService = {
     if (existing.exists()) {
       throw new Error(`Schedule for MS ${schedule.msLevel} — SY ${schedule.year} already exists.`);
     }
+    const openDate = schedule.openDate.includes("T")
+      ? schedule.openDate
+      : `${schedule.openDate}T00:00:00`;
     const deadline = schedule.deadline.includes("T")
       ? schedule.deadline
       : `${schedule.deadline}T23:59:59`;
-    await setDoc(ref, { ...schedule, deadline, updatedAt: new Date().toISOString() });
+    await setDoc(ref, { ...schedule, openDate, deadline, updatedAt: new Date().toISOString() });
   },
 
   async updateEnrollmentStatus(uid: string, status: EnrollmentStatus, rejectionReason?: string): Promise<void> {
