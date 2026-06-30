@@ -78,8 +78,8 @@ export default function LoginForm() {
               className="w-20 h-20 object-contain"
             />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">
-            NSTP Enrollment & Attendance
+          <h2 className="mb-4 text-4xl font-extrabold text-white drop-shadow-lg">
+            Enrollment & Attendance
           </h2>
           <p className="text-gray-200 text-base leading-relaxed drop-shadow-md">
             Buenavista Community College&apos;s ROTC & CWTS management system for enrollment, attendance tracking, and platoon coordination.
@@ -120,8 +120,8 @@ export default function LoginForm() {
                 className="w-20 h-20 object-contain"
               />
             </div>
-            <h1 className="text-base font-bold text-white text-center drop-shadow-lg">
-              NSTP Enrollment & Attendance
+            <h1 className="text-center text-xl font-extrabold text-white drop-shadow-lg">
+              Enrollment & Attendance
             </h1>
           </div>
 

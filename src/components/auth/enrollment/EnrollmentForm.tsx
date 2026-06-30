@@ -190,55 +190,92 @@ export default function EnrollmentForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 px-4 py-10">
-      <div className="w-full max-w-xl">
+    <div
+      className="relative min-h-screen overflow-hidden px-4 py-10 sm:px-6"
+      style={{
+        background:
+          "radial-gradient(circle at 18% 18%, rgba(59,130,246,0.22) 0%, rgba(59,130,246,0) 24%), radial-gradient(circle at 82% 20%, rgba(125,211,252,0.20) 0%, rgba(125,211,252,0) 26%), radial-gradient(circle at 50% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 28%), linear-gradient(180deg, #c9daf2 0%, #b6cdec 42%, #a7c1e5 100%)",
+      }}
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(15,23,42,0.12),rgba(15,23,42,0)_38%,rgba(30,64,175,0.08)_100%)]" />
+        <div className="absolute left-[-5rem] bottom-[-4rem] h-72 w-72 rounded-full bg-blue-500/25 blur-3xl" />
+        <div className="absolute right-[-6rem] top-[-3rem] h-80 w-80 rounded-full bg-sky-300/30 blur-3xl" />
+        <div className="absolute left-1/2 top-12 h-24 w-72 -translate-x-1/2 rounded-full bg-white/35 blur-2xl" />
+      </div>
+
+      <div className="relative mx-auto w-full max-w-3xl">
 
         {/* Header */}
-        <div className="flex flex-col items-center mb-8">
-          <img 
-            src="/image/bcclogo-removebg-preview.png" 
-            alt="Buenavista Community College Logo" 
-            className="w-20 h-20 sm:w-24 sm:h-24 object-contain mb-3"
-          />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">NSTP Enrollment</h1>
-        </div>
+        <div className="mb-6" />
 
         {/* Progress Steps */}
-        <div className="mb-6">
+        <div
+          className="mb-7 rounded-[2.2rem] bg-white px-6 py-6 sm:px-8"
+          style={{
+            border: "1px solid rgba(241, 245, 249, 1)",
+            boxShadow: "0 44px 116px rgba(37,99,235,0.28), 0 24px 58px rgba(15,23,42,0.16), inset 0 2px 0 rgba(255,255,255,0.98)",
+          }}
+        >
+          <div
+            className="mb-5 rounded-3xl bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50 px-5 py-4 text-center"
+            style={{ boxShadow: "0 18px 40px rgba(37, 99, 235, 0.14)" }}
+          >
+            <p className="text-2xl font-extrabold uppercase tracking-[0.16em] text-blue-700 sm:text-3xl">
+              Enrollment Form
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Complete these steps to finish your enrollment.
+            </p>
+          </div>
+
           <div className="flex items-center justify-between">
             {STEPS.map((label, index) => (
               <div key={index} className="flex-1 flex flex-col items-center">
                 <div className="flex items-center w-full">
-                  <div className={`flex-1 h-0.5 transition-all ${index === 0 ? "opacity-0" : index <= currentStep ? "bg-blue-600" : "bg-gray-200"}`} />
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all shrink-0
-                    ${index < currentStep ? "bg-blue-600 border-blue-600 text-white"
-                    : index === currentStep ? "border-blue-600 text-blue-600 bg-white"
-                    : "border-gray-200 text-gray-400 bg-white"}`}>
+                  <div className={`flex-1 h-1 transition-all ${index === 0 ? "opacity-0" : index <= currentStep ? "bg-blue-300" : "bg-slate-200"}`} />
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xl font-bold border-2 transition-all shrink-0
+                    ${index < currentStep ? "bg-blue-600 border-blue-600 text-white shadow-lg"
+                    : index === currentStep ? "border-blue-600 text-white bg-blue-600 shadow-lg"
+                    : "border-slate-300 text-slate-500 bg-white"}`}>
                     {index < currentStep ? (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     ) : index + 1}
                   </div>
-                  <div className={`flex-1 h-0.5 transition-all ${index === STEPS.length - 1 ? "opacity-0" : index < currentStep ? "bg-blue-600" : "bg-gray-200"}`} />
+                  <div className={`flex-1 h-1 transition-all ${index === STEPS.length - 1 ? "opacity-0" : index < currentStep ? "bg-blue-300" : "bg-slate-200"}`} />
                 </div>
-                <span className={`text-xs mt-1 hidden sm:block text-center leading-tight
-                  ${index === currentStep ? "text-blue-600 font-semibold" : index < currentStep ? "text-blue-400" : "text-gray-400"}`}>
+                <span className={`mt-3 hidden text-center text-sm leading-tight sm:block
+                  ${index === currentStep ? "font-semibold text-blue-600" : index < currentStep ? "text-blue-500" : "text-slate-500"}`}>
                   {label}
                 </span>
               </div>
             ))}
           </div>
           <p className="text-center text-xs font-semibold text-blue-600 mt-2 sm:hidden">
-            Step {currentStep + 1} of {STEPS.length} — {STEPS[currentStep]}
+            Step {currentStep + 1} of {STEPS.length} - {STEPS[currentStep]}
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-5">
-            Step {currentStep + 1} — {STEPS[currentStep]}
-          </h2>
+        <div
+          className="rounded-[2.2rem] bg-white p-6 sm:p-8"
+          style={{
+            border: "1px solid rgba(241, 245, 249, 1)",
+            boxShadow: "0 52px 132px rgba(37,99,235,0.30), 0 28px 68px rgba(15,23,42,0.18), inset 0 2px 0 rgba(255,255,255,1)",
+          }}
+        >
+          <div className="mb-6 flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-[0_12px_28px_rgba(37,99,235,0.14)]">
+              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3Zm-7.59 8.47L12 15.53l7.59-4.06L12 7.41 4.41 11.47ZM6 14.78V18c0 1.66 2.69 3 6 3s6-1.34 6-3v-3.22l-6 3.27-6-3.27Z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+              Step {currentStep + 1} - {STEPS[currentStep]}
+            </h2>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {stepComponents[currentStep]}
