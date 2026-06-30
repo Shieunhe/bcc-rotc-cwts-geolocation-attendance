@@ -38,6 +38,22 @@ function buildCertificateDownloadFilename(studentName: string, serialNumber: str
   return `${namePart}-${serialPart}.png`;
 }
 
+function buildCertificateStudentName(profile: {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
+} | null) {
+  if (!profile) return "";
+
+  const firstName = profile.lastName?.trim() ?? "";
+  const middleInitial = profile.middleName?.trim()?.charAt(0) ?? "";
+  const lastName = profile.firstName?.trim() ?? "";
+  const suffix = profile.suffix?.trim() ?? "";
+
+  return [firstName, middleInitial ? `${middleInitial}.` : "", lastName, suffix].filter(Boolean).join(" ");
+}
+
 /** Same as Tailwind max-w-4xl — export at this width so phone downloads match desktop layout. */
 const CERTIFICATE_EXPORT_WIDTH_PX = 896;
 
@@ -390,9 +406,7 @@ export default function SerialNumberPage() {
 
   const isROTC = profile?.nstpComponent === "ROTC";
 
-  const studentFullName = profile
-    ? `${profile.firstName} ${profile.middleName ? `${profile.middleName.charAt(0)}` : ""} ${profile.lastName}${profile.suffix ? ` ${profile.suffix}` : ""}`.replace(/\s+/g, " ").trim()
-    : "";
+  const studentFullName = buildCertificateStudentName(profile);
 
   const handleDownloadCertificate = async () => {
     const node = certificateRef.current;
