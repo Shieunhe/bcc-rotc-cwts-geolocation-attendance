@@ -119,10 +119,12 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
 
     const latest = sorted[0];
     const latestYearStart = parseInt(latest.year?.split("-")[0] || `${currentYear}`, 10);
-    const nextYearStart = latestYearStart + 1;
-    const nextMs: MSLevel = latest.msLevel === "1" ? "2" : "1";
+    if (latest.msLevel === "1") {
+      return { ms: "2", year: latest.year };
+    }
 
-    return { ms: nextMs, year: `${nextYearStart}-${nextYearStart + 1}` };
+    const nextYearStart = latestYearStart + 1;
+    return { ms: "1", year: `${nextYearStart}-${nextYearStart + 1}` };
   }
 
   function openCreate() {

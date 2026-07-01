@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, SpecialUnit, EnrollmentDocument } from "@/types";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import { adminService } from "@/services/admin.service";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
 
@@ -30,6 +31,7 @@ function UnitIcon({ unit, className }: { unit: SpecialUnit; className?: string }
 }
 
 export default function OfficerSpecialPlatoon() {
+  const { currentMsLevel } = useCurrentRotcMsLevel();
   const [data, setData] = useState<Record<SpecialUnit, EnrollmentDocument[]> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filterUnit, setFilterUnit] = useState<SpecialUnit | "">("");
@@ -38,10 +40,11 @@ export default function OfficerSpecialPlatoon() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    adminService.getSpecialUnitEnrollments()
+    setIsLoading(true);
+    adminService.getSpecialUnitEnrollments(currentMsLevel)
       .then(setData)
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [currentMsLevel]);
 
   const allStudents = useMemo(() => {
     if (!data) return [];
@@ -74,7 +77,7 @@ export default function OfficerSpecialPlatoon() {
     <>
       <PageIntroPanel
         title="Special Platoon"
-        subtitle="View all ROTC cadets assigned to special units (Medics, HQ, MP)."
+        subtitle={`View all MS ${currentMsLevel} ROTC cadets assigned to special units (Medics, HQ, MP).`}
         variant="sky"
       />
 

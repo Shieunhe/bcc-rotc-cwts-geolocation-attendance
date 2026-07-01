@@ -10,11 +10,18 @@ interface AdminGradesProps {
   program: NSTProgram;
 }
 
+function extractSY(scheduleId: string): string {
+  const parts = scheduleId.split("_");
+  return parts.length >= 3 ? parts.slice(2).join("_") : "";
+}
+
 export default function AdminGrades({ program }: AdminGradesProps) {
   const [students, setStudents] = useState<EnrollmentWithMs[]>([]);
   const [ms1Map, setMs1Map] = useState<Map<string, StudentGrade>>(new Map());
   const [ms2Map, setMs2Map] = useState<Map<string, StudentGrade>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const [filterMsLevel, setFilterMsLevel] = useState<"" | "1" | "2">("");
+  const [filterSchoolYear, setFilterSchoolYear] = useState("");
   const [filterYear, setFilterYear] = useState("");
   const [search, setSearch] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<EnrollmentWithMs | null>(null);
@@ -39,7 +46,19 @@ export default function AdminGrades({ program }: AdminGradesProps) {
     fetchData();
   }, [fetchData]);
 
+  const availableSchoolYears = Array.from(new Set(
+    students.flatMap((s) => s.msRecords.map((r) => extractSY(r.scheduleId)).filter(Boolean))
+  )).sort().reverse();
+
   const filtered = students.filter((s) => {
+    const approvedRecords = s.msRecords.filter((r) => r.status === "approved");
+    const cycleRecords = approvedRecords.filter((r) => {
+      if (filterMsLevel && r.msLevel !== filterMsLevel) return false;
+      if (filterSchoolYear && extractSY(r.scheduleId) !== filterSchoolYear) return false;
+      return true;
+    });
+
+    if ((filterMsLevel || filterSchoolYear) && cycleRecords.length === 0) return false;
     if (filterYear && s.yearLevel !== filterYear) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -49,7 +68,11 @@ export default function AdminGrades({ program }: AdminGradesProps) {
     return true;
   });
 
-  const gradedCount = filtered.filter((s) => ms1Map.has(s.uid) || ms2Map.has(s.uid)).length;
+  const gradedCount = filtered.filter((s) => {
+    if (filterMsLevel === "1") return ms1Map.has(s.uid);
+    if (filterMsLevel === "2") return ms2Map.has(s.uid);
+    return ms1Map.has(s.uid) || ms2Map.has(s.uid);
+  }).length;
   const ungradedCount = filtered.length - gradedCount;
 
   const handleGradeSaved = (uid: string, ms: "ms1" | "ms2", grade: number, midterm?: number, finalTerm?: number) => {
@@ -93,6 +116,35 @@ export default function AdminGrades({ program }: AdminGradesProps) {
         <div className="p-5 space-y-3 border-b border-gray-100">
           <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Filters</p>
           <div className="flex flex-wrap gap-2">
+            <div className="relative">
+              <select
+                value={filterMsLevel}
+                onChange={(e) => setFilterMsLevel(e.target.value as "" | "1" | "2")}
+                className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              >
+                <option value="">All MS Levels</option>
+                <option value="1">MS 1</option>
+                <option value="2">MS 2</option>
+              </select>
+              <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            <div className="relative">
+              <select
+                value={filterSchoolYear}
+                onChange={(e) => setFilterSchoolYear(e.target.value)}
+                className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              >
+                <option value="">All School Years</option>
+                {availableSchoolYears.map((sy) => (
+                  <option key={sy} value={sy}>SY {sy}</option>
+                ))}
+              </select>
+              <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
             <div className="relative">
               <select
                 value={filterYear}
@@ -157,7 +209,11 @@ export default function AdminGrades({ program }: AdminGradesProps) {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtered.map((s, i) => {
-                    const hasGrade = ms1Map.has(s.uid) || ms2Map.has(s.uid);
+                    const hasGrade = filterMsLevel === "1"
+                      ? ms1Map.has(s.uid)
+                      : filterMsLevel === "2"
+                        ? ms2Map.has(s.uid)
+                        : ms1Map.has(s.uid) || ms2Map.has(s.uid);
                     return (
                       <tr key={s.uid} className="hover:bg-gray-50/50 transition">
                         <td className="px-5 py-2.5 text-xs text-gray-400">{i + 1}</td>
@@ -190,7 +246,11 @@ export default function AdminGrades({ program }: AdminGradesProps) {
             {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-gray-50">
               {filtered.map((s, i) => {
-                const hasGrade = ms1Map.has(s.uid) || ms2Map.has(s.uid);
+                const hasGrade = filterMsLevel === "1"
+                  ? ms1Map.has(s.uid)
+                  : filterMsLevel === "2"
+                    ? ms2Map.has(s.uid)
+                    : ms1Map.has(s.uid) || ms2Map.has(s.uid);
                 return (
                   <div key={s.uid} className="px-4 py-3 flex items-center gap-3">
                     <span className="text-[11px] text-gray-400 font-medium w-5 shrink-0">{i + 1}</span>

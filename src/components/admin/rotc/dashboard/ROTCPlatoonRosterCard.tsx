@@ -5,6 +5,7 @@ import {
   ROTCCompany, EnrollmentDocument,
 } from "@/types";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 
 type BattalionData = Record<ROTCCompany, Record<number, EnrollmentDocument[]>>;
 
@@ -23,7 +24,8 @@ interface ROTCPlatoonRosterCardProps {
 }
 
 export default function ROTCPlatoonRosterCard({ base }: ROTCPlatoonRosterCardProps) {
-  const { roster, isLoading } = useROTCPlatoonRoster();
+  const { currentMsLevel } = useCurrentRotcMsLevel();
+  const { roster, isLoading } = useROTCPlatoonRoster(currentMsLevel);
 
   const battalion1 = roster ? countMembers(roster.battalion1, ROTC_BATTALION_1_COMPANIES) : 0;
   const battalion2 = roster ? countMembers(roster.battalion2, ROTC_BATTALION_2_COMPANIES) : 0;

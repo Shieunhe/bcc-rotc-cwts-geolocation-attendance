@@ -13,10 +13,17 @@ interface Props {
   program: NSTProgram;
 }
 
+function extractSY(scheduleId: string): string {
+  const parts = scheduleId.split("_");
+  return parts.length >= 3 ? parts.slice(2).join("_") : "";
+}
+
 export default function AdminOffenses({ program }: Props) {
   const [allOffenses, setAllOffenses] = useState<OffenseWithStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<OffenseFilter>("");
+  const [filterMsLevel, setFilterMsLevel] = useState<"" | "1" | "2">("");
+  const [filterSchoolYear, setFilterSchoolYear] = useState("");
   const [search, setSearch] = useState("");
   const [detailOffense, setDetailOffense] = useState<OffenseWithStudent | null>(null);
   const [settling, setSettling] = useState(false);
@@ -29,7 +36,19 @@ export default function AdminOffenses({ program }: Props) {
     }).catch(() => setLoading(false));
   }, [program]);
 
+  const availableSchoolYears = Array.from(new Set(
+    allOffenses.flatMap((o) => o.student?.msRecords.map((r) => extractSY(r.scheduleId)).filter(Boolean) ?? [])
+  )).sort().reverse();
+
   const filtered = allOffenses.filter((o) => {
+    const approvedRecords = o.student?.msRecords.filter((r) => r.status === "approved") ?? [];
+    const cycleRecords = approvedRecords.filter((r) => {
+      if (filterMsLevel && r.msLevel !== filterMsLevel) return false;
+      if (filterSchoolYear && extractSY(r.scheduleId) !== filterSchoolYear) return false;
+      return true;
+    });
+
+    if ((filterMsLevel || filterSchoolYear) && cycleRecords.length === 0) return false;
     if (filter === "warning" && o.offend !== 1) return false;
     if (filter === "settlement" && o.offend < 2) return false;
     if (search) {
@@ -43,8 +62,8 @@ export default function AdminOffenses({ program }: Props) {
     return true;
   });
 
-  const warningCount = allOffenses.filter((o) => o.offend === 1).length;
-  const settlementCount = allOffenses.filter((o) => o.offend >= 2 && !o.settled).length;
+  const warningCount = filtered.filter((o) => o.offend === 1).length;
+  const settlementCount = filtered.filter((o) => o.offend >= 2 && !o.settled).length;
 
   const themeColor = program === "ROTC" ? "blue" : "emerald";
 
@@ -83,7 +102,7 @@ export default function AdminOffenses({ program }: Props) {
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Total</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{allOffenses.length}</p>
+          <p className="text-2xl font-bold text-gray-800 mt-1">{filtered.length}</p>
         </div>
         <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 text-center">
           <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">Warning</p>
@@ -121,6 +140,37 @@ export default function AdminOffenses({ program }: Props) {
                 {opt.label}
               </button>
             ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <div className="relative">
+              <select
+                value={filterMsLevel}
+                onChange={(e) => setFilterMsLevel(e.target.value as "" | "1" | "2")}
+                className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              >
+                <option value="">All MS Levels</option>
+                <option value="1">MS 1</option>
+                <option value="2">MS 2</option>
+              </select>
+              <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            <div className="relative">
+              <select
+                value={filterSchoolYear}
+                onChange={(e) => setFilterSchoolYear(e.target.value)}
+                className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              >
+                <option value="">All School Years</option>
+                {availableSchoolYears.map((sy) => (
+                  <option key={sy} value={sy}>SY {sy}</option>
+                ))}
+              </select>
+              <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
           <div className="relative">
             <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">

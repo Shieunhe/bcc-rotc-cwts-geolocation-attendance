@@ -4,13 +4,11 @@ import { useEffect, useState } from "react";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { adminService } from "@/services/admin.service";
-import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
 import {
   AttendanceSession, AttendanceRecord,
   ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
-  ROTC_PLATOONS_PER_COMPANY,
-  ROTCCompany, EnrollmentDocument, SpecialUnit, SPECIAL_UNITS,
-  EnrollmentSchedule, getSchoolYearFromDate,
+  ROTCCompany, EnrollmentDocument, SpecialUnit,
+  getSchoolYearFromDate,
 } from "@/types";
 import BattalionAttendanceBox from "./components/BattalionAttendanceBox";
 import AdvanceCourseAttendanceBox from "./components/AdvanceCourseAttendanceBox";
@@ -52,26 +50,11 @@ function isGracePeriodOver(session: AttendanceSession | null): boolean {
   return new Date() >= deadline;
 }
 
-function flattenRoster(
-  companies: ROTCCompany[],
-  roster: Record<ROTCCompany, Record<number, EnrollmentDocument[]>>,
-) {
-  const list: { student: EnrollmentDocument; company: ROTCCompany; platoon: number }[] = [];
-  for (const c of companies) {
-    for (let p = 1; p <= ROTC_PLATOONS_PER_COMPANY; p++) {
-      for (const m of roster[c]?.[p] ?? []) {
-        list.push({ student: m, company: c, platoon: p });
-      }
-    }
-  }
-  return list;
-}
-
 export type AttendanceSummarySection = "battalion-1" | "battalion-2" | "advance-course" | "special-platoon" | "overall";
 
 const SECTION_META: Record<AttendanceSummarySection, { title: string; subtitle: string }> = {
-  "battalion-1":      { title: "Battalion 1 — Male", subtitle: "View attendance for Battalion 1 (Male) cadets." },
-  "battalion-2":      { title: "Battalion 2 — Female", subtitle: "View attendance for Battalion 2 (Female) cadets." },
+  "battalion-1":      { title: "Battalion 1 - Male", subtitle: "View attendance for Battalion 1 (Male) cadets." },
+  "battalion-2":      { title: "Battalion 2 - Female", subtitle: "View attendance for Battalion 2 (Female) cadets." },
   "advance-course":   { title: "Advance Course", subtitle: "View attendance for advance course cadets." },
   "special-platoon":  { title: "Special Platoon", subtitle: "View attendance for special unit cadets (Medics, HQ, MP)." },
   "overall":          { title: "Overall Summary", subtitle: "Combined attendance for Battalion 1, Battalion 2, and Special Platoon." },
@@ -90,79 +73,100 @@ function getUniqueSYs(sessions: AttendanceSession[]): string[] {
   return Array.from(set).sort().reverse();
 }
 
-type SYOption = { value: string; label: string };
+type SYOption = { schoolYear: string; msLevel: "1" | "2" | ""; label: string };
 
-function buildSYOptions(sessions: AttendanceSession[], schedules: EnrollmentSchedule[]): SYOption[] {
-  const sySet = getUniqueSYs(sessions);
-  const scheduleMap = new Map<string, string[]>();
-  for (const sch of schedules) {
-    const list = scheduleMap.get(sch.year) ?? [];
-    list.push(sch.msLevel);
-    scheduleMap.set(sch.year, list);
+function getSessionMsLevel(session: AttendanceSession): "1" | "2" | "" {
+  return session.msLevel ?? "";
+}
+
+function buildCycleValue(schoolYear: string, msLevel: "1" | "2" | ""): string {
+  return `${schoolYear}__${msLevel || "all"}`;
+}
+
+function parseCycleValue(value: string): { schoolYear: string; msLevel: "1" | "2" | "" } {
+  const [schoolYear = "", rawMs = "all"] = value.split("__");
+  return {
+    schoolYear,
+    msLevel: rawMs === "1" || rawMs === "2" ? rawMs : "",
+  };
+}
+
+function buildSYOptions(sessions: AttendanceSession[]): SYOption[] {
+  const seen = new Set<string>();
+  const options: SYOption[] = [];
+
+  const addOption = (schoolYear: string, msLevel: "1" | "2" | "") => {
+    const key = buildCycleValue(schoolYear, msLevel);
+    if (seen.has(key)) return;
+    seen.add(key);
+    options.push({
+      schoolYear,
+      msLevel,
+      label: msLevel ? `MS ${msLevel} - SY ${schoolYear}` : `SY ${schoolYear}`,
+    });
+  };
+
+  const sortedSessions = [...sessions].sort((a, b) => {
+    const syDiff = getSessionSY(b).localeCompare(getSessionSY(a));
+    if (syDiff !== 0) return syDiff;
+    return getSessionMsLevel(a).localeCompare(getSessionMsLevel(b));
+  });
+  for (const session of sortedSessions) {
+    addOption(getSessionSY(session), getSessionMsLevel(session));
   }
 
-  const options: SYOption[] = [];
-  for (const sy of sySet) {
-    const msLevels = scheduleMap.get(sy);
-    if (msLevels && msLevels.length > 0) {
-      const sorted = [...msLevels].sort();
-      for (const ms of sorted) {
-        options.push({ value: sy, label: `MS ${ms} — SY ${sy}` });
-      }
-    } else {
-      options.push({ value: sy, label: `SY ${sy}` });
+  if (options.length === 0) {
+    for (const sy of getUniqueSYs(sessions)) {
+      addOption(sy, "");
     }
   }
+
   return options;
 }
 
 export default function ROTCAttendanceSummary({ section }: Props) {
   const meta = SECTION_META[section];
   const [allSessions, setAllSessions] = useState<AttendanceSession[]>([]);
-  const [schedules, setSchedules] = useState<EnrollmentSchedule[]>([]);
-  const [selectedSY, setSelectedSY] = useState<string>("");
+  const [selectedCycle, setSelectedCycle] = useState<string>("");
   const [selectedMI, setSelectedMI] = useState<number>(0);
   const [selectedType, setSelectedType] = useState<"in" | "out">("in");
+  const [enrolledStudents, setEnrolledStudents] = useState<EnrollmentDocument[]>([]);
   const [recordMap, setRecordMap] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
-  const { roster, isLoading: rosterLoading } = useROTCPlatoonRoster();
-  const [specialUnitStudents, setSpecialUnitStudents] = useState<Record<SpecialUnit, EnrollmentDocument[]>>({ Medics: [], HQ: [], MP: [] });
+  const selectedMsLevel = parseCycleValue(selectedCycle).msLevel;
   const [loadingSpecial, setLoadingSpecial] = useState(false);
-
-  useEffect(() => {
-    if (section !== "special-platoon" && section !== "overall") return;
-    setLoadingSpecial(true);
-    adminService.getSpecialUnitEnrollments()
-      .then(setSpecialUnitStudents)
-      .finally(() => setLoadingSpecial(false));
-  }, [section]);
 
   useEffect(() => {
     setLoadingSessions(true);
     setSelectedMI(0);
     setRecordMap(new Map());
+    setEnrolledStudents([]);
     const isAdvance = section === "advance-course";
     Promise.all([
       adminService.getSessionsByProgram("ROTC", isAdvance),
       adminService.getEnrollmentSchedules("ROTC"),
-    ]).then(([data, scheds]) => {
+    ]).then(([data]) => {
       const filtered = section === "advance-course"
         ? data.filter((s) => s.isAdvanceCourse)
         : section === "battalion-1" || section === "battalion-2" || section === "overall"
           ? data.filter((s) => !s.isAdvanceCourse)
           : data;
       setAllSessions(filtered);
-      setSchedules(scheds);
-      const syList = getUniqueSYs(filtered);
-      setSelectedSY(syList[0] ?? "");
+      const nextOptions = buildSYOptions(filtered);
+      setSelectedCycle(nextOptions[0] ? buildCycleValue(nextOptions[0].schoolYear, nextOptions[0].msLevel) : "");
       setLoadingSessions(false);
     }).catch(() => setLoadingSessions(false));
   }, [section]);
 
-  const syOptions = buildSYOptions(allSessions, schedules);
-  const sessionsBySY = allSessions.filter((s) => getSessionSY(s) === selectedSY);
+  const syOptions = buildSYOptions(allSessions);
+  const cycleFilter = parseCycleValue(selectedCycle);
+  const sessionsBySY = allSessions.filter((s) => {
+    if (getSessionSY(s) !== cycleFilter.schoolYear) return false;
+    if (cycleFilter.msLevel && getSessionMsLevel(s) !== cycleFilter.msLevel) return false;
+    return true;
+  });
   const miSessions = getMISessions(sessionsBySY);
   const currentMI = miSessions.get(selectedMI);
   const selectedSession = currentMI?.[selectedType] ?? null;
@@ -175,22 +179,59 @@ export default function ROTCAttendanceSummary({ section }: Props) {
   }
 
   useEffect(() => {
-    if (!selectedSessionId) { setRecordMap(new Map()); return; }
+    if (!selectedSessionId) { setRecordMap(new Map()); setEnrolledStudents([]); return; }
     setLoadingRecords(true);
-    adminService.getAttendanceSummary(selectedSessionId, "ROTC").then(({ records }) => {
+    adminService.getAttendanceSummary(selectedSessionId, "ROTC").then(({ records, enrolledStudents: enrolled }) => {
       const map = new Map<string, AttendanceRecord>();
       for (const r of records) map.set(r.studentUid, r);
       setRecordMap(map);
+      setEnrolledStudents(enrolled);
       setLoadingRecords(false);
     }).catch(() => setLoadingRecords(false));
   }, [selectedSessionId]);
 
-  const isLoading = rosterLoading || loadingSessions || loadingRecords || loadingSpecial;
+  const isLoading = loadingSessions || loadingRecords || loadingSpecial;
   const graceOver = isGracePeriodOver(selectedSession);
 
-  const b1Students = roster ? flattenRoster(ROTC_BATTALION_1_COMPANIES, roster.battalion1) : [];
-  const b2Students = roster ? flattenRoster(ROTC_BATTALION_2_COMPANIES, roster.battalion2) : [];
-  const advanceCourseStudents = roster ? [...roster.advanceCourseMale, ...roster.advanceCourseFemale] : [];
+  const b1Students = enrolledStudents
+    .filter((student) =>
+      !student.specialUnit &&
+      !student.medicalCondition &&
+      !student.willingToTakeAdvanceCourse &&
+      student.battalion === 1 &&
+      !!student.rotcCompany &&
+      !!student.rotcPlatoon
+    )
+    .map((student) => ({
+      student,
+      company: student.rotcCompany as ROTCCompany,
+      platoon: student.rotcPlatoon as number,
+    }));
+
+  const b2Students = enrolledStudents
+    .filter((student) =>
+      !student.specialUnit &&
+      !student.medicalCondition &&
+      !student.willingToTakeAdvanceCourse &&
+      student.battalion === 2 &&
+      !!student.rotcCompany &&
+      !!student.rotcPlatoon
+    )
+    .map((student) => ({
+      student,
+      company: student.rotcCompany as ROTCCompany,
+      platoon: student.rotcPlatoon as number,
+    }));
+
+  const advanceCourseStudents = enrolledStudents.filter((student) =>
+    !!student.willingToTakeAdvanceCourse && !student.specialUnit && !student.medicalCondition
+  );
+
+  const specialUnitStudents: Record<SpecialUnit, EnrollmentDocument[]> = {
+    Medics: enrolledStudents.filter((student) => student.specialUnit === "Medics"),
+    HQ: enrolledStudents.filter((student) => student.specialUnit === "HQ"),
+    MP: enrolledStudents.filter((student) => student.specialUnit === "MP"),
+  };
 
   return (
     <AdminPageLayout program="ROTC">
@@ -200,14 +241,13 @@ export default function ROTCAttendanceSummary({ section }: Props) {
         variant="sky"
       />
 
-      {/* SY selector */}
       <div className="mb-4">
         <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">School Year</label>
         <div className="relative max-w-xs">
           <select
-            value={selectedSY}
+            value={selectedCycle}
             onChange={(e) => {
-              setSelectedSY(e.target.value);
+              setSelectedCycle(e.target.value);
               setSelectedMI(0);
               setRecordMap(new Map());
             }}
@@ -215,7 +255,12 @@ export default function ROTCAttendanceSummary({ section }: Props) {
           >
             {syOptions.length === 0 && <option value="">No sessions found</option>}
             {syOptions.map((opt, i) => (
-              <option key={`${opt.value}-${i}`} value={opt.value}>{opt.label}</option>
+              <option
+                key={`${opt.schoolYear}-${opt.msLevel || "all"}-${i}`}
+                value={buildCycleValue(opt.schoolYear, opt.msLevel)}
+              >
+                {opt.label}
+              </option>
             ))}
           </select>
           <svg className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,7 +269,6 @@ export default function ROTCAttendanceSummary({ section }: Props) {
         </div>
       </div>
 
-      {/* MI selector + Time In/Out */}
       <div className="flex items-end gap-3 flex-wrap mb-5">
         <div className="flex-1 min-w-[220px]">
           <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Select Military Instruction</label>
@@ -240,7 +284,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
                 const created = !!entry;
                 return (
                   <option key={mi} value={mi} disabled={!created}>
-                    {created ? getMIOptionLabel(mi, entry) : `MI ${mi} — Not yet created`}
+                    {created ? getMIOptionLabel(mi, entry) : `MI ${mi} - Not yet created`}
                   </option>
                 );
               })}

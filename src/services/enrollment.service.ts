@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, updateDoc, collection, addDoc, getDocs, query, where } from "firebase/firestore";
+import { doc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, deleteField } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { EnrollmentDocument, EnrollmentSchedule } from "@/types";
 import { EnrollmentFormData } from "@/types/enrollmentTypes";
@@ -225,6 +225,14 @@ export const enrollmentService = {
         medicalCertificate: medicalCertBase64 || existingDoc.medicalCertificate,
         xrayFile: xrayBase64 || existingDoc.xrayFile,
         updatedAt: new Date().toISOString(),
+        ...(formData.nstpComponent === "ROTC"
+          ? {
+              battalion: deleteField(),
+              rotcCompany: deleteField(),
+              rotcPlatoon: deleteField(),
+              specialUnit: deleteField(),
+            }
+          : {}),
       };
 
       await updateDoc(doc(db, "account_reservations", uid), updateData as Record<string, unknown>);

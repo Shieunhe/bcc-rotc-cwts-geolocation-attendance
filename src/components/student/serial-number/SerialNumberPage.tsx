@@ -46,9 +46,9 @@ function buildCertificateStudentName(profile: {
 } | null) {
   if (!profile) return "";
 
-  const firstName = profile.lastName?.trim() ?? "";
+  const firstName = profile.firstName?.trim() ?? "";
   const middleInitial = profile.middleName?.trim()?.charAt(0) ?? "";
-  const lastName = profile.firstName?.trim() ?? "";
+  const lastName = profile.lastName?.trim() ?? "";
   const suffix = profile.suffix?.trim() ?? "";
 
   return [firstName, middleInitial ? `${middleInitial}.` : "", lastName, suffix].filter(Boolean).join(" ");

@@ -2,11 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import { EnrollmentDocument } from "@/types";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 export default function OfficerAdvanceCourse() {
-  const { roster, isLoading } = useROTCPlatoonRoster();
+  const { currentMsLevel } = useCurrentRotcMsLevel();
+  const { roster, isLoading } = useROTCPlatoonRoster(currentMsLevel);
   const [filterGender, setFilterGender] = useState<"" | "Male" | "Female">("");
   const [search, setSearch] = useState("");
 
@@ -36,7 +38,7 @@ export default function OfficerAdvanceCourse() {
     <>
       <PageIntroPanel
         title="Advance Course"
-        subtitle="View all cadets who took the advance ROTC course."
+        subtitle={`View all MS ${currentMsLevel} cadets who took the advance ROTC course.`}
         variant="sky"
       />
 

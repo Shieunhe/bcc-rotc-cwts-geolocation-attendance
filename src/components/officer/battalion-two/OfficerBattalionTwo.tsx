@@ -7,11 +7,13 @@ import {
   ROTC_PLATOON_SLOT_LIMIT,
 } from "@/types";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import ROTCBattalionSection, { countBattalionMembers } from "@/components/admin/rotc/platoon-roster/components/ROTCBattalionSection";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 export default function OfficerBattalionTwo() {
-  const { roster, isLoading } = useROTCPlatoonRoster();
+  const { currentMsLevel } = useCurrentRotcMsLevel();
+  const { roster, isLoading } = useROTCPlatoonRoster(currentMsLevel);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const toggle = (key: string) => setExpanded((prev) => (prev === key ? null : key));
@@ -23,7 +25,7 @@ export default function OfficerBattalionTwo() {
     <>
       <PageIntroPanel
         title="Battalion 2 - Female"
-        subtitle="View all female cadettes assigned to Battalion 2 companies and platoons."
+        subtitle={`View all MS ${currentMsLevel} female cadettes assigned to Battalion 2 companies and platoons.`}
         variant="sky"
       />
 

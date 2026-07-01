@@ -66,15 +66,27 @@ interface AdminEnrollmentTableProps {
   enrollments: EnrollmentWithMs[];
   onStatusChange?: () => void;
   statusFilter?: string;
+  msLevelFilter?: string;
+  schoolYearFilter?: string;
 }
 
-export default function AdminEnrollmentTable({ enrollments, onStatusChange, statusFilter }: AdminEnrollmentTableProps) {
+export default function AdminEnrollmentTable({
+  enrollments,
+  onStatusChange,
+  statusFilter,
+  msLevelFilter,
+  schoolYearFilter,
+}: AdminEnrollmentTableProps) {
   const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentWithMs | null>(null);
   const rows = useMemo(() => {
     const all = flattenEnrollments(enrollments);
-    if (!statusFilter || statusFilter === "all") return all;
-    return all.filter((r) => r.msStatus === statusFilter);
-  }, [enrollments, statusFilter]);
+    return all.filter((row) => {
+      if (statusFilter && statusFilter !== "all" && row.msStatus !== statusFilter) return false;
+      if (msLevelFilter && row.msLabel !== `MS ${msLevelFilter}`) return false;
+      if (schoolYearFilter && row.sy !== schoolYearFilter) return false;
+      return true;
+    });
+  }, [enrollments, statusFilter, msLevelFilter, schoolYearFilter]);
 
   return (
     <>

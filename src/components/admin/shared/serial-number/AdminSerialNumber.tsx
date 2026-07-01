@@ -26,6 +26,11 @@ interface AdminSerialNumberProps {
   program: NSTProgram;
 }
 
+function extractSY(scheduleId: string): string {
+  const parts = scheduleId.split("_");
+  return parts.length >= 3 ? parts.slice(2).join("_") : "";
+}
+
 const MAX_SIG_IMAGE_SIZE = 200;
 
 /** Resize signature image to PNG data URL (used after bg removal or as fallback). */
@@ -65,6 +70,8 @@ async function imageBlobToResizedPngDataUrl(source: Blob): Promise<string | null
 export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
   const { enrollments, isLoading } = useAdminEnrollments(program);
   const [search, setSearch] = useState("");
+  const [filterMsLevel, setFilterMsLevel] = useState<"" | "1" | "2">("");
+  const [filterSchoolYear, setFilterSchoolYear] = useState("");
   const [battalionFilter, setBattalionFilter] = useState<BattalionFilter>("All");
   const [companyFilter, setCompanyFilter] = useState<string>("All");
   const [platoonFilter, setPlatoonFilter] = useState<string>("All");
@@ -96,6 +103,13 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
 
   const approvedStudents = useMemo(
     () => enrollments.filter((e) => e.msRecords.some((r) => r.status === "approved")),
+    [enrollments]
+  );
+
+  const availableSchoolYears = useMemo(
+    () => Array.from(new Set(
+      enrollments.flatMap((e) => e.msRecords.map((r) => extractSY(r.scheduleId)).filter(Boolean))
+    )).sort().reverse(),
     [enrollments]
   );
 
@@ -299,6 +313,14 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
 
   const filtered = useMemo(() => {
     return studentsWithGrades.filter((s) => {
+      const approvedRecords = s.msRecords.filter((r) => r.status === "approved");
+      const cycleRecords = approvedRecords.filter((r) => {
+        if (filterMsLevel && r.msLevel !== filterMsLevel) return false;
+        if (filterSchoolYear && extractSY(r.scheduleId) !== filterSchoolYear) return false;
+        return true;
+      });
+      if ((filterMsLevel || filterSchoolYear) && cycleRecords.length === 0) return false;
+
       const q = search.toLowerCase();
       const matchesSearch =
         !q ||
@@ -328,11 +350,11 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
           return true;
       }
     });
-  }, [studentsWithGrades, search, battalionFilter, companyFilter, platoonFilter, eligibilityFilter, program]);
+  }, [studentsWithGrades, search, filterMsLevel, filterSchoolYear, battalionFilter, companyFilter, platoonFilter, eligibilityFilter, program]);
 
-  const eligibleCount = studentsWithGrades.filter((s) => isEligible(s) && !hasSerial(s)).length;
-  const assignedCount = studentsWithGrades.filter((s) => hasSerial(s)).length;
-  const notEligibleCount = studentsWithGrades.filter((s) => !isEligible(s)).length;
+  const eligibleCount = filtered.filter((s) => isEligible(s) && !hasSerial(s)).length;
+  const assignedCount = filtered.filter((s) => hasSerial(s)).length;
+  const notEligibleCount = filtered.filter((s) => !isEligible(s)).length;
 
   const loading = isLoading || gradesLoading;
 
@@ -400,6 +422,27 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Filters</p>
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          <select
+            value={filterMsLevel}
+            onChange={(e) => setFilterMsLevel(e.target.value as "" | "1" | "2")}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-medium text-gray-700"
+          >
+            <option value="">All MS Levels</option>
+            <option value="1">MS 1</option>
+            <option value="2">MS 2</option>
+          </select>
+
+          <select
+            value={filterSchoolYear}
+            onChange={(e) => setFilterSchoolYear(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-medium text-gray-700"
+          >
+            <option value="">All School Years</option>
+            {availableSchoolYears.map((sy) => (
+              <option key={sy} value={sy}>SY {sy}</option>
+            ))}
+          </select>
+
           <select
             value={eligibilityFilter}
             onChange={(e) => setEligibilityFilter(e.target.value as EligibilityFilter)}
@@ -633,8 +676,18 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
           <span className="text-xs text-gray-400">
             Showing <span className="font-semibold text-gray-600">{filtered.length}</span> of <span className="font-semibold text-gray-600">{studentsWithGrades.length}</span> student(s)
           </span>
-          {(eligibilityFilter !== "All" || (program === "ROTC" && battalionFilter !== "All")) && (
+          {(eligibilityFilter !== "All" || filterMsLevel || filterSchoolYear || (program === "ROTC" && battalionFilter !== "All")) && (
             <div className="flex gap-2">
+              {filterMsLevel && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-sky-50 text-xs font-medium text-sky-600 border border-sky-100">
+                  {`MS ${filterMsLevel}`}
+                </span>
+              )}
+              {filterSchoolYear && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-cyan-50 text-xs font-medium text-cyan-600 border border-cyan-100">
+                  {`SY ${filterSchoolYear}`}
+                </span>
+              )}
               {eligibilityFilter !== "All" && (
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-violet-50 text-xs font-medium text-violet-600 border border-violet-100">
                   {eligibilityFilter}

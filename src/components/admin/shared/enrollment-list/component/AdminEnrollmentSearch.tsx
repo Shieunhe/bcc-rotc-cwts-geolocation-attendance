@@ -36,6 +36,7 @@ const ChevronIcon = (
 export interface EnrollmentFilters {
   status: FilterStatus;
   msLevel: string;
+  schoolYear: string;
   yearLevel: string;
   course: string;
   medicalCondition: string;
@@ -46,14 +47,25 @@ interface AdminEnrollmentSearchProps {
   filters: EnrollmentFilters;
   onFiltersChange: (filters: EnrollmentFilters) => void;
   program?: "ROTC" | "CWTS";
+  schoolYears?: string[];
 }
 
-export default function AdminEnrollmentSearch({ filters, onFiltersChange, program }: AdminEnrollmentSearchProps) {
+export default function AdminEnrollmentSearch({
+  filters,
+  onFiltersChange,
+  program,
+  schoolYears = [],
+}: AdminEnrollmentSearchProps) {
   function update(partial: Partial<EnrollmentFilters>) {
     onFiltersChange({ ...filters, ...partial });
   }
 
-  const hasActiveFilters = filters.msLevel || filters.yearLevel || filters.course || filters.medicalCondition;
+  const hasActiveFilters =
+    filters.msLevel ||
+    filters.schoolYear ||
+    filters.yearLevel ||
+    filters.course ||
+    filters.medicalCondition;
 
   return (
     <div className="space-y-3">
@@ -100,6 +112,16 @@ export default function AdminEnrollmentSearch({ filters, onFiltersChange, progra
         </div>
 
         <div className="relative">
+          <select value={filters.schoolYear} onChange={(e) => update({ schoolYear: e.target.value })} className={selectClass}>
+            <option value="">All School Years</option>
+            {schoolYears.map((sy) => (
+              <option key={sy} value={sy}>{`SY ${sy}`}</option>
+            ))}
+          </select>
+          {ChevronIcon}
+        </div>
+
+        <div className="relative">
           <select value={filters.yearLevel} onChange={(e) => update({ yearLevel: e.target.value })} className={selectClass}>
             <option value="">All Year Levels</option>
             {YEAR_LEVELS.map((y) => (
@@ -132,7 +154,7 @@ export default function AdminEnrollmentSearch({ filters, onFiltersChange, progra
 
         {hasActiveFilters && (
           <button
-            onClick={() => update({ msLevel: "", yearLevel: "", course: "", medicalCondition: "" })}
+            onClick={() => update({ msLevel: "", schoolYear: "", yearLevel: "", course: "", medicalCondition: "" })}
             className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition"
           >
             Clear Filters

@@ -31,7 +31,12 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
       setLoading(true);
       try {
         const [records, gradeData] = await Promise.all([
-          adminService.getStudentAttendanceRecords(student.uid),
+          adminService.getStudentAttendanceRecordsForCycle(
+            student.uid,
+            program,
+            msLevel as "1" | "2",
+            sy,
+          ),
           adminService.getStudentGrades(student.uid),
         ]);
         setAttendanceRecords(records);

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { auth } from "@/lib/firebase";
 import { adminService } from "@/services/admin.service";
-import { AttendanceLocation, AttendanceSession, ATTENDANCE_RADIUS_METERS } from "@/types";
+import { AttendanceLocation, AttendanceSession, ATTENDANCE_RADIUS_METERS, EnrollmentSchedule, MSLevel, getSchoolYearFromDate } from "@/types";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 const LocationMap = lazy(() => import("@/components/common/LocationMap"));
@@ -18,6 +18,31 @@ interface MIStatus {
   inCreated: boolean;
   inStatus?: "open" | "closed" | "scheduled";
   outCreated: boolean;
+}
+
+interface AttendanceCycle {
+  msLevel?: MSLevel;
+  schoolYear: string;
+}
+
+function resolveCurrentCycle(schedules: EnrollmentSchedule[]): AttendanceCycle {
+  const fallbackSchoolYear = getSchoolYearFromDate(new Date().toISOString());
+  if (schedules.length === 0) return { schoolYear: fallbackSchoolYear };
+
+  const now = Date.now();
+  const sorted = [...schedules].sort((a, b) => new Date(a.openDate).getTime() - new Date(b.openDate).getTime());
+  const active = sorted.find((s) => {
+    const start = new Date(s.openDate).getTime();
+    const end = new Date(s.deadline).getTime();
+    return now >= start && now <= end;
+  });
+  if (active) return { msLevel: active.msLevel, schoolYear: active.year };
+
+  const upcoming = sorted.find((s) => new Date(s.deadline).getTime() >= now);
+  if (upcoming) return { msLevel: upcoming.msLevel, schoolYear: upcoming.year };
+
+  const latestClosed = [...sorted].sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime())[0];
+  return latestClosed ? { msLevel: latestClosed.msLevel, schoolYear: latestClosed.year } : { schoolYear: fallbackSchoolYear };
 }
 
 function getMIProgress(sessions: AttendanceSession[], program: Program): Map<number, MIStatus> {
@@ -96,6 +121,7 @@ export default function OfficerCreateAttendance() {
 
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [miProgress, setMiProgress] = useState<Map<number, MIStatus>>(new Map());
+  const [currentCycle, setCurrentCycle] = useState<AttendanceCycle | null>(null);
 
   const fetchSessionsForProgram = useCallback(async (prog: Program) => {
     if (!prog) return;
@@ -103,9 +129,16 @@ export default function OfficerCreateAttendance() {
     try {
       const isAdvance = prog === "ADVANCE_COURSE";
       const targetProgram = isAdvance ? "ROTC" : prog;
-      const sessions = await adminService.getSessionsByProgram(
+      const schedules = await adminService.getEnrollmentSchedules(targetProgram as "ROTC" | "CWTS");
+      const cycle = resolveCurrentCycle(schedules);
+      setCurrentCycle(cycle);
+      const sessions = await adminService.getSessionsByProgramForCycle(
         targetProgram as "ROTC" | "CWTS",
-        isAdvance || undefined
+        {
+          isAdvanceCourse: isAdvance || undefined,
+          msLevel: cycle.msLevel,
+          schoolYear: cycle.schoolYear,
+        }
       );
       const progress = getMIProgress(sessions, prog);
       setMiProgress(progress);
@@ -126,6 +159,7 @@ export default function OfficerCreateAttendance() {
     if (!program) {
       setMiProgress(new Map());
       setMiNumber(0);
+      setCurrentCycle(null);
       return;
     }
     fetchSessionsForProgram(program);
@@ -220,6 +254,8 @@ export default function OfficerCreateAttendance() {
     try {
       await adminService.createAttendanceSession({
         program: actualProgram as "ROTC" | "CWTS",
+        ...(currentCycle?.msLevel ? { msLevel: currentCycle.msLevel } : {}),
+        ...(currentCycle?.schoolYear ? { schoolYear: currentCycle.schoolYear } : {}),
         ...(isAdvanceCourse ? { isAdvanceCourse: true } : {}),
         miNumber,
         miType,
@@ -318,6 +354,14 @@ export default function OfficerCreateAttendance() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Progress: {completedCount} / {MI_COUNT * 2} sessions created
+                </div>
+              )}
+              {currentCycle && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100 text-xs text-indigo-700">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Current cycle: {currentCycle.msLevel ? `MS ${currentCycle.msLevel} - ` : ""}SY {currentCycle.schoolYear}
                 </div>
               )}
             </div>
