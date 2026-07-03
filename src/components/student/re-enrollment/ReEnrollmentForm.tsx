@@ -428,11 +428,11 @@ function AcademicInfoReadOnly({
         <p className="text-xs text-gray-400 mt-1">Cannot be changed during re-enrollment.</p>
       </div>
 
-      {/* MS Level - Read only */}
+      {/* Level - Read only */}
       <div>
-        <label className={labelClass}>MS Level</label>
+        <label className={labelClass}>{nstpComponent === "CWTS" ? "CWTS Level" : "MS Level"}</label>
         <div className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 bg-gray-50">
-          MS {nextMs}
+          {`${nstpComponent === "CWTS" ? "CWTS" : "MS"} ${nextMs}`}
         </div>
         <p className="text-xs text-gray-400 mt-1">Automatically set for re-enrollment.</p>
       </div>

@@ -25,6 +25,17 @@ interface AttendanceCycle {
   schoolYear: string;
 }
 
+function getEffectiveSessionStatus(session: AttendanceSession): "open" | "closed" | "scheduled" {
+  const now = Date.now();
+  const openAt = new Date(session.openDate).getTime();
+  const closeAt = new Date(session.closeDate).getTime();
+
+  if (Number.isNaN(openAt) || Number.isNaN(closeAt)) return session.status;
+  if (now >= closeAt) return "closed";
+  if (now >= openAt) return "open";
+  return "scheduled";
+}
+
 function resolveCurrentCycle(schedules: EnrollmentSchedule[]): AttendanceCycle {
   const fallbackSchoolYear = getSchoolYearFromDate(new Date().toISOString());
   if (schedules.length === 0) return { schoolYear: fallbackSchoolYear };
@@ -54,7 +65,11 @@ function getMIProgress(sessions: AttendanceSession[], program: Program): Map<num
   const isAdvance = program === "ADVANCE_COURSE";
   const targetProgram = isAdvance ? "ROTC" : program;
 
-  for (const s of sessions) {
+  const orderedSessions = [...sessions].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  for (const s of orderedSessions) {
     if (s.program !== targetProgram) continue;
     if (isAdvance && !s.isAdvanceCourse) continue;
     if (!isAdvance && s.program === "ROTC" && s.isAdvanceCourse) continue;
@@ -67,7 +82,7 @@ function getMIProgress(sessions: AttendanceSession[], program: Program): Map<num
     if (!status) continue;
     if (type === "in") {
       status.inCreated = true;
-      status.inStatus = s.status;
+      status.inStatus = getEffectiveSessionStatus(s);
     }
     if (type === "out") status.outCreated = true;
   }

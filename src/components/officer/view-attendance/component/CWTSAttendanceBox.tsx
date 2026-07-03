@@ -57,16 +57,62 @@ function getSessionSY(s: AttendanceSession): string {
   return s.schoolYear ?? getSchoolYearFromDate(s.openDate);
 }
 
-function getUniqueSYs(sessions: AttendanceSession[]): string[] {
-  const set = new Set(sessions.map(getSessionSY));
-  return Array.from(set).sort().reverse();
+type CycleOption = { schoolYear: string; msLevel: "1" | "2" | ""; label: string };
+
+function getSessionMsLevel(session: AttendanceSession): "1" | "2" | "" {
+  return session.msLevel ?? "";
+}
+
+function buildCycleValue(schoolYear: string, msLevel: "1" | "2" | ""): string {
+  return `${schoolYear}__${msLevel || "all"}`;
+}
+
+function parseCycleValue(value: string): { schoolYear: string; msLevel: "1" | "2" | "" } {
+  const [schoolYear = "", rawMs = "all"] = value.split("__");
+  return {
+    schoolYear,
+    msLevel: rawMs === "1" || rawMs === "2" ? rawMs : "",
+  };
+}
+
+function buildCycleOptions(sessions: AttendanceSession[]): CycleOption[] {
+  const seen = new Set<string>();
+  const options: CycleOption[] = [];
+
+  const sortedSessions = [...sessions].sort((a, b) => {
+    const syDiff = getSessionSY(b).localeCompare(getSessionSY(a));
+    if (syDiff !== 0) return syDiff;
+    return getSessionMsLevel(a).localeCompare(getSessionMsLevel(b));
+  });
+
+  for (const session of sortedSessions) {
+    const schoolYear = getSessionSY(session);
+    const msLevel = getSessionMsLevel(session);
+    const key = buildCycleValue(schoolYear, msLevel);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    options.push({
+      schoolYear,
+      msLevel,
+      label: msLevel ? `CWTS ${msLevel} - SY ${schoolYear}` : `SY ${schoolYear}`,
+    });
+  }
+
+  return options;
 }
 
 export default function CWTSAttendanceBox({ sessions }: Props) {
-  const allSYs = getUniqueSYs(sessions);
-  const [selectedSY, setSelectedSY] = useState<string>(() => allSYs[0] ?? "");
+  const cycleOptions = buildCycleOptions(sessions);
+  const [selectedCycle, setSelectedCycle] = useState<string>(() =>
+    cycleOptions[0] ? buildCycleValue(cycleOptions[0].schoolYear, cycleOptions[0].msLevel) : ""
+  );
 
-  const filteredSessions = sessions.filter((s) => getSessionSY(s) === selectedSY);
+  const cycleFilter = parseCycleValue(selectedCycle);
+  const filteredSessions = sessions.filter((s) => {
+    if (getSessionSY(s) !== cycleFilter.schoolYear) return false;
+    if (cycleFilter.msLevel && getSessionMsLevel(s) !== cycleFilter.msLevel) return false;
+    return true;
+  });
   const miSessions = getMISessions(filteredSessions);
 
   const [selectedMI, setSelectedMI] = useState<number>(0);
@@ -155,21 +201,26 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
       </div>
 
       <div className="p-5 space-y-4">
-        {/* SY selector */}
+        {/* Cycle selector */}
         <div>
-          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">School Year</label>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">CWTS Cycle</label>
           <div className="relative">
             <select
-              value={selectedSY}
+              value={selectedCycle}
               onChange={(e) => {
-                setSelectedSY(e.target.value);
+                setSelectedCycle(e.target.value);
                 setSelectedMI(0);
               }}
               className="w-full appearance-none px-3.5 py-2.5 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             >
-              {allSYs.length === 0 && <option value="">No sessions found</option>}
-              {allSYs.map((sy) => (
-                <option key={sy} value={sy}>SY {sy}</option>
+              {cycleOptions.length === 0 && <option value="">No sessions found</option>}
+              {cycleOptions.map((opt) => (
+                <option
+                  key={buildCycleValue(opt.schoolYear, opt.msLevel)}
+                  value={buildCycleValue(opt.schoolYear, opt.msLevel)}
+                >
+                  {opt.label}
+                </option>
               ))}
             </select>
             <svg className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">

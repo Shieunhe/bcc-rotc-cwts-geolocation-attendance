@@ -16,6 +16,8 @@ function extractSY(scheduleId: string): string {
 }
 
 export default function AdminGrades({ program }: AdminGradesProps) {
+  const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
   const [students, setStudents] = useState<EnrollmentWithMs[]>([]);
   const [ms1Map, setMs1Map] = useState<Map<string, StudentGrade>>(new Map());
   const [ms2Map, setMs2Map] = useState<Map<string, StudentGrade>>(new Map());
@@ -122,9 +124,9 @@ export default function AdminGrades({ program }: AdminGradesProps) {
                 onChange={(e) => setFilterMsLevel(e.target.value as "" | "1" | "2")}
                 className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
               >
-                <option value="">All MS Levels</option>
-                <option value="1">MS 1</option>
-                <option value="2">MS 2</option>
+                <option value="">{`All ${levelLabel}s`}</option>
+                <option value="1">{`${levelPrefix} 1`}</option>
+                <option value="2">{`${levelPrefix} 2`}</option>
               </select>
               <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

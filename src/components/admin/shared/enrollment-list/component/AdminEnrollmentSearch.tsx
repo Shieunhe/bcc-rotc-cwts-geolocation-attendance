@@ -56,6 +56,9 @@ export default function AdminEnrollmentSearch({
   program,
   schoolYears = [],
 }: AdminEnrollmentSearchProps) {
+  const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
+
   function update(partial: Partial<EnrollmentFilters>) {
     onFiltersChange({ ...filters, ...partial });
   }
@@ -103,9 +106,9 @@ export default function AdminEnrollmentSearch({
 
         <div className="relative">
           <select value={filters.msLevel} onChange={(e) => update({ msLevel: e.target.value })} className={selectClass}>
-            <option value="">All MS Level</option>
+            <option value="">{`All ${levelLabel}`}</option>
             {MS_LEVELS.map((ms) => (
-              <option key={ms} value={ms}>MS {ms}</option>
+              <option key={ms} value={ms}>{`${levelPrefix} ${ms}`}</option>
             ))}
           </select>
           {ChevronIcon}

@@ -3,10 +3,12 @@
 import { useState } from "react";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
+import { useEnrollmentSchedule } from "@/hooks/useEnrollmentSchedule";
 import { NSTProgram } from "@/types";
 import AdminEnrollmentHeader from "./component/AdminEnrollmentHeader";
 import AdminEnrollmentSearch, { type EnrollmentFilters } from "./component/AdminEnrollmentSearch";
 import AdminEnrollmentTable from "./component/AdminEnrollmentTable";
+import { resolveSchoolYearFromRecord } from "@/utils/enrollmentSchedule";
 
 interface AdminEnrollmentListProps {
   program: NSTProgram;
@@ -22,19 +24,19 @@ const defaultFilters: EnrollmentFilters = {
   search: "",
 };
 
-function extractSY(scheduleId: string): string {
-  const parts = scheduleId.split("_");
-  return parts.length >= 3 ? parts.slice(2).join("_") : "";
-}
-
 export default function AdminEnrollmentList({ program }: AdminEnrollmentListProps) {
   const { enrollments, isLoading, error, refetch } = useAdminEnrollments(program);
+  const { schedules } = useEnrollmentSchedule(program);
   const [filters, setFilters] = useState<EnrollmentFilters>(defaultFilters);
 
   const availableSchoolYears = Array.from(
     new Set(
-      enrollments
-        .flatMap((e) => e.msRecords.map((r) => extractSY(r.scheduleId)))
+      [
+        ...schedules.map((schedule) => schedule.year),
+        ...enrollments.flatMap((enrollment) =>
+          enrollment.msRecords.map((record) => resolveSchoolYearFromRecord(record, schedules))
+        ),
+      ]
         .filter(Boolean)
     )
   ).sort().reverse();
@@ -101,6 +103,8 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
         ) : (
           <AdminEnrollmentTable
             enrollments={filtered}
+            program={program}
+            schedules={schedules}
             onStatusChange={refetch}
             statusFilter={filters.status}
             msLevelFilter={filters.msLevel}

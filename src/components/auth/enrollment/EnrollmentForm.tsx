@@ -59,10 +59,11 @@ export default function EnrollmentForm() {
 
   function validateCurrentStep(): string {
     if (currentStep === 0) {
+      const levelLabel = formData.nstpComponent === "CWTS" ? "CWTS level" : "MS level";
       if (!formData.course) return "Course is required.";
       if (!formData.yearLevel) return "Year level is required.";
       if (!formData.nstpComponent) return "NSTP component is required.";
-      if (!formData.msLevel) return "MS level is required.";
+      if (!formData.msLevel) return `${levelLabel} is required.`;
     }
     if (currentStep === 1) {    
       if (!formData.studentId) return "Student ID is required.";
@@ -125,10 +126,11 @@ export default function EnrollmentForm() {
 
     if (currentStep === 0 && formData.nstpComponent && formData.msLevel) {
       setIsCheckingSchedule(true);
+      const levelLabel = formData.nstpComponent === "CWTS" ? "CWTS" : "MS";
       try {
         const schedule = await adminService.getEnrollmentSchedule(formData.nstpComponent as NSTProgram, formData.msLevel);
         if (!schedule) {
-          setValidationError(`${formData.nstpComponent} MS ${formData.msLevel} is not yet open for enrollment.`);
+          setValidationError(`${formData.nstpComponent} ${levelLabel} ${formData.msLevel} is not yet open for enrollment.`);
           setIsCheckingSchedule(false);
           return;
         }
@@ -136,12 +138,12 @@ export default function EnrollmentForm() {
         const open = new Date(schedule.openDate);
         const end = new Date(schedule.deadline);
         if (now < open) {
-          setValidationError(`${formData.nstpComponent} MS ${formData.msLevel} enrollment is not yet open. It opens on ${schedule.openDate}.`);
+          setValidationError(`${formData.nstpComponent} ${levelLabel} ${formData.msLevel} enrollment is not yet open. It opens on ${schedule.openDate}.`);
           setIsCheckingSchedule(false);
           return;
         }
         if (now > end) {
-          setValidationError(`${formData.nstpComponent} MS ${formData.msLevel} enrollment is already closed. The deadline was ${schedule.deadline}.`);
+          setValidationError(`${formData.nstpComponent} ${levelLabel} ${formData.msLevel} enrollment is already closed. The deadline was ${schedule.deadline}.`);
           setIsCheckingSchedule(false);
           return;
         }

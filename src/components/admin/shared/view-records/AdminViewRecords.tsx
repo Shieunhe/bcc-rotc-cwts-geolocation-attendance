@@ -51,7 +51,7 @@ function flattenApproved(enrollments: EnrollmentWithMs[]): FlatStudentRow[] {
       rows.push({
         enrollment,
         msRecord: record,
-        msLabel: `MS ${record.msLevel}`,
+        msLabel: record.msLevel,
         sy: extractSY(record.scheduleId),
       });
     }
@@ -106,6 +106,8 @@ function getGradeForRow(
 }
 
 export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
+  const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
   const { enrollments, isLoading } = useAdminEnrollments(program);
   const [search, setSearch] = useState("");
   const [msFilter, setMsFilter] = useState("All");
@@ -194,7 +196,7 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
           birthdate: formatBirthdate(row.enrollment.birthdate),
           sex: row.enrollment.sex || "—",
           address,
-          msLevel: row.msLabel,
+          msLevel: `${levelPrefix} ${row.msLabel}`,
           midterm: formatGradeValue(gradeData?.midterm),
           finalTerm: formatGradeValue(gradeData?.finalTerm),
           average: formatGradeValue(gradeData?.grade),
@@ -214,7 +216,7 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
         "BIRTHDATE",
         "SEX",
         "ADDRESS",
-        "MS LEVEL",
+        program === "CWTS" ? "CWTS LEVEL" : "MS LEVEL",
         "MIDTERM",
         "FINAL",
         "AVERAGE",
@@ -252,7 +254,7 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
       worksheet.getCell("E2").value = "BUENAVISTA COMMUNITY COLLEGE";
       worksheet.getCell("E3").value = "Cangawa, Buenavista, Bohol";
       worksheet.getCell("N1").value = `School Year: ${syFilter !== "All" ? `SY ${syFilter}` : "All"}`;
-      worksheet.getCell("N2").value = `MS Level: ${msFilter !== "All" ? `MS ${msFilter}` : "All"}`;
+      worksheet.getCell("N2").value = `${levelLabel}: ${msFilter !== "All" ? `${levelPrefix} ${msFilter}` : "All"}`;
 
       worksheet.getRow(1).height = 42;
       worksheet.getRow(2).height = 28;
@@ -348,7 +350,7 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
 
       const buffer = await workbook.xlsx.writeBuffer();
       const filterParts: string[] = [program];
-      if (msFilter !== "All") filterParts.push(`MS${msFilter}`);
+      if (msFilter !== "All") filterParts.push(`${levelPrefix}${msFilter}`);
       if (syFilter !== "All") filterParts.push(`SY${syFilter}`);
       const filename = `${filterParts.join("_")}_Records.xlsx`;
 
@@ -397,9 +399,9 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
           onChange={(e) => setMsFilter(e.target.value)}
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-blue-500"
         >
-          <option value="All">All MS Levels</option>
-          <option value="1">MS 1</option>
-          <option value="2">MS 2</option>
+          <option value="All">{`All ${levelLabel}s`}</option>
+          <option value="1">{`${levelPrefix} 1`}</option>
+          <option value="2">{`${levelPrefix} 2`}</option>
         </select>
         <select
           value={syFilter}
@@ -432,7 +434,7 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Student ID</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Name</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Course</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">MS Level</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">{levelLabel}</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">SY</th>
                 {program === "ROTC" && (
                   <th className="px-4 py-3 text-left font-semibold text-gray-600">Battalion</th>
@@ -459,7 +461,7 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
                     <td className="px-4 py-3 text-gray-500">{row.enrollment.course}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">
-                        {row.msLabel}
+                        {`${levelPrefix} ${row.msLabel}`}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">{row.sy ? `SY ${row.sy}` : "—"}</td>

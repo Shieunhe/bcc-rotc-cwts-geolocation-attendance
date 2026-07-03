@@ -21,9 +21,11 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [grades, setGrades] = useState<{ ms1?: StudentGrade; ms2?: StudentGrade }>({});
 
+  const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
   const msRecord = student.msRecords.find((r) => r.msLevel === msLevel);
   const sy = msRecord ? extractSY(msRecord.scheduleId) : "";
-  const msLabel = `MS ${msLevel}`;
+  const msLabel = `${levelPrefix} ${msLevel}`;
   const gradeData = msLevel === "1" ? grades.ms1 : grades.ms2;
 
   useEffect(() => {
@@ -100,7 +102,7 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
                   <InfoItem label="Course" value={student.course} />
                   <InfoItem label="Year Level" value={student.yearLevel} />
                   <InfoItem label="Program" value={student.nstpComponent} />
-                  <InfoItem label="MS Level" value={msLabel} />
+                  <InfoItem label={levelLabel} value={msLabel} />
                   <InfoItem label="School Year" value={sy ? `SY ${sy}` : "—"} />
                   <InfoItem label="Serial Number" value={student.serialNumber || "N/A"} />
                 </div>

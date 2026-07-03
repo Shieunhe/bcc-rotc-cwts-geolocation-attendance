@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { NSTProgram } from "@/types";
 
 interface GradesCardProps {
   base: string;
+  program: NSTProgram;
 }
 
-export default function GradesCard({ base }: GradesCardProps) {
+export default function GradesCard({ base, program }: GradesCardProps) {
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
   return (
     <Link href={`${base}/grades`} className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-3">
@@ -20,13 +23,13 @@ export default function GradesCard({ base }: GradesCardProps) {
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Grades</p>
       <div className="flex items-center gap-2 flex-wrap">
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-blue-100 text-blue-700 border-blue-200">
-          MS 1
+          {`${levelPrefix} 1`}
         </span>
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-violet-100 text-violet-700 border-violet-200">
-          MS 2
+          {`${levelPrefix} 2`}
         </span>
       </div>
-      <p className="text-xs text-gray-500 mt-2">Tap to encode MS 1 and MS 2 final grades.</p>
+      <p className="text-xs text-gray-500 mt-2">{`Tap to encode ${levelPrefix} 1 and ${levelPrefix} 2 final grades.`}</p>
     </Link>
   );
 }

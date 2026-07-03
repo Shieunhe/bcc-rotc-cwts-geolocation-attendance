@@ -68,6 +68,8 @@ async function imageBlobToResizedPngDataUrl(source: Blob): Promise<string | null
 }
 
 export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
+  const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
   const { enrollments, isLoading } = useAdminEnrollments(program);
   const [search, setSearch] = useState("");
   const [filterMsLevel, setFilterMsLevel] = useState<"" | "1" | "2">("");
@@ -427,9 +429,9 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
             onChange={(e) => setFilterMsLevel(e.target.value as "" | "1" | "2")}
             className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-medium text-gray-700"
           >
-            <option value="">All MS Levels</option>
-            <option value="1">MS 1</option>
-            <option value="2">MS 2</option>
+            <option value="">{`All ${levelLabel}s`}</option>
+            <option value="1">{`${levelPrefix} 1`}</option>
+            <option value="2">{`${levelPrefix} 2`}</option>
           </select>
 
           <select
@@ -994,7 +996,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                 </p>
                 <div className="flex gap-3 pt-1">
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">MS 1</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">{`${levelPrefix} 1`}</p>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-0.5 ${
                       assignStudent.ms1Grade?.status === "Passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                     }`}>
@@ -1002,7 +1004,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                     </span>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">MS 2</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">{`${levelPrefix} 2`}</p>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-0.5 ${
                       assignStudent.ms2Grade?.status === "Passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                     }`}>

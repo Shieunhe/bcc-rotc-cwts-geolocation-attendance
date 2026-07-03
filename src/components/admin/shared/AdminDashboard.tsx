@@ -73,7 +73,7 @@ export default function AdminDashboard({ program }: AdminDashboardProps) {
             {program === "ROTC" && <ROTCPlatoonRosterCard base={base} />}
             <AttendanceSummaryCard base={base} />
             <ViewRecordsCard base={base} />
-            <GradesCard base={base} />
+            <GradesCard base={base} program={program} />
             <OffensesCard base={base} />
             <SerialNumberCard base={base} />
             <SettingsDashboardCard href={`${base}/settings`} />

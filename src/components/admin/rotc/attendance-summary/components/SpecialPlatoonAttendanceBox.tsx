@@ -2,6 +2,20 @@
 
 import { useState } from "react";
 import { AttendanceRecord, EnrollmentDocument, SPECIAL_UNITS, SpecialUnit } from "@/types";
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  HeadingLevel,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
+} from "docx";
+import { saveAs } from "file-saver";
 
 const statusConfig: Record<string, { bg: string; text: string; border: string; label: string }> = {
   present:  { bg: "bg-green-50 border-green-200", text: "text-green-700", border: "border-l-green-500", label: "Present" },
@@ -50,16 +64,21 @@ interface Props {
   unitStudents: Record<SpecialUnit, EnrollmentDocument[]>;
   recordMap: Map<string, AttendanceRecord>;
   graceOver: boolean;
+  sessionOpenDate: string | null;
   sessionCloseDate: string | null;
   selectedType: "in" | "out";
   onTypeChange: (type: "in" | "out") => void;
   hasIn: boolean;
   hasOut: boolean;
+  selectedMI: number;
+  schoolYear: string;
+  msLevel: "1" | "2" | "";
+  nstpComponent: string;
 }
 
 export default function SpecialPlatoonAttendanceBox({
-  unitStudents, recordMap, graceOver, sessionCloseDate,
-  selectedType, onTypeChange, hasIn, hasOut,
+  unitStudents, recordMap, graceOver, sessionOpenDate, sessionCloseDate,
+  selectedType, onTypeChange, hasIn, hasOut, selectedMI, schoolYear, msLevel, nstpComponent,
 }: Props) {
   const lateDeadlineStr = sessionCloseDate
     ? new Date(new Date(sessionCloseDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000).toISOString()
@@ -112,11 +131,206 @@ export default function SpecialPlatoonAttendanceBox({
     ...(hasUnmarked ? [{ value: "unmarked", label: "Not Yet Marked" }] : []),
   ];
 
+  function formatDateDisplay(dateStr: string) {
+    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  async function downloadWord() {
+    const borderStyle = { style: BorderStyle.SINGLE, size: 1, color: "999999" };
+    const borders = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+    const headers = ["No.", "Name", "ID Number", "Unit", "Status", "Time"];
+
+    function makeCell(
+      text: string,
+      options?: {
+        bold?: boolean;
+        size?: number;
+        color?: string;
+        fill?: string;
+        alignment?: "left" | "center" | "right";
+        columnSpan?: number;
+      }
+    ) {
+      return new TableCell({
+        columnSpan: options?.columnSpan,
+        borders,
+        ...(options?.fill ? { shading: { fill: options.fill } } : {}),
+        children: [new Paragraph({
+          alignment: options?.alignment,
+          spacing: { before: 60, after: 60 },
+          children: [new TextRun({
+            text,
+            bold: options?.bold,
+            size: options?.size ?? 20,
+            font: "Arial",
+            color: options?.color,
+          })],
+        })],
+      });
+    }
+
+    function makeHeaderRow() {
+      return new TableRow({
+        tableHeader: true,
+        children: headers.map((h) =>
+          new TableCell({
+            borders,
+            shading: { fill: "7F1D1D" },
+            children: [new Paragraph({
+              spacing: { before: 40, after: 40 },
+              children: [new TextRun({ text: h, bold: true, size: 18, font: "Arial", color: "FFFFFF" })],
+            })],
+          })
+        ),
+      });
+    }
+
+    function makeSummaryTable() {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              makeCell("MI / Type", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(`MI ${selectedMI} - ${selectedType === "in" ? "TIME IN" : "TIME OUT"}`, { bold: true, size: 22 }),
+              makeCell("Session Date", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(sessionOpenDate ? formatDateDisplay(sessionOpenDate) : "-", { bold: true, size: 22 }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              makeCell("Time Window", { bold: true, fill: "EFF6FF", color: "1E3A8A" }),
+              makeCell(
+                sessionOpenDate && sessionCloseDate
+                  ? `${formatTimeDisplay(sessionOpenDate)} - ${formatTimeDisplay(sessionCloseDate)}`
+                  : "-",
+                { size: 22 }
+              ),
+              makeCell("NSTP Component", { bold: true, fill: "EFF6FF", color: "1E3A8A" }),
+              makeCell(nstpComponent || "ROTC", { bold: true, size: 22 }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              makeCell("School Year", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(schoolYear || "-", { bold: true, size: 22 }),
+              makeCell("MS Level", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(msLevel ? `MS ${msLevel}` : "All", { bold: true, size: 22 }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    function makeCountsTable() {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              makeCell(`TOTAL: ${sorted.length}`, { bold: true, size: 22, fill: "F3F4F6", alignment: AlignmentType.CENTER }),
+              makeCell(`PRESENT: ${counts.present}`, { bold: true, size: 22, fill: "DCFCE7", color: "166534", alignment: AlignmentType.CENTER }),
+              makeCell(`LATE: ${counts.late}`, { bold: true, size: 22, fill: "FEF3C7", color: "92400E", alignment: AlignmentType.CENTER }),
+              makeCell(`ABSENT: ${counts.absent}`, { bold: true, size: 22, fill: "FEE2E2", color: "991B1B", alignment: AlignmentType.CENTER }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    function makeSectionHeading(text: string, fill: string, color = "FFFFFF") {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              makeCell(text, {
+                bold: true,
+                size: 26,
+                fill,
+                color,
+                alignment: AlignmentType.CENTER,
+                columnSpan: 6,
+              }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    function makeRows(students: EnrollmentDocument[]) {
+      return students.map((s, idx) => {
+        const status = getStatus(s.uid, recordMap, graceOver);
+        const cfg = statusConfig[status] ?? statusConfig.absent;
+        const record = recordMap.get(s.uid);
+        const time = status === "present" || status === "late"
+          ? (record ? formatTimeDisplay(record.createdAt) : "")
+          : status === "absent" && lateDeadlineStr
+            ? formatTimeDisplay(lateDeadlineStr)
+            : "";
+        const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
+        const unit = s.specialUnit as SpecialUnit;
+
+        return new TableRow({
+          children: [
+            makeCell(String(idx + 1), { alignment: AlignmentType.CENTER }),
+            makeCell(name),
+            makeCell(s.studentId || "", { alignment: AlignmentType.CENTER }),
+            makeCell(unit, { alignment: AlignmentType.CENTER }),
+            makeCell(cfg.label, { alignment: AlignmentType.CENTER }),
+            makeCell(time || "-", { alignment: AlignmentType.CENTER }),
+          ],
+        });
+      });
+    }
+
+    const sections: (Paragraph | Table)[] = [];
+    for (const unit of SPECIAL_UNITS) {
+      const students = sorted.filter((s) => s.specialUnit === unit);
+      if (students.length === 0) continue;
+      sections.push(
+        new Paragraph({ spacing: { before: 220, after: 80 } }),
+        makeSectionHeading(unit.toUpperCase(), "FFEDD5", "9A3412"),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [makeHeaderRow(), ...makeRows(students)],
+        }),
+      );
+    }
+
+    const doc = new Document({
+      sections: [{
+        children: [
+          new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+            children: [new TextRun({ text: "SPECIAL PLATOON ATTENDANCE SUMMARY", bold: true, size: 34, font: "Arial", color: "7F1D1D" })],
+          }),
+          makeSummaryTable(),
+          new Paragraph({ spacing: { after: 140 } }),
+          makeCountsTable(),
+          new Paragraph({ spacing: { before: 120, after: 120 } }),
+          ...sections,
+          new Paragraph({
+            spacing: { before: 180 },
+            alignment: AlignmentType.RIGHT,
+            children: [new TextRun({ text: `${sorted.length} cadets total`, size: 16, font: "Arial", color: "999999" })],
+          }),
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `Special_Platoon_Attendance_MI${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.docx`);
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-red-500 to-red-600 px-5 py-4">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
             <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M10 2v4H6a2 2 0 00-2 2v4h4v4a2 2 0 002 2h4v-4h4a2 2 0 002-2V8h-4V4a2 2 0 00-2-2h-4z" />
@@ -126,6 +340,16 @@ export default function SpecialPlatoonAttendanceBox({
             <h2 className="text-base font-bold text-white">Special Platoon</h2>
             <p className="text-[11px] text-white/70 font-medium">{allStudents.length} cadet{allStudents.length !== 1 ? "s" : ""} &middot; {pct}% attendance</p>
           </div>
+          </div>
+          <button
+            onClick={downloadWord}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur text-white text-[11px] font-semibold transition cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download
+          </button>
           {/* Unit quick counts */}
           <div className="hidden sm:flex items-center gap-1.5">
             {SPECIAL_UNITS.map((u) => (

@@ -32,7 +32,7 @@ function formatDisplayDate(dateStr: string) {
   if (!dateStr) return "-";
   const d = new Date(dateStr);
   const { hour, minute, period } = to12HourParts(dateStr);
-  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${hour}:${minute} ${period}`;
+  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} | ${hour}:${minute} ${period}`;
 }
 
 function buildDateTimeString(date: string, hour: string, minute: string, period: "AM" | "PM") {
@@ -76,6 +76,10 @@ const currentYear = new Date().getFullYear();
 
 export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentScheduleProps) {
   const { schedules, isLoading, save, isSaving } = useEnrollmentSchedule(program);
+  const isCWTS = program === "CWTS";
+  const levelLabel = isCWTS ? "CWTS Level" : "MS Level";
+  const levelPrefix = isCWTS ? "CWTS" : "MS";
+  const sequenceLabel = isCWTS ? "CWTS 1 to CWTS 2" : "MS 1 to MS 2";
 
   const [showForm, setShowForm] = useState(false);
   const [formMs, setFormMs] = useState<MSLevel>("1");
@@ -189,7 +193,7 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
       <div className="mx-auto w-full max-w-3xl space-y-6">
         <PageIntroPanel
           title={`${program} Enrollment Schedule`}
-          subtitle="Manage enrollment schedules per MS level and school year."
+          subtitle={`Manage enrollment schedules per ${isCWTS ? "CWTS level" : "MS level"} and school year.`}
           variant={program === "CWTS" ? "emerald" : "sky"}
           actions={!showForm ? (
             <button
@@ -230,7 +234,7 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
           {activeSchedules.length > 0 ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {activeSchedules.map((s) => (
-                <ScheduleCard key={`${s.msLevel}_${s.year}`} label={`MS ${s.msLevel} - SY ${s.year || "N/A"}`} schedule={s} />
+                <ScheduleCard key={`${s.msLevel}_${s.year}`} label={`${levelPrefix} ${s.msLevel} - SY ${s.year || "N/A"}`} schedule={s} />
               ))}
             </div>
           ) : (
@@ -254,11 +258,11 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelClass}>MS Level</label>
+                <label className={labelClass}>{levelLabel}</label>
                 <select value={formMs} disabled className={inputClass + " cursor-not-allowed bg-gray-50 text-gray-400"}>
-                  <option value={formMs}>MS {formMs}</option>
+                  <option value={formMs}>{levelPrefix} {formMs}</option>
                 </select>
-                <p className="mt-1 text-[10px] text-gray-400">Auto-determined by sequence (MS 1 to MS 2)</p>
+                <p className="mt-1 text-[10px] text-gray-400">Auto-determined by sequence ({sequenceLabel})</p>
               </div>
               <div>
                 <label className={labelClass}>School Year</label>
@@ -296,7 +300,7 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
             </div>
 
             {duplicateExists && (
-              <p className="text-xs font-medium text-red-500">A schedule for MS {formMs} - SY {formYear} already exists.</p>
+              <p className="text-xs font-medium text-red-500">A schedule for {levelPrefix} {formMs} - SY {formYear} already exists.</p>
             )}
 
             {formOpen && formDeadline && new Date(formDeadline).getTime() <= new Date(formOpen).getTime() && (
@@ -328,7 +332,7 @@ export default function AdminEnrollmentSchedule({ program }: AdminEnrollmentSche
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {closedSchedules.map((s) => (
-                <ScheduleCard key={`${s.msLevel}_${s.year}`} label={`MS ${s.msLevel} - SY ${s.year || "N/A"}`} schedule={s} />
+                <ScheduleCard key={`${s.msLevel}_${s.year}`} label={`${levelPrefix} ${s.msLevel} - SY ${s.year || "N/A"}`} schedule={s} />
               ))}
             </div>
           </div>

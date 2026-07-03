@@ -3,6 +3,7 @@ import { doc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, dele
 import { auth, db } from "@/lib/firebase";
 import { EnrollmentDocument, EnrollmentSchedule } from "@/types";
 import { EnrollmentFormData } from "@/types/enrollmentTypes";
+import { buildScheduleId, compareSchedulesDesc, isScheduleOpenAt } from "@/utils/enrollmentSchedule";
 
 const MAX_WIDTH = 800;
 const MAX_HEIGHT = 800;
@@ -71,6 +72,13 @@ export interface EnrollmentResult {
 export const enrollmentService = {
   async submitEnrollment(formData: EnrollmentFormData): Promise<EnrollmentResult> {
     try {
+      if (formData.nstpComponent === "CWTS" && formData.msLevel !== "1") {
+        return { success: false, error: "First-time CWTS enrollment is only allowed for CWTS 1. Please use re-enrollment to proceed to CWTS 2." };
+      }
+      if (formData.nstpComponent === "ROTC" && formData.msLevel !== "1") {
+        return { success: false, error: "First-time ROTC enrollment is only allowed for MS 1. Please use re-enrollment to proceed to MS 2." };
+      }
+
       // 1. Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -265,11 +273,14 @@ export const enrollmentService = {
       where("msLevel", "==", msLevel),
     );
     const snap = await getDocs(q);
-    const now = new Date();
-    const open = snap.docs
+    const schedules = snap.docs
       .map((d) => d.data() as EnrollmentSchedule)
-      .find((s) => now >= new Date(s.openDate) && now <= new Date(s.deadline));
-    if (open) return `${open.program}_${open.msLevel}_${open.year}`;
+      .sort(compareSchedulesDesc);
+    const open = schedules.find((schedule) => isScheduleOpenAt(schedule));
+    if (open) return buildScheduleId(open);
+    const latestStarted = schedules.find((schedule) => new Date() >= new Date(schedule.openDate));
+    if (latestStarted) return buildScheduleId(latestStarted);
+    if (schedules[0]) return buildScheduleId(schedules[0]);
     return "";
   },
 };

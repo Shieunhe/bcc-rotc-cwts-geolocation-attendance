@@ -147,15 +147,46 @@ export default function ROTCAttendanceSummary({ section }: Props) {
     Promise.all([
       adminService.getSessionsByProgram("ROTC", isAdvance),
       adminService.getEnrollmentSchedules("ROTC"),
-    ]).then(([data]) => {
+      adminService.getApprovedEnrollmentsByProgram("ROTC"),
+    ]).then(([data, , approved]) => {
+      const hasSectionRoster = (() => {
+        if (section === "battalion-1") {
+          return approved.some((student) =>
+            !student.specialUnit &&
+            !student.medicalCondition &&
+            !student.willingToTakeAdvanceCourse &&
+            student.battalion === 1 &&
+            !!student.rotcCompany &&
+            !!student.rotcPlatoon
+          );
+        }
+        if (section === "battalion-2") {
+          return approved.some((student) =>
+            !student.specialUnit &&
+            !student.medicalCondition &&
+            !student.willingToTakeAdvanceCourse &&
+            student.battalion === 2 &&
+            !!student.rotcCompany &&
+            !!student.rotcPlatoon
+          );
+        }
+        if (section === "special-platoon") {
+          return approved.some((student) => !!student.specialUnit);
+        }
+        if (section === "advance-course") {
+          return approved.some((student) => !!student.willingToTakeAdvanceCourse && !student.specialUnit && !student.medicalCondition);
+        }
+        return true;
+      })();
+
       const filtered = section === "advance-course"
         ? data.filter((s) => s.isAdvanceCourse)
         : section === "battalion-1" || section === "battalion-2" || section === "overall"
           ? data.filter((s) => !s.isAdvanceCourse)
           : data;
-      setAllSessions(filtered);
+      setAllSessions(hasSectionRoster ? filtered : []);
       const nextOptions = buildSYOptions(filtered);
-      setSelectedCycle(nextOptions[0] ? buildCycleValue(nextOptions[0].schoolYear, nextOptions[0].msLevel) : "");
+      setSelectedCycle(hasSectionRoster && nextOptions[0] ? buildCycleValue(nextOptions[0].schoolYear, nextOptions[0].msLevel) : "");
       setLoadingSessions(false);
     }).catch(() => setLoadingSessions(false));
   }, [section]);
@@ -322,6 +353,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               students={b1Students}
               recordMap={recordMap}
               graceOver={graceOver}
+              sessionOpenDate={selectedSession?.openDate ?? null}
               sessionCloseDate={selectedSession?.closeDate ?? null}
               accentFrom="from-blue-600"
               accentTo="to-indigo-700"
@@ -330,6 +362,10 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               onTypeChange={setSelectedType}
               hasIn={!!currentMI?.in}
               hasOut={!!currentMI?.out}
+              selectedMI={selectedMI}
+              schoolYear={cycleFilter.schoolYear}
+              msLevel={cycleFilter.msLevel}
+              nstpComponent="ROTC"
             />
           )}
           {section === "battalion-2" && (
@@ -340,6 +376,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               students={b2Students}
               recordMap={recordMap}
               graceOver={graceOver}
+              sessionOpenDate={selectedSession?.openDate ?? null}
               sessionCloseDate={selectedSession?.closeDate ?? null}
               accentFrom="from-violet-600"
               accentTo="to-purple-700"
@@ -348,6 +385,10 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               onTypeChange={setSelectedType}
               hasIn={!!currentMI?.in}
               hasOut={!!currentMI?.out}
+              selectedMI={selectedMI}
+              schoolYear={cycleFilter.schoolYear}
+              msLevel={cycleFilter.msLevel}
+              nstpComponent="ROTC"
             />
           )}
           {section === "advance-course" && (
@@ -355,11 +396,16 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               students={advanceCourseStudents}
               recordMap={recordMap}
               graceOver={graceOver}
+              sessionOpenDate={selectedSession?.openDate ?? null}
               sessionCloseDate={selectedSession?.closeDate ?? null}
               selectedType={selectedType}
               onTypeChange={setSelectedType}
               hasIn={!!currentMI?.in}
               hasOut={!!currentMI?.out}
+              selectedMI={selectedMI}
+              schoolYear={cycleFilter.schoolYear}
+              msLevel={cycleFilter.msLevel}
+              nstpComponent="ROTC"
             />
           )}
           {section === "special-platoon" && (
@@ -367,11 +413,16 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               unitStudents={specialUnitStudents}
               recordMap={recordMap}
               graceOver={graceOver}
+              sessionOpenDate={selectedSession?.openDate ?? null}
               sessionCloseDate={selectedSession?.closeDate ?? null}
               selectedType={selectedType}
               onTypeChange={setSelectedType}
               hasIn={!!currentMI?.in}
               hasOut={!!currentMI?.out}
+              selectedMI={selectedMI}
+              schoolYear={cycleFilter.schoolYear}
+              msLevel={cycleFilter.msLevel}
+              nstpComponent="ROTC"
             />
           )}
           {section === "overall" && (
@@ -388,6 +439,9 @@ export default function ROTCAttendanceSummary({ section }: Props) {
               hasIn={!!currentMI?.in}
               hasOut={!!currentMI?.out}
               selectedMI={selectedMI}
+              schoolYear={cycleFilter.schoolYear}
+              msLevel={cycleFilter.msLevel}
+              nstpComponent="ROTC"
             />
           )}
         </div>
