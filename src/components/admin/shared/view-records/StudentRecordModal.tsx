@@ -22,7 +22,9 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
   const [grades, setGrades] = useState<{ ms1?: StudentGrade; ms2?: StudentGrade }>({});
 
   const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
-  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
+  const levelPrefix = program === 'CWTS' ? 'CWTS' : 'MS';
+  const attendanceUnitLabel = program === 'CWTS' ? 'CS' : 'MI';
+  const attendanceUnitFullLabel = program === 'CWTS' ? 'Community Service' : 'Military Instruction';
   const msRecord = student.msRecords.find((r) => r.msLevel === msLevel);
   const sy = msRecord ? extractSY(msRecord.scheduleId) : "";
   const msLabel = `${levelPrefix} ${msLevel}`;
@@ -203,7 +205,7 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
                     <table className="w-full text-sm">
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="text-left px-4 py-2.5 font-semibold text-gray-600">MI</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-gray-600">{attendanceUnitLabel}</th>
                           <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Type</th>
                           <th className="text-center px-4 py-2.5 font-semibold text-gray-600">Status</th>
                           <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Date</th>
@@ -222,10 +224,10 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
                           .map((record, idx) => (
                             <tr key={record.id || idx} className="hover:bg-white/50">
                               <td className="px-4 py-2.5 text-gray-700 font-medium">
-                                {record.miNumber ? `MI ${record.miNumber}` : "—"}
+                                {record.miNumber ? `${attendanceUnitLabel} ${record.miNumber}` : "—"}
                               </td>
                               <td className="px-4 py-2.5 text-gray-500 capitalize">
-                                {record.miType === "in" ? "Time In" : record.miType === "out" ? "Time Out" : "—"}
+                                {record.miType === "in" ? `${attendanceUnitFullLabel} Time In` : record.miType === "out" ? `${attendanceUnitFullLabel} Time Out` : "—"}
                               </td>
                               <td className="px-4 py-2.5 text-center">
                                 <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
@@ -282,3 +284,4 @@ function InfoItem({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+

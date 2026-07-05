@@ -18,6 +18,8 @@ import { saveAs } from "file-saver";
 const LATE_THRESHOLD_MINUTES = 15;
 const MI_COUNT = 15;
 const MI_NUMBERS = Array.from({ length: MI_COUNT }, (_, i) => i + 1);
+const SESSION_LABEL = 'CS';
+const SESSION_FULL_LABEL = 'Community Service';
 
 function isGracePeriodOver(session: AttendanceSession | null): boolean {
   if (!session) return false;
@@ -51,7 +53,7 @@ function getMIOptionLabel(mi: number, entry?: { in?: AttendanceSession; out?: At
   const outLabel = entry?.out
     ? `Time Out - (${formatTimeDisplay(entry.out.openDate)} - ${formatTimeDisplay(entry.out.closeDate)})`
     : "Time Out - (Not yet)";
-  return `MI ${mi}  ${inLabel} | ${outLabel}`;
+  return `${SESSION_LABEL} ${mi}  ${inLabel} | ${outLabel}`;
 }
 
 const statusConfig: Record<string, { bg: string; text: string; border: string; label: string }> = {
@@ -317,8 +319,8 @@ export default function CWTSAttendanceSummary() {
         rows: [
           new TableRow({
             children: [
-              makeCell("MI / Type", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
-              makeCell(`MI ${selectedMI} - ${selectedType === "in" ? "TIME IN" : "TIME OUT"}`, { bold: true, size: 22 }),
+              makeCell("CS / Type", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(`${SESSION_LABEL} ${selectedMI} - ${selectedType === "in" ? "TIME IN" : "TIME OUT"}`, { bold: true, size: 22 }),
               makeCell("Session Date", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
               makeCell(selectedSession ? formatDateDisplay(selectedSession.openDate) : "-", { bold: true, size: 22 }),
             ],
@@ -463,7 +465,7 @@ export default function CWTSAttendanceSummary() {
     });
 
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, `CWTS_Attendance_MI${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.docx`);
+    saveAs(blob, `CWTS_Attendance_${SESSION_LABEL}${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.docx`);
   }
 
   return (
@@ -502,20 +504,20 @@ export default function CWTSAttendanceSummary() {
       {/* MI selector + Time In/Out */}
       <div className="flex items-end gap-3 flex-wrap mb-5">
         <div className="flex-1 min-w-[220px]">
-          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Select Military Instruction</label>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Select {SESSION_FULL_LABEL}</label>
           <div className="relative">
             <select
               value={selectedMI}
               onChange={(e) => handleMIChange(Number(e.target.value))}
               className="w-full appearance-none px-3.5 py-2.5 pr-8 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             >
-              <option value={0}>Select Military Instruction...</option>
+              <option value={0}>Select {SESSION_FULL_LABEL}...</option>
               {MI_NUMBERS.map((mi) => {
                 const entry = miSessions.get(mi);
                 const created = !!entry;
                 return (
                   <option key={mi} value={mi} disabled={!created}>
-                    {created ? getMIOptionLabel(mi, entry) : `MI ${mi} - Not yet created`}
+                    {created ? getMIOptionLabel(mi, entry) : `${SESSION_LABEL} ${mi} - Not yet created`}
                   </option>
                 );
               })}
@@ -541,7 +543,7 @@ export default function CWTSAttendanceSummary() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          <p className="text-sm font-semibold text-gray-500">Select a Military Instruction to view attendance records.</p>
+          <p className="text-sm font-semibold text-gray-500">Select a {SESSION_FULL_LABEL} to view attendance records.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -776,4 +778,6 @@ export default function CWTSAttendanceSummary() {
     </AdminPageLayout>
   );
 }
+
+
 

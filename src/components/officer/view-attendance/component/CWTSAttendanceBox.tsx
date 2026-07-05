@@ -31,6 +31,8 @@ interface Props {
 
 const MI_COUNT = 15;
 const MI_NUMBERS = Array.from({ length: MI_COUNT }, (_, i) => i + 1);
+const SESSION_LABEL = 'CS';
+const SESSION_FULL_LABEL = 'Community Service';
 
 function getMISessions(sessions: AttendanceSession[]) {
   const map = new Map<number, { in?: AttendanceSession; out?: AttendanceSession }>();
@@ -50,7 +52,7 @@ function getMIOptionLabel(mi: number, entry?: { in?: AttendanceSession; out?: At
   const outLabel = entry?.out
     ? `Time Out - (${formatTime(entry.out.openDate)} - ${formatTime(entry.out.closeDate)})`
     : "Time Out - (Not yet)";
-  return `MI ${mi}  ${inLabel} | ${outLabel}`;
+  return `${SESSION_LABEL} ${mi}  ${inLabel} | ${outLabel}`;
 }
 
 function getSessionSY(s: AttendanceSession): string {
@@ -231,20 +233,20 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
 
         {/* MI selector */}
         <div>
-          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Select Military Instruction</label>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Select {SESSION_FULL_LABEL}</label>
           <div className="relative">
             <select
               value={selectedMI}
               onChange={(e) => handleMIChange(Number(e.target.value))}
               className="w-full appearance-none px-3.5 py-2.5 pr-8 rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             >
-              <option value={0}>Select Military Instruction...</option>
+              <option value={0}>Select {SESSION_FULL_LABEL}...</option>
               {MI_NUMBERS.map((mi) => {
                 const entry = miSessions.get(mi);
                 const created = !!entry;
                 return (
                   <option key={mi} value={mi} disabled={!created}>
-                    {created ? getMIOptionLabel(mi, entry) : `MI ${mi} — Not yet created`}
+                    {created ? getMIOptionLabel(mi, entry) : `${SESSION_LABEL} ${mi} - Not yet created`}
                   </option>
                 );
               })}
@@ -470,7 +472,7 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
           </>
         ) : (
           <div className="text-center py-8">
-            <p className="text-sm text-gray-400 font-medium">Select a Military Instruction to view attendance records.</p>
+            <p className="text-sm text-gray-400 font-medium">Select a {SESSION_FULL_LABEL} to view attendance records.</p>
           </div>
         )}
       </div>
@@ -488,3 +490,5 @@ export default function CWTSAttendanceBox({ sessions }: Props) {
     </div>
   );
 }
+
+

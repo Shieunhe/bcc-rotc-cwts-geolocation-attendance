@@ -109,6 +109,14 @@ function getHighestCompletedMI(progress: Map<number, MIStatus>): number {
   return 0;
 }
 
+function getSessionUnitLabel(program: Program): string {
+  return program === 'CWTS' ? 'CS' : 'MI';
+}
+
+function getSessionUnitFullLabel(program: Program): string {
+  return program === 'CWTS' ? 'Community Service' : 'Military Instruction';
+}
+
 function StepBadge({ num, active }: { num: number; active: boolean }) {
   return (
     <div className={`w-6 h-6 rounded-full flex items-center justify-center ${active ? "bg-indigo-600" : "bg-gray-300"}`}>
@@ -252,7 +260,9 @@ export default function OfficerCreateAttendance() {
   const allStepsDone = !!(program && stepMIDone && stepScheduleDone && location);
 
   const isAdvanceCourse = program === "ADVANCE_COURSE";
-  const actualProgram = isAdvanceCourse ? "ROTC" : program;
+  const actualProgram = isAdvanceCourse ? 'ROTC' : program;
+  const sessionUnitLabel = getSessionUnitLabel(program);
+  const sessionUnitFullLabel = getSessionUnitFullLabel(program);
 
   const allComplete = program && miProgress.size > 0 && (() => {
     for (let i = 1; i <= MI_COUNT; i++) {
@@ -279,7 +289,7 @@ export default function OfficerCreateAttendance() {
         location: location!,
         createdBy: auth.currentUser?.email ?? "unknown",
       });
-      const label = `MI ${miNumber} ${miType.toUpperCase()}`;
+      const label = `${sessionUnitLabel} ${miNumber} ${miType.toUpperCase()}`;
       setSuccessMessage(`${label} attendance session created successfully!`);
       setSuccess(true);
       setOpenDate("");
@@ -306,7 +316,7 @@ export default function OfficerCreateAttendance() {
     <>
       <PageIntroPanel
         title="Create Attendance"
-        subtitle="Set up MI attendance sessions for ROTC, CWTS, and Advance Course."
+        subtitle="Set up attendance sessions for ROTC, CWTS, and Advance Course."
         variant="sky"
       />
 
@@ -376,7 +386,7 @@ export default function OfficerCreateAttendance() {
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  Current cycle: {currentCycle.msLevel ? `MS ${currentCycle.msLevel} - ` : ""}SY {currentCycle.schoolYear}
+                  Current cycle: {currentCycle.msLevel ? `${program === "CWTS" ? "CWTS" : "MS"} ${currentCycle.msLevel} - ` : ""}SY {currentCycle.schoolYear}
                 </div>
               )}
             </div>
@@ -387,7 +397,7 @@ export default function OfficerCreateAttendance() {
         <div className={`p-5 sm:p-6 border-b border-gray-100 ${!program ? "opacity-50 pointer-events-none" : ""}`}>
           <div className="flex items-center gap-2.5 mb-4">
             <StepBadge num={2} active={!!program} />
-            <StepTitle active={!!program}>Select MI (Military Instruction)</StepTitle>
+            <StepTitle active={!!program}>Select {sessionUnitLabel} ({sessionUnitFullLabel})</StepTitle>
           </div>
 
           {loadingSessions ? (
@@ -400,7 +410,7 @@ export default function OfficerCreateAttendance() {
               <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-xs text-green-700 font-medium">All 15 MI sessions (IN & OUT) have been created for this program.</p>
+              <p className="text-xs text-green-700 font-medium">All 15 {sessionUnitLabel} sessions (IN & OUT) have been created for this program.</p>
             </div>
           ) : (
             <div className="grid grid-cols-5 gap-2">
@@ -429,7 +439,7 @@ export default function OfficerCreateAttendance() {
                     disabled={!selectable || complete}
                     className={className}
                   >
-                    <span>MI {mi}</span>
+                    <span>{sessionUnitLabel} {mi}</span>
                     {complete && (
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -455,7 +465,7 @@ export default function OfficerCreateAttendance() {
           <div className="flex items-center gap-2.5 mb-4">
             <StepBadge num={3} active={stepMIDone} />
             <StepTitle active={stepMIDone}>
-              {miNumber > 0 ? `MI ${miNumber} — Select Type` : "Select Type"}
+              {miNumber > 0 ? `${sessionUnitLabel} ${miNumber} - Select Type` : "Select Type"}
             </StepTitle>
           </div>
 
@@ -515,7 +525,7 @@ export default function OfficerCreateAttendance() {
                   <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  OUT is locked — MI {miNumber} IN session is still {s.inStatus}. It must be closed first.
+                  OUT is locked - {sessionUnitLabel} {miNumber} IN session is still {s.inStatus}. It must be closed first.
                 </div>
               );
             }
@@ -650,7 +660,7 @@ export default function OfficerCreateAttendance() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-xs font-medium text-indigo-700">
-                Creating: <strong>MI {miNumber} — {miType.toUpperCase()}</strong> for {program === "ADVANCE_COURSE" ? "Advance Course" : program}
+                Creating: <strong>{sessionUnitLabel} {miNumber} - {miType.toUpperCase()}</strong> for {program === "ADVANCE_COURSE" ? "Advance Course" : program}
               </p>
             </div>
           )}
@@ -678,3 +688,5 @@ export default function OfficerCreateAttendance() {
     </>
   );
 }
+
+
