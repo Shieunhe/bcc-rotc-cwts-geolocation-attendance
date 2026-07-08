@@ -9,9 +9,9 @@ const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
 
 const nstpPrograms: NSTProgram[] = ["ROTC", "CWTS"];
 
-const ROTC_ONLY_COURSES = ["BS CRIMINOLOGY"];
+const ROTC_ONLY_COURSES = ["BS Criminology"];
 
-const MEDICAL_NA_COURSES = ["BS CRIMINOLOGY"];
+const MEDICAL_NA_COURSES = ["BS Criminology"];
 
 function isScheduleOpen(s: EnrollmentSchedule): boolean {
   const now = new Date();
@@ -79,14 +79,14 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
         <label className={labelClass}>Course</label>
         <select value={form.course} onChange={(e) => handleCourseChange(e.target.value)} className={selectClass}>
           <option value="" disabled>Select Course</option>
-          <option value="BS CRIMINOLOGY">BS CRIMINOLOGY</option>
-          <option value="BS HOSPITALITY MANAGEMENT">BS HOSPITALITY MANAGEMENT</option>
-          <option value="BS INFORMATION TECHNOLOGY">BS INFORMATION TECHNOLOGY</option>
-          <option value="BS TOURISM MANAGEMENT">BS TOURISM MANAGEMENT</option>
+          <option value="BS Criminology">BS Criminology</option>
+          <option value="BS Hospitality Management">BS Hospitality Management</option>
+          <option value="BS Information Technology">BS Information Technology</option>
+          <option value="BS Tourism Management">BS Tourism Management</option>
           <option disabled>Education:</option>
-          <option value="BEED">&nbsp;&nbsp;&nbsp;BEED</option>
-          <option value="BEED ENGLISH">&nbsp;&nbsp;&nbsp;BEED ENGLISH</option>
-          <option value="BEED MATH">&nbsp;&nbsp;&nbsp;BEED MATH</option>
+          <option value="BEED - Bachelor of Elementary Education">&nbsp;&nbsp;&nbsp;BEED - Bachelor of Elementary Education</option>
+          <option value="BSED - Major in English">&nbsp;&nbsp;&nbsp;BSED - Major in English</option>
+          <option value="BSED - Major in Mathematics">&nbsp;&nbsp;&nbsp;BSED - Major in Mathematics</option>
         </select>
       </div>
 

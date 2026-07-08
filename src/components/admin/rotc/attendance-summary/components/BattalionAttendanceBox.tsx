@@ -278,14 +278,21 @@ export default function BattalionAttendanceBox({
     for (const company of companies) {
       const companyRows = sorted.filter((row) => row.company === company);
       if (companyRows.length === 0) continue;
-      sections.push(
-        new Paragraph({ spacing: { before: 220, after: 80 } }),
-        makeSectionHeading(`${company.toUpperCase()} COMPANY`, "DBEAFE", "1E3A8A"),
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          rows: [makeHeaderRow(), ...makeRows(companyRows)],
-        }),
-      );
+
+      const platoons = [...new Set(companyRows.map((row) => row.platoon))].sort((a, b) => a - b);
+      for (const platoon of platoons) {
+        const platoonRows = companyRows.filter((row) => row.platoon === platoon);
+        if (platoonRows.length === 0) continue;
+
+        sections.push(
+          new Paragraph({ spacing: { before: 220, after: 80 } }),
+          makeSectionHeading(`${company.toUpperCase()} COMPANY - PLATOON ${platoon}`, "DBEAFE", "1E3A8A"),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [makeHeaderRow(), ...makeRows(platoonRows)],
+          }),
+        );
+      }
     }
 
     const doc = new Document({

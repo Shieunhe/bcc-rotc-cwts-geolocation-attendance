@@ -109,6 +109,18 @@ export const studentService = {
 
   async markAttendance(studentUid: string, attendanceSessionId: string, status: AttendanceRecordStatus, miNumber?: number, miType?: "in" | "out"): Promise<void> {
     const now = new Date().toISOString();
+    const existingRecord = await this.getAttendanceRecord(studentUid, attendanceSessionId);
+
+    if (existingRecord?.id) {
+      await updateDoc(doc(db, "attendance_list", existingRecord.id), {
+        status,
+        ...(miNumber != null && { miNumber }),
+        ...(miType != null && { miType }),
+        updatedAt: now,
+      });
+      return;
+    }
+
     const docRef = doc(collection(db, "attendance_list"));
     const record: AttendanceRecord = {
       id: docRef.id,

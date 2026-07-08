@@ -98,7 +98,7 @@ export default function EnrollmentForm() {
       if (!formData.bloodType) return "Blood type is required.";
       if (!formData.complexion) return "Complexion is required.";
       const isCWTS = formData.nstpComponent === "CWTS";
-      const isMedicalNA = isCWTS || formData.course === "BS CRIMINOLOGY";
+      const isMedicalNA = isCWTS || formData.course === "BS Criminology";
       if (!formData.medicalCertificate) return "Medical certificate is required.";
       if (!isMedicalNA) {
         if (formData.hasMedicalCondition === null) return "Please select if you have a medical condition.";

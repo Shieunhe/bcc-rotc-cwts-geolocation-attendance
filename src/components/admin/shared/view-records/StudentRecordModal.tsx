@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminService } from "@/services/admin.service";
-import { NSTProgram, EnrollmentWithMs, StudentMsRecord, AttendanceRecord, StudentGrade } from "@/types";
+import { NSTProgram, EnrollmentWithMs, AttendanceRecord, StudentGrade } from "@/types";
 
 interface StudentRecordModalProps {
   student: EnrollmentWithMs;
@@ -52,7 +52,7 @@ export default function StudentRecordModal({ student, program, msLevel, onClose 
       }
     }
     fetchData();
-  }, [student.uid]);
+  }, [student.uid, program, msLevel, sy]);
 
   const presentCount = attendanceRecords.filter((r) => r.status === "present").length;
   const lateCount = attendanceRecords.filter((r) => r.status === "late").length;

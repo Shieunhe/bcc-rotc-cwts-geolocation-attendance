@@ -50,6 +50,33 @@ function getEffectiveAttendanceStatus(session: AttendanceSession): AttendanceSta
   return "scheduled";
 }
 
+function getAttendanceCycleForSession(session: AttendanceSession): { schoolYear: string; msLevel?: "1" | "2" } {
+  return {
+    schoolYear: session.schoolYear ?? getSchoolYearFromDate(session.openDate),
+    msLevel: session.msLevel,
+  };
+}
+
+function buildAttendanceSlotKey(session: {
+  program: NSTProgram;
+  isAdvanceCourse?: boolean;
+  schoolYear?: string;
+  msLevel?: "1" | "2";
+  miNumber?: number;
+  miType?: "in" | "out";
+  openDate?: string;
+}): string {
+  const schoolYear = session.schoolYear ?? (session.openDate ? getSchoolYearFromDate(session.openDate) : "");
+  return [
+    session.program,
+    session.isAdvanceCourse ? "advance" : "regular",
+    session.msLevel ?? "na",
+    schoolYear,
+    session.miNumber ?? 0,
+    session.miType ?? "na",
+  ].join("|");
+}
+
 function resolveScheduleCycleFromList(
   schedules: EnrollmentSchedule[],
   referenceDate: string,
@@ -741,25 +768,26 @@ export const adminService = {
   }): Promise<string> {
     await this.autoCloseExpiredSessions();
 
-    const ref = doc(collection(db, "create_attendance"));
     const cycle = data.schoolYear
       ? { schoolYear: data.schoolYear, msLevel: data.msLevel }
       : await resolveAttendanceCycle(data.program, data.openDate);
 
-    const existingSessions = await this.getSessionsByProgramForCycle(data.program, {
-      isAdvanceCourse: data.isAdvanceCourse,
-      msLevel: cycle.msLevel,
-      schoolYear: cycle.schoolYear,
+    const existingSessions = await this.getSessionsByProgram(data.program, data.isAdvanceCourse);
+    const sameCycleSessions = existingSessions.filter((session) => {
+      const sessionCycle = getAttendanceCycleForSession(session);
+      return sessionCycle.schoolYear === cycle.schoolYear && sessionCycle.msLevel === cycle.msLevel;
     });
 
     if (data.miNumber && data.miType) {
-      const sameMiSessions = existingSessions.filter(
+      const sameMiSessions = sameCycleSessions.filter(
         (session) => session.miNumber === data.miNumber
       );
       const existingIn = sameMiSessions.find((session) => session.miType === "in");
       const existingOut = sameMiSessions.find((session) => session.miType === "out");
 
-      if (data.miType === "in" && existingIn) {
+      const duplicateSession = sameMiSessions.find((session) => session.miType === data.miType);
+
+      if (data.miType === "in" && (existingIn || duplicateSession)) {
         throw new Error(`MI ${data.miNumber} IN already exists for this cycle.`);
       }
 
@@ -777,6 +805,8 @@ export const adminService = {
         }
       }
     }
+
+    const ref = doc(collection(db, "create_attendance"));
 
     const now = new Date();
     const open = new Date(data.openDate);
@@ -952,7 +982,7 @@ export const adminService = {
       })
     );
 
-    return sessions
+    const matchingRecords = sessions
       .filter((entry): entry is { record: AttendanceRecord; session: AttendanceSession } => !!entry)
       .filter(({ session }) => {
         const sessionSchoolYear = session.schoolYear ?? getSchoolYearFromDate(session.openDate);
@@ -960,7 +990,17 @@ export const adminService = {
         if (sessionSchoolYear !== schoolYear) return false;
         return session.msLevel === msLevel;
       })
-      .map(({ record }) => record);
+      .sort((a, b) => new Date(b.record.updatedAt).getTime() - new Date(a.record.updatedAt).getTime());
+
+    const dedupedBySlot = new Map<string, AttendanceRecord>();
+    for (const { record, session } of matchingRecords) {
+      const slotKey = buildAttendanceSlotKey(session);
+      if (!dedupedBySlot.has(slotKey)) {
+        dedupedBySlot.set(slotKey, record);
+      }
+    }
+
+    return Array.from(dedupedBySlot.values());
   },
 
   async saveSignatorySettings(program: NSTProgram, settings: Record<string, string | null>): Promise<void> {

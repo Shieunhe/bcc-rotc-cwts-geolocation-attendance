@@ -9,13 +9,13 @@ const selectClass =
   "appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 transition";
 
 const COURSES = [
-  "BS CRIMINOLOGY",
-  "BS HOSPITALITY MANAGEMENT",
-  "BS INFORMATION TECHNOLOGY",
-  "BS TOURISM MANAGEMENT",
-  "BEED",
-  "BEED ENGLISH",
-  "BEED MATH",
+  "BS Criminology",
+  "BS Hospitality Management",
+  "BS Information Technology",
+  "BS Tourism Management",
+  "BEED - Bachelor of Elementary Education",
+  "BSED - Major in English",
+  "BSED - Major in Mathematics",
 ];
 
 const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
