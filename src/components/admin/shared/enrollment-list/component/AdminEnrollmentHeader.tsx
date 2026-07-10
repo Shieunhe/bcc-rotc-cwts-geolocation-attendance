@@ -1,5 +1,5 @@
 import { NSTProgram } from '@/types';
-import React from 'react'
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 interface AdminEnrollmentHeaderProps {
     program: NSTProgram;
@@ -7,11 +7,10 @@ interface AdminEnrollmentHeaderProps {
 
 export default function AdminEnrollmentHeader({ program }: AdminEnrollmentHeaderProps) {
   return (
-    <div>
-        <h1 className="text-xl font-bold text-gray-800">Enrollment List</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
-        {program} enrollment list
-        </p>
-    </div>
+    <PageIntroPanel
+      title="Enrollment List"
+      subtitle={`View and manage all ${program} enrollments.`}
+      variant={program === "CWTS" ? "emerald" : "sky"}
+    />
   )
 }

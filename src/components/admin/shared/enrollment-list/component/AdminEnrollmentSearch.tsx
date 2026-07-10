@@ -9,13 +9,13 @@ const selectClass =
   "appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 transition";
 
 const COURSES = [
-  "BS CRIMINOLOGY",
-  "BS HOSPITALITY MANAGEMENT",
-  "BS INFORMATION TECHNOLOGY",
-  "BS TOURISM MANAGEMENT",
-  "BEED",
-  "BEED ENGLISH",
-  "BEED MATH",
+  "BS Criminology",
+  "BS Hospitality Management",
+  "BS Information Technology",
+  "BS Tourism Management",
+  "BEED - Bachelor of Elementary Education",
+  "BSED - Major in English",
+  "BSED - Major in Mathematics",
 ];
 
 const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
@@ -36,6 +36,7 @@ const ChevronIcon = (
 export interface EnrollmentFilters {
   status: FilterStatus;
   msLevel: string;
+  schoolYear: string;
   yearLevel: string;
   course: string;
   medicalCondition: string;
@@ -46,14 +47,28 @@ interface AdminEnrollmentSearchProps {
   filters: EnrollmentFilters;
   onFiltersChange: (filters: EnrollmentFilters) => void;
   program?: "ROTC" | "CWTS";
+  schoolYears?: string[];
 }
 
-export default function AdminEnrollmentSearch({ filters, onFiltersChange, program }: AdminEnrollmentSearchProps) {
+export default function AdminEnrollmentSearch({
+  filters,
+  onFiltersChange,
+  program,
+  schoolYears = [],
+}: AdminEnrollmentSearchProps) {
+  const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
+
   function update(partial: Partial<EnrollmentFilters>) {
     onFiltersChange({ ...filters, ...partial });
   }
 
-  const hasActiveFilters = filters.msLevel || filters.yearLevel || filters.course || filters.medicalCondition;
+  const hasActiveFilters =
+    filters.msLevel ||
+    filters.schoolYear ||
+    filters.yearLevel ||
+    filters.course ||
+    filters.medicalCondition;
 
   return (
     <div className="space-y-3">
@@ -91,9 +106,19 @@ export default function AdminEnrollmentSearch({ filters, onFiltersChange, progra
 
         <div className="relative">
           <select value={filters.msLevel} onChange={(e) => update({ msLevel: e.target.value })} className={selectClass}>
-            <option value="">All MS Level</option>
+            <option value="">{`All ${levelLabel}`}</option>
             {MS_LEVELS.map((ms) => (
-              <option key={ms} value={ms}>MS {ms}</option>
+              <option key={ms} value={ms}>{`${levelPrefix} ${ms}`}</option>
+            ))}
+          </select>
+          {ChevronIcon}
+        </div>
+
+        <div className="relative">
+          <select value={filters.schoolYear} onChange={(e) => update({ schoolYear: e.target.value })} className={selectClass}>
+            <option value="">All School Years</option>
+            {schoolYears.map((sy) => (
+              <option key={sy} value={sy}>{`SY ${sy}`}</option>
             ))}
           </select>
           {ChevronIcon}
@@ -132,7 +157,7 @@ export default function AdminEnrollmentSearch({ filters, onFiltersChange, progra
 
         {hasActiveFilters && (
           <button
-            onClick={() => update({ msLevel: "", yearLevel: "", course: "", medicalCondition: "" })}
+            onClick={() => update({ msLevel: "", schoolYear: "", yearLevel: "", course: "", medicalCondition: "" })}
             className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition"
           >
             Clear Filters

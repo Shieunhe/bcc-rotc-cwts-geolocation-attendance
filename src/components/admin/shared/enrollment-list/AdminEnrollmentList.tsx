@@ -3,10 +3,12 @@
 import { useState } from "react";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
+import { useEnrollmentSchedule } from "@/hooks/useEnrollmentSchedule";
 import { NSTProgram } from "@/types";
 import AdminEnrollmentHeader from "./component/AdminEnrollmentHeader";
 import AdminEnrollmentSearch, { type EnrollmentFilters } from "./component/AdminEnrollmentSearch";
 import AdminEnrollmentTable from "./component/AdminEnrollmentTable";
+import { resolveSchoolYearFromRecord } from "@/utils/enrollmentSchedule";
 
 interface AdminEnrollmentListProps {
   program: NSTProgram;
@@ -15,6 +17,7 @@ interface AdminEnrollmentListProps {
 const defaultFilters: EnrollmentFilters = {
   status: "all",
   msLevel: "",
+  schoolYear: "",
   yearLevel: "",
   course: "",
   medicalCondition: "",
@@ -23,15 +26,22 @@ const defaultFilters: EnrollmentFilters = {
 
 export default function AdminEnrollmentList({ program }: AdminEnrollmentListProps) {
   const { enrollments, isLoading, error, refetch } = useAdminEnrollments(program);
+  const { schedules } = useEnrollmentSchedule(program);
   const [filters, setFilters] = useState<EnrollmentFilters>(defaultFilters);
 
+  const availableSchoolYears = Array.from(
+    new Set(
+      [
+        ...schedules.map((schedule) => schedule.year),
+        ...enrollments.flatMap((enrollment) =>
+          enrollment.msRecords.map((record) => resolveSchoolYearFromRecord(record, schedules))
+        ),
+      ]
+        .filter(Boolean)
+    )
+  ).sort().reverse();
+
   const filtered = enrollments.filter((e) => {
-    if (filters.status !== "all") {
-      const hasMatchingRecord = e.msRecords.some((r) => r.status === filters.status);
-      if (!hasMatchingRecord) return false;
-    }
-    if (filters.msLevel === "1" && !e.msRecords.some((r) => r.msLevel === "1")) return false;
-    if (filters.msLevel === "2" && !e.msRecords.some((r) => r.msLevel === "2")) return false;
     if (filters.yearLevel && e.yearLevel !== filters.yearLevel) return false;
     if (filters.course && e.course !== filters.course) return false;
     if (filters.medicalCondition === "yes" && e.hasMedicalCondition !== true) return false;
@@ -72,7 +82,12 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
     <AdminPageLayout program={program}>
       <div className="max-w-5xl w-full mx-auto space-y-4">
         <AdminEnrollmentHeader program={program} />
-        <AdminEnrollmentSearch filters={filters} onFiltersChange={setFilters} program={program} />
+        <AdminEnrollmentSearch
+          filters={filters}
+          onFiltersChange={setFilters}
+          program={program}
+          schoolYears={availableSchoolYears}
+        />
         {filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
             <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,13 +95,21 @@ export default function AdminEnrollmentList({ program }: AdminEnrollmentListProp
             </svg>
             <p className="text-sm font-medium text-gray-500">No enrollments found</p>
             <p className="text-xs text-gray-400 mt-1">
-              {filters.search || filters.msLevel || filters.yearLevel || filters.course || filters.medicalCondition
+              {filters.search || filters.msLevel || filters.schoolYear || filters.yearLevel || filters.course || filters.medicalCondition
                 ? "Try adjusting your filters."
                 : `No ${program} enrollment records yet.`}
             </p>
           </div>
         ) : (
-          <AdminEnrollmentTable enrollments={filtered} onStatusChange={refetch} statusFilter={filters.status} />
+          <AdminEnrollmentTable
+            enrollments={filtered}
+            program={program}
+            schedules={schedules}
+            onStatusChange={refetch}
+            statusFilter={filters.status}
+            msLevelFilter={filters.msLevel}
+            schoolYearFilter={filters.schoolYear}
+          />
         )}
       </div>
     </AdminPageLayout>

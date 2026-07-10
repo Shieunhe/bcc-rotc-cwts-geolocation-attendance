@@ -3,12 +3,13 @@ import React from 'react'
 
 interface ROTCAssignAssignmentProps {
   closed: boolean;
+  msLevel: "1" | "2";
   isAssigning: boolean;
   result: { assigned: number; alreadyAssigned: number } | null;
   handleAssign: () => void;
 }
 
-export default function ROTCAssignAssignment({ closed, isAssigning, result, handleAssign }: ROTCAssignAssignmentProps) {
+export default function ROTCAssignAssignment({ closed, msLevel, isAssigning, result, handleAssign }: ROTCAssignAssignmentProps) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
         <div className="flex items-center gap-3 mb-3">
@@ -27,8 +28,8 @@ export default function ROTCAssignAssignment({ closed, isAssigning, result, hand
             <h3 className="text-sm font-bold text-gray-800">Platoon Assignment</h3>
             <p className="text-xs text-gray-400">
               {closed
-                ? "Enrollment is closed. You can now assign cadets to platoons."
-                : "Waiting for enrollment schedule to close before assignment."}
+                ? `MS ${msLevel} enrollment is closed. You can now assign cadets to platoons.`
+                : `Waiting for the MS ${msLevel} enrollment schedule to close before assignment.`}
             </p>
           </div>
         </div>

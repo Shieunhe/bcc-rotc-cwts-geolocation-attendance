@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { EnrollmentWithMs, EnrollmentStatus } from "@/types";
+import { EnrollmentSchedule, EnrollmentWithMs, EnrollmentStatus, StudentMsRecord } from "@/types";
 import AdminEnrollmentDetailModal from "./AdminEnrollmentDetailModal";
+import { resolveSchoolYearFromRecord } from "@/utils/enrollmentSchedule";
 
 const STATUS_BADGE: Record<EnrollmentStatus, { label: string; className: string }> = {
   pending: {
@@ -27,27 +28,24 @@ function formatDate(date: string | undefined) {
   return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
-function extractSY(scheduleId: string): string {
-  const parts = scheduleId.split("_");
-  return parts.length >= 3 ? parts.slice(2).join("_") : "";
-}
-
 interface FlatRow {
   enrollment: EnrollmentWithMs;
+  msRecord: StudentMsRecord;
   msLabel: string;
   sy: string;
   msStatus: EnrollmentStatus;
   msDate: string;
 }
 
-function flattenEnrollments(enrollments: EnrollmentWithMs[]): FlatRow[] {
+function flattenEnrollments(enrollments: EnrollmentWithMs[], schedules: EnrollmentSchedule[]): FlatRow[] {
   const rows: FlatRow[] = [];
   for (const enrollment of enrollments) {
     for (const record of enrollment.msRecords) {
       rows.push({
         enrollment,
+        msRecord: record,
         msLabel: `MS ${record.msLevel}`,
-        sy: extractSY(record.scheduleId),
+        sy: resolveSchoolYearFromRecord(record, schedules),
         msStatus: record.status,
         msDate: record.createdAt,
       });
@@ -64,17 +62,38 @@ const MS_BADGE_STYLE: Record<string, string> = {
 
 interface AdminEnrollmentTableProps {
   enrollments: EnrollmentWithMs[];
+  program: "ROTC" | "CWTS";
+  schedules: EnrollmentSchedule[];
   onStatusChange?: () => void;
   statusFilter?: string;
+  msLevelFilter?: string;
+  schoolYearFilter?: string;
 }
 
-export default function AdminEnrollmentTable({ enrollments, onStatusChange, statusFilter }: AdminEnrollmentTableProps) {
+export default function AdminEnrollmentTable({
+  enrollments,
+  program,
+  schedules,
+  onStatusChange,
+  statusFilter,
+  msLevelFilter,
+  schoolYearFilter,
+}: AdminEnrollmentTableProps) {
+  const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
   const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentWithMs | null>(null);
   const rows = useMemo(() => {
-    const all = flattenEnrollments(enrollments);
-    if (!statusFilter || statusFilter === "all") return all;
-    return all.filter((r) => r.msStatus === statusFilter);
-  }, [enrollments, statusFilter]);
+    const all = flattenEnrollments(enrollments, schedules);
+    return all.filter((row) => {
+      if (statusFilter && statusFilter !== "all" && row.msStatus !== statusFilter) return false;
+      if (msLevelFilter && row.msRecord.msLevel !== msLevelFilter) return false;
+      if (schoolYearFilter && row.sy !== schoolYearFilter) return false;
+      return true;
+    }).map((row) => ({
+      ...row,
+      msLabel: `${levelPrefix} ${row.msRecord.msLevel}`,
+    }));
+  }, [enrollments, schedules, statusFilter, msLevelFilter, schoolYearFilter, levelPrefix]);
 
   return (
     <>
@@ -87,7 +106,7 @@ export default function AdminEnrollmentTable({ enrollments, onStatusChange, stat
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Student</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Student ID</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Course & Year</th>
-              <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">MS Level</th>
+              <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">{levelLabel}</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">SY</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Date</th>
               <th className="px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wide">Status</th>

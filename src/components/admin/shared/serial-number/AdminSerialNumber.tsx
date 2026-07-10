@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAdminEnrollments } from "@/hooks/useAdminEnrollments";
 import { adminService } from "@/services/admin.service";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import {
   NSTProgram,
   EnrollmentWithMs,
@@ -23,6 +24,11 @@ interface StudentWithGrades extends EnrollmentWithMs {
 
 interface AdminSerialNumberProps {
   program: NSTProgram;
+}
+
+function extractSY(scheduleId: string): string {
+  const parts = scheduleId.split("_");
+  return parts.length >= 3 ? parts.slice(2).join("_") : "";
 }
 
 const MAX_SIG_IMAGE_SIZE = 200;
@@ -62,8 +68,12 @@ async function imageBlobToResizedPngDataUrl(source: Blob): Promise<string | null
 }
 
 export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
+  const levelLabel = program === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = program === "CWTS" ? "CWTS" : "MS";
   const { enrollments, isLoading } = useAdminEnrollments(program);
   const [search, setSearch] = useState("");
+  const [filterMsLevel, setFilterMsLevel] = useState<"" | "1" | "2">("");
+  const [filterSchoolYear, setFilterSchoolYear] = useState("");
   const [battalionFilter, setBattalionFilter] = useState<BattalionFilter>("All");
   const [companyFilter, setCompanyFilter] = useState<string>("All");
   const [platoonFilter, setPlatoonFilter] = useState<string>("All");
@@ -95,6 +105,13 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
 
   const approvedStudents = useMemo(
     () => enrollments.filter((e) => e.msRecords.some((r) => r.status === "approved")),
+    [enrollments]
+  );
+
+  const availableSchoolYears = useMemo(
+    () => Array.from(new Set(
+      enrollments.flatMap((e) => e.msRecords.map((r) => extractSY(r.scheduleId)).filter(Boolean))
+    )).sort().reverse(),
     [enrollments]
   );
 
@@ -298,6 +315,14 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
 
   const filtered = useMemo(() => {
     return studentsWithGrades.filter((s) => {
+      const approvedRecords = s.msRecords.filter((r) => r.status === "approved");
+      const cycleRecords = approvedRecords.filter((r) => {
+        if (filterMsLevel && r.msLevel !== filterMsLevel) return false;
+        if (filterSchoolYear && extractSY(r.scheduleId) !== filterSchoolYear) return false;
+        return true;
+      });
+      if ((filterMsLevel || filterSchoolYear) && cycleRecords.length === 0) return false;
+
       const q = search.toLowerCase();
       const matchesSearch =
         !q ||
@@ -327,11 +352,11 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
           return true;
       }
     });
-  }, [studentsWithGrades, search, battalionFilter, companyFilter, platoonFilter, eligibilityFilter, program]);
+  }, [studentsWithGrades, search, filterMsLevel, filterSchoolYear, battalionFilter, companyFilter, platoonFilter, eligibilityFilter, program]);
 
-  const eligibleCount = studentsWithGrades.filter((s) => isEligible(s) && !hasSerial(s)).length;
-  const assignedCount = studentsWithGrades.filter((s) => hasSerial(s)).length;
-  const notEligibleCount = studentsWithGrades.filter((s) => !isEligible(s)).length;
+  const eligibleCount = filtered.filter((s) => isEligible(s) && !hasSerial(s)).length;
+  const assignedCount = filtered.filter((s) => hasSerial(s)).length;
+  const notEligibleCount = filtered.filter((s) => !isEligible(s)).length;
 
   const loading = isLoading || gradesLoading;
 
@@ -346,32 +371,28 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-2xl p-5 border border-violet-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+      <div className="space-y-4">
+        <PageIntroPanel
+          title="Serial Number"
+          subtitle={`Assign serial numbers to ${program} students who have completed all grades.`}
+          variant={program === "CWTS" ? "emerald" : "sky"}
+          actions={
+            <button
+              onClick={() => setShowSettings(true)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium bg-white rounded-lg transition shadow-sm ${
+                program === "CWTS"
+                  ? "text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+                  : "text-blue-700 border border-blue-200 hover:bg-blue-50"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">Serial Number</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Assign serial numbers to {program} students who have completed all grades.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-violet-700 bg-white border border-violet-200 rounded-lg hover:bg-violet-50 transition shadow-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Certificate Settings
-          </button>
-        </div>
+              Certificate Settings
+            </button>
+          }
+        />
 
         {!settingsLoading && !isSettingsComplete && (
           <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
@@ -403,6 +424,27 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Filters</p>
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          <select
+            value={filterMsLevel}
+            onChange={(e) => setFilterMsLevel(e.target.value as "" | "1" | "2")}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-medium text-gray-700"
+          >
+            <option value="">{`All ${levelLabel}s`}</option>
+            <option value="1">{`${levelPrefix} 1`}</option>
+            <option value="2">{`${levelPrefix} 2`}</option>
+          </select>
+
+          <select
+            value={filterSchoolYear}
+            onChange={(e) => setFilterSchoolYear(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none font-medium text-gray-700"
+          >
+            <option value="">All School Years</option>
+            {availableSchoolYears.map((sy) => (
+              <option key={sy} value={sy}>SY {sy}</option>
+            ))}
+          </select>
+
           <select
             value={eligibilityFilter}
             onChange={(e) => setEligibilityFilter(e.target.value as EligibilityFilter)}
@@ -636,8 +678,18 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
           <span className="text-xs text-gray-400">
             Showing <span className="font-semibold text-gray-600">{filtered.length}</span> of <span className="font-semibold text-gray-600">{studentsWithGrades.length}</span> student(s)
           </span>
-          {(eligibilityFilter !== "All" || (program === "ROTC" && battalionFilter !== "All")) && (
+          {(eligibilityFilter !== "All" || filterMsLevel || filterSchoolYear || (program === "ROTC" && battalionFilter !== "All")) && (
             <div className="flex gap-2">
+              {filterMsLevel && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-sky-50 text-xs font-medium text-sky-600 border border-sky-100">
+                  {`MS ${filterMsLevel}`}
+                </span>
+              )}
+              {filterSchoolYear && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-cyan-50 text-xs font-medium text-cyan-600 border border-cyan-100">
+                  {`SY ${filterSchoolYear}`}
+                </span>
+              )}
               {eligibilityFilter !== "All" && (
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-violet-50 text-xs font-medium text-violet-600 border border-violet-100">
                   {eligibilityFilter}
@@ -944,7 +996,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                 </p>
                 <div className="flex gap-3 pt-1">
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">MS 1</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">{`${levelPrefix} 1`}</p>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-0.5 ${
                       assignStudent.ms1Grade?.status === "Passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                     }`}>
@@ -952,7 +1004,7 @@ export default function AdminSerialNumber({ program }: AdminSerialNumberProps) {
                     </span>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">MS 2</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">{`${levelPrefix} 2`}</p>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-0.5 ${
                       assignStudent.ms2Grade?.status === "Passed" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                     }`}>

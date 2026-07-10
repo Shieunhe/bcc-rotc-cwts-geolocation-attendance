@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { adminService } from "@/services/admin.service";
@@ -101,12 +102,11 @@ export default function EnrollmentStatus() {
       <div className="max-w-2xl w-full mx-auto space-y-4">
 
         {/* Page title */}
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">Enrollment Status</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {profile.createdAt ? `Submitted on ${new Date(profile.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}` : "Submission date unavailable"}
-          </p>
-        </div>
+        <PageIntroPanel
+          title="Enrollment Status"
+          subtitle={profile.createdAt ? `Submitted on ${new Date(profile.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}` : "Submission date unavailable"}
+          variant="sky"
+        />
 
         {/* Status banner */}
         <EnrollmentStatusBanner status={status} rejectionReason={latestRecord?.rejectionReason} />
@@ -143,3 +143,6 @@ export default function EnrollmentStatus() {
     </StudentPageLayout>
   );
 }
+
+
+

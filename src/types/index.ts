@@ -107,6 +107,7 @@ export const ATTENDANCE_RADIUS_METERS = 100;
 export interface AttendanceSession {
   id: string;
   program: NSTProgram;
+  msLevel?: MSLevel;
   isAdvanceCourse?: boolean;
   schoolYear?: string;
   miNumber?: number;

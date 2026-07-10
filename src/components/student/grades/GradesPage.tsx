@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { studentService } from "@/services/student.service";
 import { StudentGrade } from "@/types";
@@ -40,19 +41,11 @@ export default function GradesPage() {
 
   return (
     <StudentPageLayout>
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
-            <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">My Grades</h1>
-            <p className="text-sm text-gray-500 mt-0.5">View your NSTP 1 and NSTP 2 final grades.</p>
-          </div>
-        </div>
-      </div>
+      <PageIntroPanel
+        title="My Grades"
+        subtitle="View your NSTP 1 and NSTP 2 final grades."
+        variant="sky"
+      />
 
       {loading ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
@@ -170,3 +163,6 @@ export default function GradesPage() {
     </StudentPageLayout>
   );
 }
+
+
+

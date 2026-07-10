@@ -345,7 +345,13 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
             <Field label="Year Level" value={e.yearLevel} editing={isEditing} editValue={formData.yearLevel as string} onChange={(v) => updateField("yearLevel", v as typeof formData.yearLevel)} type="select"
               options={[{ value: "", label: "Select" }, { value: "1st Year", label: "1st Year" }, { value: "2nd Year", label: "2nd Year" }, { value: "3rd Year", label: "3rd Year" }, { value: "4th Year", label: "4th Year" }]} />
             <Field label="NSTP Component" value={enrollment.nstpComponent} />
-            <Field label="MS Level" value={[enrollment.msLevelOne && "MS 1", enrollment.msLevelTwo && "MS 2"].filter(Boolean).join(", ") || "—"} />
+            <Field
+              label={enrollment.nstpComponent === "CWTS" ? "CWTS Level" : "MS Level"}
+              value={[
+                enrollment.msLevelOne && `${enrollment.nstpComponent === "CWTS" ? "CWTS" : "MS"} 1`,
+                enrollment.msLevelTwo && `${enrollment.nstpComponent === "CWTS" ? "CWTS" : "MS"} 2`,
+              ].filter(Boolean).join(", ") || "—"}
+            />
             <Field label="Advance Course" value={e.willingToTakeAdvanceCourse ? "Yes" : "No"}
               editing={isEditing} editValue={formData.willingToTakeAdvanceCourse ? "yes" : "no"}
               onChange={(v) => updateField("willingToTakeAdvanceCourse", v === "yes")}

@@ -7,7 +7,7 @@ import {
   SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, SpecialUnit, EnrollmentDocument,
 } from "@/types";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
-import { useEnrollmentSchedule } from "@/hooks/useEnrollmentSchedule";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import { adminService } from "@/services/admin.service";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 import ROTCBattalionSection, { countBattalionMembers } from "./components/ROTCBattalionSection";
@@ -23,28 +23,46 @@ function isScheduleClosed(deadline: string | undefined): boolean {
   return new Date() > new Date(deadline);
 }
 
+function getCurrentSchedule(
+  schedules: { msLevel: "1" | "2"; openDate: string; deadline: string }[],
+  currentMsLevel: "1" | "2",
+) {
+  const now = new Date();
+  const matching = schedules.filter((s) => s.msLevel === currentMsLevel);
+  const activeOrUpcoming = matching
+    .filter((s) => new Date(s.deadline) >= now)
+    .sort((a, b) => new Date(a.openDate).getTime() - new Date(b.openDate).getTime());
+
+  if (activeOrUpcoming.length > 0) return activeOrUpcoming[0];
+
+  return [...matching].sort(
+    (a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime()
+  )[0] ?? null;
+}
+
 export default function ROTCPlatoonRoster() {
-  const { roster, isLoading, refetch } = useROTCPlatoonRoster();
-  const { schedules } = useEnrollmentSchedule("ROTC");
+  const { schedules, currentMsLevel } = useCurrentRotcMsLevel();
+  const { roster, isLoading, refetch } = useROTCPlatoonRoster(currentMsLevel);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [result, setResult] = useState<{ assigned: number; alreadyAssigned: number } | null>(null);
   const [specialData, setSpecialData] = useState<Record<SpecialUnit, EnrollmentDocument[]> | null>(null);
 
   useEffect(() => {
-    adminService.getSpecialUnitEnrollments().then(setSpecialData);
-  }, []);
+    adminService.getSpecialUnitEnrollments(currentMsLevel).then(setSpecialData);
+  }, [currentMsLevel]);
 
-  const closed = schedules.length > 0 && schedules.every((s) => isScheduleClosed(s.deadline));
+  const currentSchedule = getCurrentSchedule(schedules, currentMsLevel);
+  const closed = currentSchedule ? isScheduleClosed(currentSchedule.deadline) : false;
 
   async function handleAssign() {
     setIsAssigning(true);
     setResult(null);
     try {
-      const res = await adminService.assignROTCPlatoons();
+      const res = await adminService.assignROTCPlatoons(currentMsLevel);
       setResult(res);
       refetch();
-      adminService.getSpecialUnitEnrollments().then(setSpecialData);
+      adminService.getSpecialUnitEnrollments(currentMsLevel).then(setSpecialData);
     } finally {
       setIsAssigning(false);
     }
@@ -63,7 +81,7 @@ export default function ROTCPlatoonRoster() {
 
   return (
     <AdminPageLayout program="ROTC">
-      <ROTCheader />
+      <ROTCheader msLevel={currentMsLevel} />
       <ROTCAssignSummary 
         isLoading={isLoading} 
         grandTotal={grandTotal} 
@@ -78,6 +96,7 @@ export default function ROTCPlatoonRoster() {
       />
       <ROTCAssignAssignment 
         closed={closed} 
+        msLevel={currentMsLevel}
         isAssigning={isAssigning} 
         result={result} 
         handleAssign={handleAssign} 

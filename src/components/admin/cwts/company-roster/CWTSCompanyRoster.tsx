@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CWTS_COMPANIES, CWTS_COMPANY_SLOT_LIMIT, CWTSCompany } from "@/types";
 import { useCWTSCompanyRoster } from "@/hooks/useCWTSCompanyRoster";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 const COMPANY_COLORS: Record<CWTSCompany, { bg: string; text: string; bar: string; border: string; dot: string }> = {
   Alpha:   { bg: "bg-blue-50",   text: "text-blue-700",   bar: "bg-blue-500",   border: "border-blue-200",   dot: "bg-blue-500" },
@@ -25,12 +26,11 @@ export default function CWTSCompanyRoster() {
 
   return (
     <AdminPageLayout program="CWTS">
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">CWTS Company List</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Approved CWTS enrollments are automatically assigned to their respective companies.
-        </p>
-      </div>
+      <PageIntroPanel
+        title="CWTS Company List"
+        subtitle="Approved CWTS enrollments are automatically assigned to their respective companies."
+        variant="emerald"
+      />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

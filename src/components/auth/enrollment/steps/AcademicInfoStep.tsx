@@ -9,9 +9,9 @@ const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
 
 const nstpPrograms: NSTProgram[] = ["ROTC", "CWTS"];
 
-const ROTC_ONLY_COURSES = ["BS CRIMINOLOGY"];
+const ROTC_ONLY_COURSES = ["BS Criminology"];
 
-const MEDICAL_NA_COURSES = ["BS CRIMINOLOGY"];
+const MEDICAL_NA_COURSES = ["BS Criminology"];
 
 function isScheduleOpen(s: EnrollmentSchedule): boolean {
   const now = new Date();
@@ -22,6 +22,9 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
   const isRotcOnly = ROTC_ONLY_COURSES.includes(form.course);
   const [openMsLevels, setOpenMsLevels] = useState<MSLevel[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const isFirstTimeLockedProgram = form.nstpComponent === "CWTS" || form.nstpComponent === "ROTC";
+  const levelLabel = form.nstpComponent === "CWTS" ? "CWTS Level" : "MS Level";
+  const levelPrefix = form.nstpComponent === "CWTS" ? "CWTS" : "MS";
 
   useEffect(() => {
     if (!form.nstpComponent) {
@@ -33,8 +36,13 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
     adminService.getEnrollmentSchedules(form.nstpComponent as NSTProgram).then((schedules) => {
       if (cancelled) return;
       const open = schedules.filter(isScheduleOpen).map((s) => s.msLevel);
-      setOpenMsLevels(open);
-      if (form.msLevel && !open.includes(form.msLevel as MSLevel)) {
+      const allowedOpen = isFirstTimeLockedProgram
+        ? open.filter((ms): ms is MSLevel => ms === "1")
+        : open;
+      setOpenMsLevels(allowedOpen);
+      if (isFirstTimeLockedProgram) {
+        updateField("msLevel", allowedOpen.includes("1") ? "1" : "");
+      } else if (form.msLevel && !allowedOpen.includes(form.msLevel as MSLevel)) {
         updateField("msLevel", "");
       }
       setLoadingSchedules(false);
@@ -59,7 +67,7 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
 
   function handleNstpChange(program: string) {
     updateField("nstpComponent", program);
-    updateField("msLevel", "");
+    updateField("msLevel", program === "CWTS" || program === "ROTC" ? "1" : "");
     if (program === "CWTS") {
       resetMedicalFields();
     }
@@ -71,14 +79,14 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
         <label className={labelClass}>Course</label>
         <select value={form.course} onChange={(e) => handleCourseChange(e.target.value)} className={selectClass}>
           <option value="" disabled>Select Course</option>
-          <option value="BS CRIMINOLOGY">BS CRIMINOLOGY</option>
-          <option value="BS HOSPITALITY MANAGEMENT">BS HOSPITALITY MANAGEMENT</option>
-          <option value="BS INFORMATION TECHNOLOGY">BS INFORMATION TECHNOLOGY</option>
-          <option value="BS TOURISM MANAGEMENT">BS TOURISM MANAGEMENT</option>
+          <option value="BS Criminology">BS Criminology</option>
+          <option value="BS Hospitality Management">BS Hospitality Management</option>
+          <option value="BS Information Technology">BS Information Technology</option>
+          <option value="BS Tourism Management">BS Tourism Management</option>
           <option disabled>Education:</option>
-          <option value="BEED">&nbsp;&nbsp;&nbsp;BEED</option>
-          <option value="BEED ENGLISH">&nbsp;&nbsp;&nbsp;BEED ENGLISH</option>
-          <option value="BEED MATH">&nbsp;&nbsp;&nbsp;BEED MATH</option>
+          <option value="BEED - Bachelor of Elementary Education">&nbsp;&nbsp;&nbsp;BEED - Bachelor of Elementary Education</option>
+          <option value="BSED - Major in English">&nbsp;&nbsp;&nbsp;BSED - Major in English</option>
+          <option value="BSED - Major in Mathematics">&nbsp;&nbsp;&nbsp;BSED - Major in Mathematics</option>
         </select>
       </div>
 
@@ -94,31 +102,43 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
           </select>
         </div>
         <div>
-          <label className={labelClass}>MS Level</label>
-          <select
-            value={form.msLevel}
-            onChange={(e) => updateField("msLevel", e.target.value)}
-            disabled={!form.nstpComponent || loadingSchedules}
-            className={selectClass + (!form.nstpComponent ? " opacity-50 cursor-not-allowed" : "")}
-          >
-            <option value="" disabled>
+          <label className={labelClass}>{levelLabel}</label>
+          {isFirstTimeLockedProgram ? (
+            <div className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 bg-gray-50">
               {!form.nstpComponent
                 ? "Select NSTP first"
                 : loadingSchedules
                   ? "Loading..."
-                  : openMsLevels.length === 0
-                    ? "No open enrollment"
-                    : "Select MS level"}
-            </option>
-            {(["1", "2"] as MSLevel[]).map((ms) => {
-              const isOpen = openMsLevels.includes(ms);
-              return (
-                <option key={ms} value={ms} disabled={!isOpen}>
-                  MS {ms}{!isOpen && form.nstpComponent ? " (not open)" : ""}
-                </option>
-              );
-            })}
-          </select>
+                  : openMsLevels.includes("1")
+                    ? `${levelPrefix} 1`
+                    : "No open enrollment"}
+            </div>
+          ) : (
+            <select
+              value={form.msLevel}
+              onChange={(e) => updateField("msLevel", e.target.value)}
+              disabled={!form.nstpComponent || loadingSchedules}
+              className={selectClass + (!form.nstpComponent ? " opacity-50 cursor-not-allowed" : "")}
+            >
+              <option value="" disabled>
+                {!form.nstpComponent
+                  ? "Select NSTP first"
+                  : loadingSchedules
+                    ? "Loading..."
+                    : openMsLevels.length === 0
+                      ? "No open enrollment"
+                      : `Select ${levelLabel.toLowerCase()}`}
+              </option>
+              {(["1", "2"] as MSLevel[]).map((ms) => {
+                const isOpen = openMsLevels.includes(ms);
+                return (
+                  <option key={ms} value={ms} disabled={!isOpen}>
+                    {levelPrefix} {ms}{!isOpen && form.nstpComponent ? " (not open)" : ""}
+                  </option>
+                );
+              })}
+            </select>
+          )}
           {form.nstpComponent && !loadingSchedules && openMsLevels.length === 0 && (
             <p className="text-xs text-amber-600 mt-1">No enrollment schedule is currently open for {form.nstpComponent}.</p>
           )}

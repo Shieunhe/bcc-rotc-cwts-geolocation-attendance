@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, SpecialUnit, EnrollmentDocument } from "@/types";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import { adminService } from "@/services/admin.service";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 const UNIT_THEME: Record<SpecialUnit, { bg: string; text: string; border: string; dot: string }> = {
   Medics: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200", dot: "bg-red-500" },
@@ -29,6 +31,7 @@ function UnitIcon({ unit, className }: { unit: SpecialUnit; className?: string }
 }
 
 export default function OfficerSpecialPlatoon() {
+  const { currentMsLevel } = useCurrentRotcMsLevel();
   const [data, setData] = useState<Record<SpecialUnit, EnrollmentDocument[]> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filterUnit, setFilterUnit] = useState<SpecialUnit | "">("");
@@ -37,10 +40,11 @@ export default function OfficerSpecialPlatoon() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    adminService.getSpecialUnitEnrollments()
+    setIsLoading(true);
+    adminService.getSpecialUnitEnrollments(currentMsLevel)
       .then(setData)
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [currentMsLevel]);
 
   const allStudents = useMemo(() => {
     if (!data) return [];
@@ -71,18 +75,16 @@ export default function OfficerSpecialPlatoon() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Special Platoon</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          View all ROTC cadets assigned to special units (Medics, HQ, MP).
-        </p>
-      </div>
+      <PageIntroPanel
+        title="Special Platoon"
+        subtitle={`View all MS ${currentMsLevel} ROTC cadets assigned to special units (Medics, HQ, MP).`}
+        variant="sky"
+      />
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Total</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{isLoading ? "—" : total}</p>
+          <p className="text-2xl font-bold text-gray-800 mt-1">{isLoading ? "-" : total}</p>
         </div>
         {unitCounts.map(({ unit, count }) => {
           const theme = UNIT_THEME[unit];
@@ -92,20 +94,18 @@ export default function OfficerSpecialPlatoon() {
                 <UnitIcon unit={unit} className={`w-3.5 h-3.5 ${theme.text}`} />
                 <p className={`text-[11px] uppercase tracking-wide font-medium ${theme.text}`}>{unit}</p>
               </div>
-              <p className={`text-2xl font-bold mt-1 ${theme.text}`}>{isLoading ? "—" : count}</p>
+              <p className={`text-2xl font-bold mt-1 ${theme.text}`}>{isLoading ? "-" : count}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">of {SPECIAL_UNIT_SLOT_LIMITS[unit]}</p>
             </div>
           );
         })}
       </div>
 
-      {/* Main list */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-red-500 to-red-600 px-5 py-4">
           <h2 className="text-base font-bold text-white">Special Platoon List</h2>
         </div>
 
-        {/* Filters */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
@@ -163,7 +163,6 @@ export default function OfficerSpecialPlatoon() {
           </div>
         </div>
 
-        {/* List */}
         {isLoading ? (
           <div className="p-10 text-center">
             <p className="text-sm text-gray-400">Loading cadets...</p>
@@ -174,7 +173,6 @@ export default function OfficerSpecialPlatoon() {
           </div>
         ) : (
           <>
-            {/* Desktop table */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -223,7 +221,6 @@ export default function OfficerSpecialPlatoon() {
               </table>
             </div>
 
-            {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-gray-50">
               {filtered.map((s, i) => {
                 const unit = s.specialUnit as SpecialUnit;
@@ -235,7 +232,7 @@ export default function OfficerSpecialPlatoon() {
                       <p className="text-xs font-medium text-gray-800 truncate">
                         {s.lastName}, {s.firstName}{s.suffix ? ` ${s.suffix}` : ""}
                       </p>
-                      <p className="text-[11px] text-gray-400">{s.studentId} &middot; {s.course} &middot; {s.yearLevel}</p>
+                      <p className="text-[11px] text-gray-400">{s.studentId} - {s.course} - {s.yearLevel}</p>
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${theme.bg} ${theme.text} ${theme.border}`}>
                           <UnitIcon unit={unit} className="w-3 h-3" />

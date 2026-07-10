@@ -14,8 +14,13 @@ export default function AdminPageLayout({ children, program }: AdminPageLayoutPr
   const [sidebarOpen, setSidebarOpen] = useState(false);
   useAutoCloseExpiredSessions();
 
+  const shellClass =
+    program === "ROTC"
+      ? "bg-[linear-gradient(180deg,_#f7faff_0%,_#eef5ff_100%)]"
+      : "bg-[linear-gradient(180deg,_#f7fbfa_0%,_#edf7f4_100%)]";
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className={`flex h-screen overflow-hidden ${shellClass}`}>
       <AdminSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} program={program} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

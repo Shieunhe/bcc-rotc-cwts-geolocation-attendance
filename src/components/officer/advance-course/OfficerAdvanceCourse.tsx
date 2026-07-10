@@ -2,10 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import { EnrollmentDocument } from "@/types";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 export default function OfficerAdvanceCourse() {
-  const { roster, isLoading } = useROTCPlatoonRoster();
+  const { currentMsLevel } = useCurrentRotcMsLevel();
+  const { roster, isLoading } = useROTCPlatoonRoster(currentMsLevel);
   const [filterGender, setFilterGender] = useState<"" | "Male" | "Female">("");
   const [search, setSearch] = useState("");
 
@@ -33,30 +36,27 @@ export default function OfficerAdvanceCourse() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Advance Course</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          View all cadets who took the advance ROTC course.
-        </p>
-      </div>
+      <PageIntroPanel
+        title="Advance Course"
+        subtitle={`View all MS ${currentMsLevel} cadets who took the advance ROTC course.`}
+        variant="sky"
+      />
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Total Cadets</p>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{isLoading ? "—" : total}</p>
+          <p className="text-2xl font-bold text-amber-600 mt-1">{isLoading ? "-" : total}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Male</p>
-          <p className="text-2xl font-bold text-indigo-600 mt-1">{isLoading ? "—" : maleCount}</p>
+          <p className="text-2xl font-bold text-indigo-600 mt-1">{isLoading ? "-" : maleCount}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Female</p>
-          <p className="text-2xl font-bold text-pink-600 mt-1">{isLoading ? "—" : femaleCount}</p>
+          <p className="text-2xl font-bold text-pink-600 mt-1">{isLoading ? "-" : femaleCount}</p>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-4">
           <h2 className="text-base font-bold text-white">Advance Course List</h2>
@@ -64,7 +64,6 @@ export default function OfficerAdvanceCourse() {
 
         <div className="p-4 border-b border-gray-100">
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Gender filter */}
             <div className="relative">
               <select
                 value={filterGender}
@@ -80,7 +79,6 @@ export default function OfficerAdvanceCourse() {
               </svg>
             </div>
 
-            {/* Search */}
             <div className="flex-1 relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -96,7 +94,6 @@ export default function OfficerAdvanceCourse() {
           </div>
         </div>
 
-        {/* List */}
         {isLoading ? (
           <div className="p-10 text-center">
             <p className="text-sm text-gray-400">Loading cadets...</p>
@@ -107,7 +104,6 @@ export default function OfficerAdvanceCourse() {
           </div>
         ) : (
           <>
-            {/* Desktop table */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -145,7 +141,6 @@ export default function OfficerAdvanceCourse() {
               </table>
             </div>
 
-            {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-gray-50">
               {filtered.map((s: EnrollmentDocument, i: number) => (
                 <div key={s.uid} className="px-4 py-3 flex items-center gap-3">
@@ -154,7 +149,7 @@ export default function OfficerAdvanceCourse() {
                     <p className="text-xs font-medium text-gray-800 truncate">
                       {s.lastName}, {s.firstName}{s.suffix ? ` ${s.suffix}` : ""}
                     </p>
-                    <p className="text-[11px] text-gray-400">{s.studentId} • {s.course} • {s.yearLevel}</p>
+                    <p className="text-[11px] text-gray-400">{s.studentId} - {s.course} - {s.yearLevel}</p>
                   </div>
                   <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
                     s.sex === "Male"

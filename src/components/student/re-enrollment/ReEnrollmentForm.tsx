@@ -64,15 +64,13 @@ function profileToFormData(p: EnrollmentDocument, nextMs: string): EnrollmentFor
 }
 
 const COURSES = [
-  "BS INFORMATION TECHNOLOGY",
-  "BS COMPUTER SCIENCE",
-  "BS HOSPITALITY MANAGEMENT",
-  "BS BUSINESS ADMINISTRATION",
-  "BS CRIMINOLOGY",
-  "BS EDUCATION",
-  "BS ACCOUNTANCY",
-  "BS FISHERIES",
-  "BS SOCIAL WORK",
+  "BS Criminology",
+  "BS Hospitality Management",
+  "BS Information Technology",
+  "BS Tourism Management",
+  "BEED - Bachelor of Elementary Education",
+  "BSED - Major in English",
+  "BSED - Major in Mathematics",
 ];
 
 const selectClass = "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white";
@@ -175,7 +173,7 @@ export default function ReEnrollmentForm() {
       if (!formData.bloodType) return "Blood type is required.";
       if (!formData.complexion) return "Complexion is required.";
       const isCWTS = formData.nstpComponent === "CWTS";
-      const isMedicalNA = isCWTS || formData.course === "BS CRIMINOLOGY";
+      const isMedicalNA = isCWTS || formData.course === "BS Criminology";
       if (!isMedicalNA) {
         if (formData.hasMedicalCondition === null) return "Please select if you have a medical condition.";
         if (formData.hasMedicalCondition === true && !formData.medicalCondition) return "Please specify your medical condition.";
@@ -428,11 +426,11 @@ function AcademicInfoReadOnly({
         <p className="text-xs text-gray-400 mt-1">Cannot be changed during re-enrollment.</p>
       </div>
 
-      {/* MS Level - Read only */}
+      {/* Level - Read only */}
       <div>
-        <label className={labelClass}>MS Level</label>
+        <label className={labelClass}>{nstpComponent === "CWTS" ? "CWTS Level" : "MS Level"}</label>
         <div className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 bg-gray-50">
-          MS {nextMs}
+          {`${nstpComponent === "CWTS" ? "CWTS" : "MS"} ${nextMs}`}
         </div>
         <p className="text-xs text-gray-400 mt-1">Automatically set for re-enrollment.</p>
       </div>

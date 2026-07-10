@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import AdminViewRecords from "@/components/admin/shared/view-records/AdminViewRecords";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { NSTProgram } from "@/types";
 
 const TABS: { label: string; program: NSTProgram }[] = [
@@ -14,12 +15,11 @@ export default function OfficerViewRecords() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-800">View Student Records</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          View complete student records of all ROTC and CWTS students.
-        </p>
-      </div>
+      <PageIntroPanel
+        title="View Student Records"
+        subtitle="View complete student records of all ROTC and CWTS students."
+        variant="sky"
+      />
 
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
         {TABS.map((tab) => (

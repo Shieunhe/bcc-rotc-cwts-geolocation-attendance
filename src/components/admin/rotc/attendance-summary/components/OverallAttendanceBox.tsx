@@ -64,6 +64,9 @@ interface Props {
   hasIn: boolean;
   hasOut: boolean;
   selectedMI: number;
+  schoolYear: string;
+  msLevel: "1" | "2" | "";
+  nstpComponent: string;
 }
 
 type GroupFilter = "" | "battalion-1" | "battalion-2" | "special";
@@ -77,6 +80,7 @@ const GROUP_LABELS: Record<string, string> = {
 export default function OverallAttendanceBox({
   b1Students, b2Students, specialUnitStudents, recordMap, graceOver, sessionOpenDate, sessionCloseDate,
   selectedType, onTypeChange, hasIn, hasOut, selectedMI,
+  schoolYear, msLevel, nstpComponent,
 }: Props) {
   const lateDeadlineStr = sessionCloseDate
     ? new Date(new Date(sessionCloseDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000).toISOString()
@@ -102,13 +106,48 @@ export default function OverallAttendanceBox({
   };
 
   const hasUnmarked = overallCounts.unmarked > 0;
-  const attended = overallCounts.present + overallCounts.late;
-  const pct = overallCounts.total > 0 ? Math.round((attended / overallCounts.total) * 100) : 0;
+
+  type UnifiedStudent = { student: EnrollmentDocument; group: string; companyName: string; info: string };
+
+  const allStudents: UnifiedStudent[] = [
+    ...b1Students.map((r) => ({ student: r.student, group: "battalion-1" as const, companyName: r.company, info: `B1 - ${r.company} - P${r.platoon}` })),
+    ...b2Students.map((r) => ({ student: r.student, group: "battalion-2" as const, companyName: r.company, info: `B2 - ${r.company} - P${r.platoon}` })),
+    ...specialAll.map((s) => ({ student: s, group: "special" as const, companyName: s.specialUnit ?? "", info: s.specialUnit ?? "Special" })),
+  ];
 
   async function downloadWord() {
     const borderStyle = { style: BorderStyle.SINGLE, size: 1, color: "999999" };
     const borders = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
     const headers = ["No.", "Name", "ID Number", "Status", selectedType === "in" ? "Time In" : "Time Out"];
+
+    function makeCell(
+      text: string,
+      options?: {
+        bold?: boolean;
+        size?: number;
+        color?: string;
+        fill?: string;
+        alignment?: "left" | "center" | "right";
+        columnSpan?: number;
+      }
+    ) {
+      return new TableCell({
+        columnSpan: options?.columnSpan,
+        borders,
+        ...(options?.fill ? { shading: { fill: options.fill } } : {}),
+        children: [new Paragraph({
+          alignment: options?.alignment,
+          spacing: { before: 60, after: 60 },
+          children: [new TextRun({
+            text,
+            bold: options?.bold,
+            size: options?.size ?? 20,
+            font: "Arial",
+            color: options?.color,
+          })],
+        })],
+      });
+    }
 
     function makeHeaderRow() {
       return new TableRow({
@@ -153,30 +192,94 @@ export default function OverallAttendanceBox({
       });
     }
 
+    function makeSummaryTable() {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              makeCell("MI / Type", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(`MI ${selectedMI} - ${selectedType === "in" ? "TIME IN" : "TIME OUT"}`, { bold: true, size: 22 }),
+              makeCell("Session Date", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(sessionOpenDate ? formatDateDisplay(sessionOpenDate) : "-", { bold: true, size: 22 }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              makeCell("Time Window", { bold: true, fill: "EFF6FF", color: "1E3A8A" }),
+              makeCell(
+                sessionOpenDate && sessionCloseDate
+                  ? `${formatTimeDisplay(sessionOpenDate)} - ${formatTimeDisplay(sessionCloseDate)}`
+                  : "-",
+                { size: 22 }
+              ),
+              makeCell("NSTP Component", { bold: true, fill: "EFF6FF", color: "1E3A8A" }),
+              makeCell(nstpComponent || "ROTC", { bold: true, size: 22 }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              makeCell("School Year", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(schoolYear || "-", { bold: true, size: 22 }),
+              makeCell("MS Level", { bold: true, fill: "DBEAFE", color: "1E3A8A" }),
+              makeCell(msLevel ? `MS ${msLevel}` : "All", { bold: true, size: 22 }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    function makeCountsTable() {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              makeCell(`TOTAL: ${overallCounts.total}`, { bold: true, size: 22, fill: "F3F4F6", alignment: AlignmentType.CENTER }),
+              makeCell(`PRESENT: ${overallCounts.present}`, { bold: true, size: 22, fill: "DCFCE7", color: "166534", alignment: AlignmentType.CENTER }),
+              makeCell(`LATE: ${overallCounts.late}`, { bold: true, size: 22, fill: "FEF3C7", color: "92400E", alignment: AlignmentType.CENTER }),
+              makeCell(`ABSENT: ${overallCounts.absent}`, { bold: true, size: 22, fill: "FEE2E2", color: "991B1B", alignment: AlignmentType.CENTER }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    function makeSectionHeading(text: string, fill: string, color = "FFFFFF") {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              makeCell(text, {
+                bold: true,
+                size: 26,
+                fill,
+                color,
+                alignment: AlignmentType.CENTER,
+                columnSpan: 5,
+              }),
+            ],
+          }),
+        ],
+      });
+    }
+
     function buildBattalionSections(label: string, companies: ROTCCompany[], students: StudentRow[]): (Paragraph | Table)[] {
-      const sections: (Paragraph | Table)[] = [
-        new Paragraph({
-          spacing: { before: 400, after: 150 },
-          children: [new TextRun({ text: label, bold: true, size: 26, font: "Arial", color: "1F2937" })],
-        }),
-      ];
+      const sections: (Paragraph | Table)[] = [makeSectionHeading(label, "1E3A8A")];
       for (const company of companies) {
         const companyStudents = students.filter((r) => r.company === company);
         if (companyStudents.length === 0) continue;
         sections.push(
-          new Paragraph({
-            spacing: { before: 250, after: 100 },
-            children: [new TextRun({ text: `${company.toUpperCase()} COMPANY`, bold: true, size: 22, font: "Arial", color: "1E40AF" })],
-          }),
+          new Paragraph({ spacing: { before: 220, after: 80 } }),
+          makeSectionHeading(`${company.toUpperCase()} COMPANY`, "DBEAFE", "1E3A8A"),
         );
         for (let p = 1; p <= ROTC_PLATOONS_PER_COMPANY; p++) {
           const platoonStudents = companyStudents.filter((r) => r.platoon === p).map((r) => r.student);
           if (platoonStudents.length === 0) continue;
           sections.push(
-            new Paragraph({
-              spacing: { before: 150, after: 80 },
-              children: [new TextRun({ text: `PLATOON ${p}`, bold: true, size: 20, font: "Arial", color: "555555" })],
-            }),
+            new Paragraph({ spacing: { before: 140, after: 60 } }),
+            makeSectionHeading(`PLATOON ${p}`, "F3F4F6", "374151"),
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
               rows: [makeHeaderRow(), ...makeDataRows(platoonStudents)],
@@ -190,28 +293,22 @@ export default function OverallAttendanceBox({
     const b1Sections = buildBattalionSections("BATTALION 1", ROTC_BATTALION_1_COMPANIES, b1Students);
     const b2Sections = buildBattalionSections("BATTALION 2", ROTC_BATTALION_2_COMPANIES, b2Students);
 
-    const specialSections: (Paragraph | Table)[] = [];
-    if (specialAll.length > 0) {
+    const specialSections: (Paragraph | Table)[] = [
+      new Paragraph({ spacing: { before: 260, after: 80 } }),
+      makeSectionHeading("SPECIAL PLATOON", "7C2D12"),
+    ];
+
+    for (const unit of SPECIAL_UNITS) {
+      const unitStudents = specialUnitStudents[unit];
+      if (unitStudents.length === 0) continue;
       specialSections.push(
-        new Paragraph({
-          spacing: { before: 400, after: 150 },
-          children: [new TextRun({ text: "SPECIAL PLATOON", bold: true, size: 26, font: "Arial", color: "1F2937" })],
+        new Paragraph({ spacing: { before: 180, after: 60 } }),
+        makeSectionHeading(unit.toUpperCase(), "FFEDD5", "9A3412"),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [makeHeaderRow(), ...makeDataRows(unitStudents)],
         }),
       );
-      for (const unit of SPECIAL_UNITS) {
-        const unitStudents = specialUnitStudents[unit];
-        if (unitStudents.length === 0) continue;
-        specialSections.push(
-          new Paragraph({
-            spacing: { before: 200, after: 80 },
-            children: [new TextRun({ text: unit.toUpperCase(), bold: true, size: 22, font: "Arial", color: "1E40AF" })],
-          }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: [makeHeaderRow(), ...makeDataRows(unitStudents)],
-          }),
-        );
-      }
     }
 
     const doc = new Document({
@@ -219,23 +316,20 @@ export default function OverallAttendanceBox({
         children: [
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
-            spacing: { after: 100 },
-            children: [new TextRun({ text: "ROTC Overall Attendance Summary", bold: true, size: 28, font: "Arial" })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+            children: [new TextRun({ text: "ROTC OVERALL ATTENDANCE SUMMARY", bold: true, size: 34, font: "Arial", color: "1E3A8A" })],
           }),
           new Paragraph({
-            spacing: { after: 60 },
-            children: [new TextRun({ text: `MI ${selectedMI} — ${selectedType === "in" ? "Time In" : "Time Out"}${sessionOpenDate && sessionCloseDate ? `  |  ${formatDateDisplay(sessionOpenDate)}  |  ${formatTimeDisplay(sessionOpenDate)} - ${formatTimeDisplay(sessionCloseDate)}` : ""}`, size: 22, font: "Arial", color: "555555" })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 180 },
           }),
-          new Paragraph({
-            spacing: { after: 200 },
-            children: [
-              new TextRun({ text: `Total: ${overallCounts.total}  |  `, size: 20, font: "Arial" }),
-              new TextRun({ text: `Present: ${overallCounts.present}  |  `, size: 20, font: "Arial", color: "15803D" }),
-              new TextRun({ text: `Late: ${overallCounts.late}  |  `, size: 20, font: "Arial", color: "B45309" }),
-              new TextRun({ text: `Absent: ${overallCounts.absent}`, size: 20, font: "Arial", color: "B91C1C" }),
-            ],
-          }),
+          makeSummaryTable(),
+          new Paragraph({ spacing: { after: 140 } }),
+          makeCountsTable(),
+          new Paragraph({ spacing: { before: 120, after: 120 } }),
           ...b1Sections,
+          new Paragraph({ spacing: { before: 240, after: 80 } }),
           ...b2Sections,
           ...specialSections,
           new Paragraph({
@@ -250,14 +344,6 @@ export default function OverallAttendanceBox({
     const blob = await Packer.toBlob(doc);
     saveAs(blob, `ROTC_Overall_Attendance_MI${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.docx`);
   }
-
-  type UnifiedStudent = { student: EnrollmentDocument; group: string; companyName: string; info: string };
-
-  const allStudents: UnifiedStudent[] = [
-    ...b1Students.map((r) => ({ student: r.student, group: "battalion-1" as const, companyName: r.company, info: `B1 · ${r.company} · P${r.platoon}` })),
-    ...b2Students.map((r) => ({ student: r.student, group: "battalion-2" as const, companyName: r.company, info: `B2 · ${r.company} · P${r.platoon}` })),
-    ...specialAll.map((s) => ({ student: s, group: "special" as const, companyName: s.specialUnit ?? "", info: s.specialUnit ?? "Special" })),
-  ];
 
   const filtered = allStudents.filter((row) => {
     const s = row.student;
@@ -308,7 +394,6 @@ export default function OverallAttendanceBox({
 
   return (
     <div className="space-y-6">
-      {/* Overall totals card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-gray-700 to-gray-900 px-5 py-4">
           <div className="flex items-center justify-between">
@@ -336,7 +421,6 @@ export default function OverallAttendanceBox({
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Grand total cards */}
           <div className={`grid ${hasUnmarked ? "grid-cols-5" : "grid-cols-4"} gap-2`}>
             <div className="bg-white rounded-xl border border-gray-100 p-2.5 text-center">
               <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Total</p>
@@ -362,55 +446,49 @@ export default function OverallAttendanceBox({
             )}
           </div>
 
-          {/* Per-group breakdown */}
           <div>
             <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Breakdown by Group</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {groupSections.map(({ key, label, counts: gc, color }) => {
-                const groupAttended = gc.present + gc.late;
-                const groupPct = gc.total > 0 ? Math.round((groupAttended / gc.total) * 100) : 0;
-                return (
-                  <div key={key} className="bg-white rounded-xl border border-gray-100 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xs font-bold text-gray-700">{label}</h3>
-                      <span className="text-[10px] font-bold text-gray-400">{gc.total} cadets</span>
+              {groupSections.map(({ key, label, counts: gc }) => (
+                <div key={key} className="bg-white rounded-xl border border-gray-100 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-bold text-gray-700">{label}</h3>
+                    <span className="text-[10px] font-bold text-gray-400">{gc.total} cadets</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 text-center">
+                    <div>
+                      <p className="text-[9px] text-gray-400 font-medium">Total</p>
+                      <p className="text-sm font-bold text-gray-700">{gc.total}</p>
                     </div>
-                    <div className="grid grid-cols-4 gap-1.5 text-center">
-                      <div>
-                        <p className="text-[9px] text-gray-400 font-medium">Total</p>
-                        <p className="text-sm font-bold text-gray-700">{gc.total}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] text-green-600 font-medium">Present</p>
-                        <p className="text-sm font-bold text-green-700">{gc.present}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] text-amber-600 font-medium">Late</p>
-                        <p className="text-sm font-bold text-amber-700">{gc.late}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] text-red-600 font-medium">Absent</p>
-                        <p className="text-sm font-bold text-red-700">{gc.absent}</p>
-                      </div>
+                    <div>
+                      <p className="text-[9px] text-green-600 font-medium">Present</p>
+                      <p className="text-sm font-bold text-green-700">{gc.present}</p>
                     </div>
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden flex mt-2">
-                      {gc.total > 0 && (
-                        <>
-                          <div className="h-full bg-green-500" style={{ width: `${(gc.present / gc.total) * 100}%` }} />
-                          <div className="h-full bg-amber-400" style={{ width: `${(gc.late / gc.total) * 100}%` }} />
-                          <div className="h-full bg-red-400" style={{ width: `${(gc.absent / gc.total) * 100}%` }} />
-                        </>
-                      )}
+                    <div>
+                      <p className="text-[9px] text-amber-600 font-medium">Late</p>
+                      <p className="text-sm font-bold text-amber-700">{gc.late}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-red-600 font-medium">Absent</p>
+                      <p className="text-sm font-bold text-red-700">{gc.absent}</p>
                     </div>
                   </div>
-                );
-              })}
+                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden flex mt-2">
+                    {gc.total > 0 && (
+                      <>
+                        <div className="h-full bg-green-500" style={{ width: `${(gc.present / gc.total) * 100}%` }} />
+                        <div className="h-full bg-amber-400" style={{ width: `${(gc.late / gc.total) * 100}%` }} />
+                        <div className="h-full bg-red-400" style={{ width: `${(gc.absent / gc.total) * 100}%` }} />
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Detailed student list */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
           <h3 className="text-sm font-bold text-gray-800">All Cadets</h3>
@@ -418,15 +496,14 @@ export default function OverallAttendanceBox({
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Filters */}
           <div className="space-y-2">
             <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Filters</p>
             <div className="flex flex-wrap gap-2">
               <div className="relative">
                 <select value={selectedType} onChange={(e) => onTypeChange(e.target.value as "in" | "out")}
                   className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 transition">
-                  <option value="in" disabled={!hasIn}>Time In{hasIn ? "" : " — Not created"}</option>
-                  <option value="out" disabled={!hasOut}>Time Out{hasOut ? "" : " — Not created"}</option>
+                  <option value="in" disabled={!hasIn}>Time In{hasIn ? "" : " - Not created"}</option>
+                  <option value="out" disabled={!hasOut}>Time Out{hasOut ? "" : " - Not created"}</option>
                 </select>
                 <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
@@ -474,7 +551,6 @@ export default function OverallAttendanceBox({
             </div>
           </div>
 
-          {/* Student list */}
           <div className="rounded-xl border border-gray-100 overflow-hidden">
             {sorted.length === 0 ? (
               <div className="py-8 text-center">
@@ -482,7 +558,6 @@ export default function OverallAttendanceBox({
               </div>
             ) : (
               <>
-                {/* Desktop table */}
                 <div className="hidden sm:block divide-y divide-gray-100">
                   <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
                     <span>Student</span>
@@ -522,10 +597,10 @@ export default function OverallAttendanceBox({
                         <span className="text-[10px] text-gray-400 font-medium w-28 text-center truncate">{row.info}</span>
                         <span className="text-[10px] text-gray-400 font-medium w-16 text-center">
                           {status === "present" || status === "late"
-                            ? (record ? formatTimeDisplay(record.createdAt) : "—")
+                            ? (record ? formatTimeDisplay(record.createdAt) : "-")
                             : status === "absent" && lateDeadlineStr
                               ? formatTimeDisplay(lateDeadlineStr)
-                              : "—"}
+                              : "-"}
                         </span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border w-18 text-center ${cfg.bg} ${cfg.text}`}>
                           {cfg.label}
@@ -535,7 +610,6 @@ export default function OverallAttendanceBox({
                   })}
                 </div>
 
-                {/* Mobile cards */}
                 <div className="sm:hidden divide-y divide-gray-50">
                   {sorted.map((row) => {
                     const s = row.student;
@@ -544,10 +618,10 @@ export default function OverallAttendanceBox({
                     const record = recordMap.get(s.uid);
                     const name = `${s.lastName}, ${s.firstName}${s.middleName ? ` ${s.middleName[0]}.` : ""}${s.suffix ? ` ${s.suffix}` : ""}`;
                     const timeStr = status === "present" || status === "late"
-                      ? (record ? formatTimeDisplay(record.createdAt) : "—")
+                      ? (record ? formatTimeDisplay(record.createdAt) : "-")
                       : status === "absent" && lateDeadlineStr
                         ? formatTimeDisplay(lateDeadlineStr)
-                        : "—";
+                        : "-";
 
                     return (
                       <div key={s.uid} className={`px-4 py-3 border-l-3 ${cfg.border}`}>
@@ -555,7 +629,7 @@ export default function OverallAttendanceBox({
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold text-gray-700 truncate">{name}</p>
                             <p className="text-[10px] text-gray-400 mt-0.5">
-                              {s.studentId}{s.course ? ` · ${s.course}` : ""}
+                              {s.studentId}{s.course ? ` - ${s.course}` : ""}
                             </p>
                           </div>
                           <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${cfg.bg} ${cfg.text}`}>

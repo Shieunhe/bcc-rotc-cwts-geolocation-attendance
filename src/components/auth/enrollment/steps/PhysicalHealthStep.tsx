@@ -8,10 +8,10 @@ import { validateFileSize, formatFileSize } from "@/utils/fileUtils";
 
 const bloodTypes: BloodType[] = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "N/A"];
 
-const selectClass = "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white";
+const selectClass = "w-full border border-gray-200 rounded-2xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white";
 const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
 
-const MEDICAL_NA_COURSES = ["BS CRIMINOLOGY"];
+const MEDICAL_NA_COURSES = ["BS Criminology"];
 
 export default function PhysicalHealthStep({ form, updateField, updateBoolean, updateFile }: EnrollmentStepProps) {
   const [certPreview, setCertPreview] = useState<string | null>(null);

@@ -2,6 +2,20 @@
 
 import { useState } from "react";
 import { AttendanceRecord, EnrollmentDocument } from "@/types";
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  HeadingLevel,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
+} from "docx";
+import { saveAs } from "file-saver";
 
 const statusConfig: Record<string, { bg: string; text: string; border: string; label: string }> = {
   present:  { bg: "bg-green-50 border-green-200", text: "text-green-700", border: "border-l-green-500", label: "Present" },
@@ -26,16 +40,22 @@ interface Props {
   students: EnrollmentDocument[];
   recordMap: Map<string, AttendanceRecord>;
   graceOver: boolean;
+  sessionOpenDate: string | null;
   sessionCloseDate: string | null;
   selectedType: "in" | "out";
   onTypeChange: (type: "in" | "out") => void;
   hasIn: boolean;
   hasOut: boolean;
+  selectedMI: number;
+  schoolYear: string;
+  msLevel: "1" | "2" | "";
+  nstpComponent: string;
 }
 
 export default function AdvanceCourseAttendanceBox({
-  students, recordMap, graceOver, sessionCloseDate,
+  students, recordMap, graceOver, sessionOpenDate, sessionCloseDate,
   selectedType, onTypeChange, hasIn, hasOut,
+  selectedMI, schoolYear, msLevel, nstpComponent,
 }: Props) {
   const lateDeadlineStr = sessionCloseDate
     ? new Date(new Date(sessionCloseDate).getTime() + LATE_THRESHOLD_MINUTES * 60 * 1000).toISOString()
@@ -88,20 +108,187 @@ export default function AdvanceCourseAttendanceBox({
     ...(hasUnmarked ? [{ value: "unmarked", label: "Not Yet Marked" }] : []),
   ];
 
+  async function downloadWord() {
+    const borderStyle = { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" };
+    const borders = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+    const headers = ["No.", "Name", "ID Number", "Gender", "Status", "Time"];
+
+    function makeCell(
+      text: string,
+      options?: {
+        bold?: boolean;
+        size?: number;
+        color?: string;
+        fill?: string;
+        alignment?: "left" | "center" | "right";
+        columnSpan?: number;
+      }
+    ) {
+      return new TableCell({
+        columnSpan: options?.columnSpan,
+        borders,
+        ...(options?.fill ? { shading: { fill: options.fill } } : {}),
+        children: [new Paragraph({
+          alignment: options?.alignment,
+          spacing: { before: 60, after: 60 },
+          children: [new TextRun({
+            text,
+            bold: options?.bold,
+            size: options?.size ?? 20,
+            font: "Arial",
+            color: options?.color,
+          })],
+        })],
+      });
+    }
+
+    function makeHeaderRow() {
+      return new TableRow({
+        tableHeader: true,
+        children: headers.map((h) =>
+          new TableCell({
+            borders,
+            shading: { fill: "EA580C" },
+            children: [new Paragraph({
+              spacing: { before: 40, after: 40 },
+              children: [new TextRun({ text: h, bold: true, size: 18, font: "Arial", color: "FFFFFF" })],
+            })],
+          })
+        ),
+      });
+    }
+
+    function makeSummaryTable() {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              makeCell("MI / Type", { bold: true, fill: "FFEDD5", color: "9A3412" }),
+              makeCell(`MI ${selectedMI} - ${selectedType === "in" ? "TIME IN" : "TIME OUT"}`, { bold: true, size: 22 }),
+              makeCell("Session Date", { bold: true, fill: "FFEDD5", color: "9A3412" }),
+              makeCell(sessionOpenDate ? new Date(sessionOpenDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-", { bold: true, size: 22 }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              makeCell("Time Window", { bold: true, fill: "FFF7ED", color: "9A3412" }),
+              makeCell(
+                sessionOpenDate && sessionCloseDate
+                  ? `${new Date(sessionOpenDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })} - ${new Date(sessionCloseDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`
+                  : "-",
+                { size: 22 }
+              ),
+              makeCell("NSTP Component", { bold: true, fill: "FFF7ED", color: "9A3412" }),
+              makeCell(nstpComponent || "ROTC", { bold: true, size: 22 }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              makeCell("School Year", { bold: true, fill: "FFEDD5", color: "9A3412" }),
+              makeCell(schoolYear || "-", { bold: true, size: 22 }),
+              makeCell("MS Level", { bold: true, fill: "FFEDD5", color: "9A3412" }),
+              makeCell(msLevel ? `MS ${msLevel}` : "All", { bold: true, size: 22 }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    function makeCountsTable() {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              makeCell(`TOTAL: ${students.length}`, { bold: true, size: 22, fill: "F3F4F6", alignment: AlignmentType.CENTER }),
+              makeCell(`PRESENT: ${counts.present}`, { bold: true, size: 22, fill: "DCFCE7", color: "166534", alignment: AlignmentType.CENTER }),
+              makeCell(`LATE: ${counts.late}`, { bold: true, size: 22, fill: "FEF3C7", color: "92400E", alignment: AlignmentType.CENTER }),
+              makeCell(`ABSENT: ${counts.absent}`, { bold: true, size: 22, fill: "FEE2E2", color: "991B1B", alignment: AlignmentType.CENTER }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    const rows = sorted.map((student, idx) => {
+      const status = getStatus(student.uid, recordMap, graceOver);
+      const cfg = statusConfig[status] ?? statusConfig.absent;
+      const record = recordMap.get(student.uid);
+      const time = status === "present" || status === "late"
+        ? (record ? formatTimeDisplay(record.createdAt) : "")
+        : status === "absent" && lateDeadlineStr
+          ? formatTimeDisplay(lateDeadlineStr)
+          : "";
+      const name = `${student.lastName}, ${student.firstName}${student.middleName ? ` ${student.middleName[0]}.` : ""}${student.suffix ? ` ${student.suffix}` : ""}`;
+
+      return new TableRow({
+        children: [
+          makeCell(String(idx + 1), { alignment: AlignmentType.CENTER }),
+          makeCell(name),
+          makeCell(student.studentId || "", { alignment: AlignmentType.CENTER }),
+          makeCell(student.sex || "-", { alignment: AlignmentType.CENTER }),
+          makeCell(cfg.label, { alignment: AlignmentType.CENTER }),
+          makeCell(time || "-", { alignment: AlignmentType.CENTER }),
+        ],
+      });
+    });
+
+    const doc = new Document({
+      sections: [{
+        children: [
+          new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+            children: [new TextRun({ text: "ADVANCE COURSE ATTENDANCE SUMMARY", bold: true, size: 34, font: "Arial", color: "C2410C" })],
+          }),
+          makeSummaryTable(),
+          new Paragraph({ spacing: { after: 140 } }),
+          makeCountsTable(),
+          new Paragraph({ spacing: { before: 120, after: 120 } }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [makeHeaderRow(), ...rows],
+          }),
+          new Paragraph({
+            spacing: { before: 180 },
+            alignment: AlignmentType.RIGHT,
+            children: [new TextRun({ text: `${students.length} cadets total`, size: 16, font: "Arial", color: "999999" })],
+          }),
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `Advance_Course_Attendance_MI${selectedMI}_${selectedType === "in" ? "TimeIn" : "TimeOut"}.docx`);
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">Advance Course</h2>
+              <p className="text-[11px] text-white/70 font-medium">{students.length} cadet{students.length !== 1 ? "s" : ""}</p>
+            </div>
+          </div>
+          <button
+            onClick={downloadWord}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur text-white text-[11px] font-semibold transition cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-white">Advance Course</h2>
-            <p className="text-[11px] text-white/70 font-medium">{students.length} cadet{students.length !== 1 ? "s" : ""}</p>
-          </div>
+            Download
+          </button>
         </div>
       </div>
 

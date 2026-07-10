@@ -11,13 +11,14 @@ import ViewRecordsCard from "@/components/officer/dashboard/ViewRecordsCard";
 import SettingsDashboardCard from "@/components/settings/SettingsDashboardCard";
 import AdvanceCourseCard from "@/components/officer/dashboard/AdvanceCourseCard";
 import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 export default function Officer() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   useAutoCloseExpiredSessions();
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-[linear-gradient(180deg,_#f7faff_0%,_#eef5ff_100%)] overflow-hidden">
       <OfficerSidebarItems isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -34,12 +35,11 @@ export default function Officer() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Welcome, NSTP Director</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Manage CWTS/ROTC battalions and operations.
-            </p>
-          </div>
+          <PageIntroPanel
+            title="Welcome, NSTP Director"
+            subtitle="Manage CWTS/ROTC battalions and operations."
+            variant="sky"
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             <ROTCBattalionOne />
@@ -56,3 +56,7 @@ export default function Officer() {
     </div>
   );
 }
+
+
+
+

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 
 export default function AdvanceCourseCard() {
-  const { roster, isLoading } = useROTCPlatoonRoster();
+  const { currentMsLevel } = useCurrentRotcMsLevel();
+  const { roster, isLoading } = useROTCPlatoonRoster(currentMsLevel);
 
   const maleCount = roster?.advanceCourseMale.length ?? 0;
   const femaleCount = roster?.advanceCourseFemale.length ?? 0;

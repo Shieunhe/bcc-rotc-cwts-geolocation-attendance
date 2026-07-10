@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { ROTC_BATTALION_1_COMPANIES, ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT } from "@/types";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import { countBattalionMembers } from "@/components/admin/rotc/platoon-roster/components/ROTCBattalionSection";
 
 export default function ROTCBattalionOne() {
-  const { roster, isLoading } = useROTCPlatoonRoster();
+  const { currentMsLevel } = useCurrentRotcMsLevel();
+  const { roster, isLoading } = useROTCPlatoonRoster(currentMsLevel);
 
   const total = roster ? countBattalionMembers(roster.battalion1, ROTC_BATTALION_1_COMPANIES) : 0;
   const capacity = ROTC_BATTALION_1_COMPANIES.length * ROTC_PLATOONS_PER_COMPANY * ROTC_PLATOON_SLOT_LIMIT;

@@ -1,6 +1,7 @@
 "use client";
 
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { EnrollmentStatus } from "@/types";
 
@@ -23,12 +24,11 @@ export default function AssignedPlatoon() {
 
   return (
     <StudentPageLayout>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">My {groupLabel}</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Your assigned {groupLabel.toLowerCase()} for {profile?.nstpComponent || "NSTP"}.
-        </p>
-      </div>
+      <PageIntroPanel
+        title={`My ${groupLabel}`}
+        subtitle={`Your assigned ${groupLabel.toLowerCase()} for ${profile?.nstpComponent || "NSTP"}.`}
+        variant="sky"
+      />
 
       {isLoading ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
@@ -167,3 +167,6 @@ export default function AssignedPlatoon() {
     </StudentPageLayout>
   );
 }
+
+
+

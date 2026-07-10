@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { auth } from "@/lib/firebase";
 import { adminService } from "@/services/admin.service";
-import { AttendanceLocation, AttendanceSession, ATTENDANCE_RADIUS_METERS } from "@/types";
+import { AttendanceLocation, AttendanceSession, ATTENDANCE_RADIUS_METERS, EnrollmentSchedule, MSLevel, getSchoolYearFromDate } from "@/types";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 const LocationMap = lazy(() => import("@/components/common/LocationMap"));
 
@@ -19,6 +20,42 @@ interface MIStatus {
   outCreated: boolean;
 }
 
+interface AttendanceCycle {
+  msLevel?: MSLevel;
+  schoolYear: string;
+}
+
+function getEffectiveSessionStatus(session: AttendanceSession): "open" | "closed" | "scheduled" {
+  const now = Date.now();
+  const openAt = new Date(session.openDate).getTime();
+  const closeAt = new Date(session.closeDate).getTime();
+
+  if (Number.isNaN(openAt) || Number.isNaN(closeAt)) return session.status;
+  if (now >= closeAt) return "closed";
+  if (now >= openAt) return "open";
+  return "scheduled";
+}
+
+function resolveCurrentCycle(schedules: EnrollmentSchedule[]): AttendanceCycle {
+  const fallbackSchoolYear = getSchoolYearFromDate(new Date().toISOString());
+  if (schedules.length === 0) return { schoolYear: fallbackSchoolYear };
+
+  const now = Date.now();
+  const sorted = [...schedules].sort((a, b) => new Date(a.openDate).getTime() - new Date(b.openDate).getTime());
+  const active = sorted.find((s) => {
+    const start = new Date(s.openDate).getTime();
+    const end = new Date(s.deadline).getTime();
+    return now >= start && now <= end;
+  });
+  if (active) return { msLevel: active.msLevel, schoolYear: active.year };
+
+  const upcoming = sorted.find((s) => new Date(s.deadline).getTime() >= now);
+  if (upcoming) return { msLevel: upcoming.msLevel, schoolYear: upcoming.year };
+
+  const latestClosed = [...sorted].sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime())[0];
+  return latestClosed ? { msLevel: latestClosed.msLevel, schoolYear: latestClosed.year } : { schoolYear: fallbackSchoolYear };
+}
+
 function getMIProgress(sessions: AttendanceSession[], program: Program): Map<number, MIStatus> {
   const map = new Map<number, MIStatus>();
   for (let i = 1; i <= MI_COUNT; i++) {
@@ -28,7 +65,11 @@ function getMIProgress(sessions: AttendanceSession[], program: Program): Map<num
   const isAdvance = program === "ADVANCE_COURSE";
   const targetProgram = isAdvance ? "ROTC" : program;
 
-  for (const s of sessions) {
+  const orderedSessions = [...sessions].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  for (const s of orderedSessions) {
     if (s.program !== targetProgram) continue;
     if (isAdvance && !s.isAdvanceCourse) continue;
     if (!isAdvance && s.program === "ROTC" && s.isAdvanceCourse) continue;
@@ -41,7 +82,7 @@ function getMIProgress(sessions: AttendanceSession[], program: Program): Map<num
     if (!status) continue;
     if (type === "in") {
       status.inCreated = true;
-      status.inStatus = s.status;
+      status.inStatus = getEffectiveSessionStatus(s);
     }
     if (type === "out") status.outCreated = true;
   }
@@ -66,6 +107,14 @@ function getHighestCompletedMI(progress: Map<number, MIStatus>): number {
     if (s && (s.inCreated || s.outCreated)) return i;
   }
   return 0;
+}
+
+function getSessionUnitLabel(program: Program): string {
+  return program === 'CWTS' ? 'CS' : 'MI';
+}
+
+function getSessionUnitFullLabel(program: Program): string {
+  return program === 'CWTS' ? 'Community Service' : 'Military Instruction';
 }
 
 function StepBadge({ num, active }: { num: number; active: boolean }) {
@@ -95,6 +144,7 @@ export default function OfficerCreateAttendance() {
 
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [miProgress, setMiProgress] = useState<Map<number, MIStatus>>(new Map());
+  const [currentCycle, setCurrentCycle] = useState<AttendanceCycle | null>(null);
 
   const fetchSessionsForProgram = useCallback(async (prog: Program) => {
     if (!prog) return;
@@ -102,9 +152,16 @@ export default function OfficerCreateAttendance() {
     try {
       const isAdvance = prog === "ADVANCE_COURSE";
       const targetProgram = isAdvance ? "ROTC" : prog;
-      const sessions = await adminService.getSessionsByProgram(
+      const schedules = await adminService.getEnrollmentSchedules(targetProgram as "ROTC" | "CWTS");
+      const cycle = resolveCurrentCycle(schedules);
+      setCurrentCycle(cycle);
+      const sessions = await adminService.getSessionsByProgramForCycle(
         targetProgram as "ROTC" | "CWTS",
-        isAdvance || undefined
+        {
+          isAdvanceCourse: isAdvance || undefined,
+          msLevel: cycle.msLevel,
+          schoolYear: cycle.schoolYear,
+        }
       );
       const progress = getMIProgress(sessions, prog);
       setMiProgress(progress);
@@ -125,6 +182,7 @@ export default function OfficerCreateAttendance() {
     if (!program) {
       setMiProgress(new Map());
       setMiNumber(0);
+      setCurrentCycle(null);
       return;
     }
     fetchSessionsForProgram(program);
@@ -202,7 +260,9 @@ export default function OfficerCreateAttendance() {
   const allStepsDone = !!(program && stepMIDone && stepScheduleDone && location);
 
   const isAdvanceCourse = program === "ADVANCE_COURSE";
-  const actualProgram = isAdvanceCourse ? "ROTC" : program;
+  const actualProgram = isAdvanceCourse ? 'ROTC' : program;
+  const sessionUnitLabel = getSessionUnitLabel(program);
+  const sessionUnitFullLabel = getSessionUnitFullLabel(program);
 
   const allComplete = program && miProgress.size > 0 && (() => {
     for (let i = 1; i <= MI_COUNT; i++) {
@@ -219,6 +279,8 @@ export default function OfficerCreateAttendance() {
     try {
       await adminService.createAttendanceSession({
         program: actualProgram as "ROTC" | "CWTS",
+        ...(currentCycle?.msLevel ? { msLevel: currentCycle.msLevel } : {}),
+        ...(currentCycle?.schoolYear ? { schoolYear: currentCycle.schoolYear } : {}),
         ...(isAdvanceCourse ? { isAdvanceCourse: true } : {}),
         miNumber,
         miType,
@@ -227,7 +289,7 @@ export default function OfficerCreateAttendance() {
         location: location!,
         createdBy: auth.currentUser?.email ?? "unknown",
       });
-      const label = `MI ${miNumber} ${miType.toUpperCase()}`;
+      const label = `${sessionUnitLabel} ${miNumber} ${miType.toUpperCase()}`;
       setSuccessMessage(`${label} attendance session created successfully!`);
       setSuccess(true);
       setOpenDate("");
@@ -252,21 +314,11 @@ export default function OfficerCreateAttendance() {
 
   return (
     <>
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Create Attendance</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Set up MI attendance sessions for ROTC, CWTS, and Advance Course.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageIntroPanel
+        title="Create Attendance"
+        subtitle="Set up attendance sessions for ROTC, CWTS, and Advance Course."
+        variant="sky"
+      />
 
       {success && (
         <div className="mb-4 max-w-xl flex items-center gap-2.5 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-sm font-medium text-green-700">
@@ -329,6 +381,14 @@ export default function OfficerCreateAttendance() {
                   Progress: {completedCount} / {MI_COUNT * 2} sessions created
                 </div>
               )}
+              {currentCycle && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100 text-xs text-indigo-700">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Current cycle: {currentCycle.msLevel ? `${program === "CWTS" ? "CWTS" : "MS"} ${currentCycle.msLevel} - ` : ""}SY {currentCycle.schoolYear}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -337,7 +397,7 @@ export default function OfficerCreateAttendance() {
         <div className={`p-5 sm:p-6 border-b border-gray-100 ${!program ? "opacity-50 pointer-events-none" : ""}`}>
           <div className="flex items-center gap-2.5 mb-4">
             <StepBadge num={2} active={!!program} />
-            <StepTitle active={!!program}>Select MI (Military Instruction)</StepTitle>
+            <StepTitle active={!!program}>Select {sessionUnitLabel} ({sessionUnitFullLabel})</StepTitle>
           </div>
 
           {loadingSessions ? (
@@ -350,7 +410,7 @@ export default function OfficerCreateAttendance() {
               <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-xs text-green-700 font-medium">All 15 MI sessions (IN & OUT) have been created for this program.</p>
+              <p className="text-xs text-green-700 font-medium">All 15 {sessionUnitLabel} sessions (IN & OUT) have been created for this program.</p>
             </div>
           ) : (
             <div className="grid grid-cols-5 gap-2">
@@ -379,7 +439,7 @@ export default function OfficerCreateAttendance() {
                     disabled={!selectable || complete}
                     className={className}
                   >
-                    <span>MI {mi}</span>
+                    <span>{sessionUnitLabel} {mi}</span>
                     {complete && (
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -405,7 +465,7 @@ export default function OfficerCreateAttendance() {
           <div className="flex items-center gap-2.5 mb-4">
             <StepBadge num={3} active={stepMIDone} />
             <StepTitle active={stepMIDone}>
-              {miNumber > 0 ? `MI ${miNumber} — Select Type` : "Select Type"}
+              {miNumber > 0 ? `${sessionUnitLabel} ${miNumber} - Select Type` : "Select Type"}
             </StepTitle>
           </div>
 
@@ -465,7 +525,7 @@ export default function OfficerCreateAttendance() {
                   <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  OUT is locked — MI {miNumber} IN session is still {s.inStatus}. It must be closed first.
+                  OUT is locked - {sessionUnitLabel} {miNumber} IN session is still {s.inStatus}. It must be closed first.
                 </div>
               );
             }
@@ -600,7 +660,7 @@ export default function OfficerCreateAttendance() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-xs font-medium text-indigo-700">
-                Creating: <strong>MI {miNumber} — {miType.toUpperCase()}</strong> for {program === "ADVANCE_COURSE" ? "Advance Course" : program}
+                Creating: <strong>{sessionUnitLabel} {miNumber} - {miType.toUpperCase()}</strong> for {program === "ADVANCE_COURSE" ? "Advance Course" : program}
               </p>
             </div>
           )}
@@ -628,3 +688,5 @@ export default function OfficerCreateAttendance() {
     </>
   );
 }
+
+

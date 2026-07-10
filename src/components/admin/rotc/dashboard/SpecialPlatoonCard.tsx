@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, SpecialUnit, EnrollmentDocument } from "@/types";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import { adminService } from "@/services/admin.service";
 
 interface SpecialPlatoonCardProps {
@@ -10,14 +11,16 @@ interface SpecialPlatoonCardProps {
 }
 
 export default function SpecialPlatoonCard({ base }: SpecialPlatoonCardProps) {
+  const { currentMsLevel } = useCurrentRotcMsLevel();
   const [data, setData] = useState<Record<SpecialUnit, EnrollmentDocument[]> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    adminService.getSpecialUnitEnrollments()
+    setIsLoading(true);
+    adminService.getSpecialUnitEnrollments(currentMsLevel)
       .then(setData)
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [currentMsLevel]);
 
   const total = data ? SPECIAL_UNITS.reduce((sum, u) => sum + data[u].length, 0) : 0;
   const capacity = SPECIAL_UNITS.reduce((sum, u) => sum + SPECIAL_UNIT_SLOT_LIMITS[u], 0);

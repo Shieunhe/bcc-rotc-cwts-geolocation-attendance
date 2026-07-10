@@ -7,10 +7,13 @@ import {
   ROTC_PLATOON_SLOT_LIMIT,
 } from "@/types";
 import { useROTCPlatoonRoster } from "@/hooks/useROTCPlatoonRoster";
+import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import ROTCBattalionSection, { countBattalionMembers } from "@/components/admin/rotc/platoon-roster/components/ROTCBattalionSection";
+import PageIntroPanel from "@/components/common/PageIntroPanel";
 
 export default function OfficerBattalionOne() {
-  const { roster, isLoading } = useROTCPlatoonRoster();
+  const { currentMsLevel } = useCurrentRotcMsLevel();
+  const { roster, isLoading } = useROTCPlatoonRoster(currentMsLevel);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const toggle = (key: string) => setExpanded((prev) => (prev === key ? null : key));
@@ -20,22 +23,21 @@ export default function OfficerBattalionOne() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Battalion 1 — Male</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          View all male cadets assigned to Battalion 1 companies and platoons.
-        </p>
-      </div>
+      <PageIntroPanel
+        title="Battalion 1 - Male"
+        subtitle={`View all MS ${currentMsLevel} male cadets assigned to Battalion 1 companies and platoons.`}
+        variant="sky"
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Total Cadets</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{isLoading ? "—" : total}</p>
+          <p className="text-2xl font-bold text-gray-800 mt-1">{isLoading ? "-" : total}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-[11px] text-gray-400 uppercase tracking-wide font-medium">Capacity</p>
           <p className="text-2xl font-bold text-blue-600 mt-1">
-            {isLoading ? "—" : total}
+            {isLoading ? "-" : total}
             <span className="text-sm text-gray-400 font-medium">/{capacity}</span>
           </p>
         </div>
