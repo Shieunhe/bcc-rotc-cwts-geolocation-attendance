@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { query, execute } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import type { RowDataPacket } from "mysql2/promise";
@@ -37,15 +36,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Account not found." }, { status: 404 });
     }
 
-    const match = await bcrypt.compare(currentPassword, rows[0].password);
-    if (!match) {
+    if (currentPassword !== rows[0].password) {
       return NextResponse.json({ error: "Current password is incorrect." }, { status: 401 });
     }
 
-    const hashed = await bcrypt.hash(newPassword, 10);
     await execute(
       "UPDATE students SET password = ? WHERE id = ?",
-      [hashed, user.id]
+      [newPassword, user.id]
     );
 
     return NextResponse.json({ ok: true, message: "Password updated successfully." });

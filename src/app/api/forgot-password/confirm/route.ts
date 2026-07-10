@@ -1,6 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { query, execute } from "@/lib/db";
 import type { RowDataPacket } from "mysql2/promise";
 
@@ -66,8 +65,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Incorrect verification code." }, { status: 400 });
     }
 
-    const hashed = await bcrypt.hash(newPassword, 10);
-    await execute("UPDATE students SET password = ? WHERE id = ?", [hashed, studentId]);
+    await execute("UPDATE students SET password = ? WHERE id = ?", [newPassword, studentId]);
 
     await execute("DELETE FROM password_reset_codes WHERE student_id = ?", [studentId]);
 

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { query } from "@/lib/db";
 import { createToken, setSessionCookie, type SessionUser } from "@/lib/auth";
 import type { RowDataPacket } from "mysql2/promise";
@@ -40,8 +39,7 @@ export async function POST(req: Request) {
     }
 
     const user = rows[0];
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
+    if (password !== user.password) {
       return NextResponse.json({ error: "Incorrect password. Please try again." }, { status: 401 });
     }
 

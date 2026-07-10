@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 import { query, getConnection } from "@/lib/db";
 import type { RowDataPacket, ResultSetHeader } from "@/lib/db";
 import type { EnrollmentDocument, EnrollmentSchedule } from "@/types";
@@ -97,7 +96,6 @@ export const enrollmentServer = {
         };
       }
 
-      const hashedPassword = await bcrypt.hash(formData.password, 10);
       const now = mysqlNow();
 
       const conn = await getConnection();
@@ -175,7 +173,7 @@ export const enrollmentServer = {
             formData.xrayFile,
             formData.email,
             formData.username,
-            hashedPassword,
+            formData.password,
             formData.photo,
             formData.corFile,
             now,

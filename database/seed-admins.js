@@ -6,7 +6,6 @@
  */
 
 const mysql = require("mysql2/promise");
-const bcrypt = require("bcryptjs");
 
 const DB_CONFIG = {
   host: "localhost",
@@ -49,14 +48,12 @@ async function main() {
   const conn = await mysql.createConnection(DB_CONFIG);
 
   for (const admin of ADMINS) {
-    const hashed = await bcrypt.hash(admin.password, 10);
-
     try {
       await conn.execute(
         `INSERT INTO students (student_id, email, username, password, role, first_name, last_name, nstp_component)
          VALUES (?, ?, ?, ?, ?, ?, ?, '')
          ON DUPLICATE KEY UPDATE password = VALUES(password), role = VALUES(role)`,
-        [admin.username, admin.email, admin.username, hashed, admin.role, admin.firstName, admin.lastName]
+        [admin.username, admin.email, admin.username, admin.password, admin.role, admin.firstName, admin.lastName]
       );
       console.log(`OK: ${admin.email} (${admin.role})`);
     } catch (err) {
