@@ -1,469 +1,89 @@
-import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, writeBatch, deleteField } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import {
-  CWTSCompany, CWTS_COMPANIES, CWTS_COMPANY_SLOT_LIMIT,
+  CWTSCompany, CWTS_COMPANIES,
   EnrollmentDocument, EnrollmentWithMs, EnrollmentSchedule, EnrollmentStatus, NSTProgram,
   StudentMsRecord,
   ROTCBattalion, ROTCCompany, ROTCPlatoon,
-  ROTC_BATTALION_1_COMPANIES, ROTC_BATTALION_2_COMPANIES,
   ROTC_PLATOONS_PER_COMPANY, ROTC_PLATOON_SLOT_LIMIT,
-  SpecialUnit, SPECIAL_UNIT_SLOT_LIMITS,
-  AttendanceLocation, AttendanceSession, AttendanceStatus, ATTENDANCE_RADIUS_METERS,
+  SpecialUnit,
+  AttendanceLocation, AttendanceSession,
   AttendanceRecord, AttendanceRecordStatus, StudentGrade, AttendanceOffense,
-  getSchoolYearFromDate,
 } from "@/types";
-import { compareSchedulesDesc, extractSchoolYearFromScheduleId, isScheduleOpenAt } from "@/utils/enrollmentSchedule";
 
-function mergeWithMsRecords(enrollment: EnrollmentDocument, allMsRecords: StudentMsRecord[]): EnrollmentWithMs {
-  const records = allMsRecords.filter((r) => r.uid === enrollment.uid);
-  const msLevelOne = records.some((r) => r.msLevel === "1");
-  const msLevelTwo = records.some((r) => r.msLevel === "2");
-  const latest = [...records].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-  return {
-    ...enrollment,
-    status: latest?.status ?? "pending",
-    msLevelOne,
-    msLevelTwo,
-    rejectionReason: latest?.rejectionReason,
-    msRecords: records,
-  };
-}
-
-async function fetchMsRecordsByProgram(program: NSTProgram): Promise<StudentMsRecord[]> {
-  const snap = await getDocs(query(collection(db, "student_ms_records"), where("program", "==", program)));
-  return snap.docs.map((d) => d.data() as StudentMsRecord);
-}
-
-async function fetchMsRecordsByUid(uid: string): Promise<StudentMsRecord[]> {
-  const snap = await getDocs(query(collection(db, "student_ms_records"), where("uid", "==", uid)));
-  return snap.docs.map((d) => d.data() as StudentMsRecord);
-}
-
-function getEffectiveAttendanceStatus(session: AttendanceSession): AttendanceStatus {
-  const now = Date.now();
-  const openAt = new Date(session.openDate).getTime();
-  const closeAt = new Date(session.closeDate).getTime();
-
-  if (Number.isNaN(openAt) || Number.isNaN(closeAt)) return session.status;
-  if (now >= closeAt) return "closed";
-  if (now >= openAt) return "open";
-  return "scheduled";
-}
-
-function getAttendanceCycleForSession(session: AttendanceSession): { schoolYear: string; msLevel?: "1" | "2" } {
-  return {
-    schoolYear: session.schoolYear ?? getSchoolYearFromDate(session.openDate),
-    msLevel: session.msLevel,
-  };
-}
-
-function buildAttendanceSlotKey(session: {
-  program: NSTProgram;
-  isAdvanceCourse?: boolean;
-  schoolYear?: string;
-  msLevel?: "1" | "2";
-  miNumber?: number;
-  miType?: "in" | "out";
-  openDate?: string;
-}): string {
-  const schoolYear = session.schoolYear ?? (session.openDate ? getSchoolYearFromDate(session.openDate) : "");
-  return [
-    session.program,
-    session.isAdvanceCourse ? "advance" : "regular",
-    session.msLevel ?? "na",
-    schoolYear,
-    session.miNumber ?? 0,
-    session.miType ?? "na",
-  ].join("|");
-}
-
-function resolveScheduleCycleFromList(
-  schedules: EnrollmentSchedule[],
-  referenceDate: string,
-): { schoolYear: string; msLevel?: "1" | "2" } {
-  const schoolYear = getSchoolYearFromDate(referenceDate);
-  const byYear = schedules.filter((s) => s.year === schoolYear);
-  const at = new Date(referenceDate).getTime();
-
-  const matchingWindow = byYear.find((s) => {
-    const start = new Date(s.openDate).getTime();
-    const end = new Date(s.deadline).getTime();
-    return at >= start && at <= end;
+async function rpc(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
+  const res = await fetch("/api/rpc/admin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method, params }),
   });
-  if (matchingWindow) return { schoolYear, msLevel: matchingWindow.msLevel };
-
-  const activeNow = byYear.find((s) => {
-    const now = Date.now();
-    const start = new Date(s.openDate).getTime();
-    const end = new Date(s.deadline).getTime();
-    return now >= start && now <= end;
-  });
-  if (activeNow) return { schoolYear, msLevel: activeNow.msLevel };
-
-  if (byYear.length === 1) return { schoolYear, msLevel: byYear[0].msLevel };
-
-  return { schoolYear };
-}
-
-async function resolveAttendanceCycle(program: NSTProgram, referenceDate: string): Promise<{ schoolYear: string; msLevel?: "1" | "2" }> {
-  const scheduleSnap = await getDocs(query(collection(db, "enrollment_schedules"), where("program", "==", program)));
-  const schedules = scheduleSnap.docs.map((d) => d.data() as EnrollmentSchedule);
-  return resolveScheduleCycleFromList(schedules, referenceDate);
-}
-
-async function fetchApprovedUids(program: NSTProgram, msLevel?: "1" | "2"): Promise<{ uids: string[]; msRecords: StudentMsRecord[] }> {
-  const msRecords = await fetchMsRecordsByProgram(program);
-  const byUid = new Map<string, StudentMsRecord[]>();
-  for (const r of msRecords) {
-    if (!byUid.has(r.uid)) byUid.set(r.uid, []);
-    byUid.get(r.uid)!.push(r);
-  }
-  const uids: string[] = [];
-  for (const [uid, records] of byUid) {
-    const latest = [...records].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-    if (!latest || latest.status !== "approved") continue;
-    if (msLevel && latest.msLevel !== msLevel) continue;
-    uids.push(uid);
-  }
-  return { uids, msRecords };
-}
-
-async function fetchROTCApprovedUidsForCurrentCycle(
-  msLevel?: "1" | "2",
-): Promise<{ uids: string[]; msRecords: StudentMsRecord[] }> {
-  const scheduleSnap = await getDocs(
-    query(collection(db, "enrollment_schedules"), where("program", "==", "ROTC"))
-  );
-  const schedules = scheduleSnap.docs.map((d) => d.data() as EnrollmentSchedule);
-  const matching = schedules.filter((s) => !msLevel || s.msLevel === msLevel);
-  const now = new Date();
-  const activeOrUpcoming = matching
-    .filter((s) => new Date(s.deadline) >= now)
-    .sort((a, b) => new Date(a.openDate).getTime() - new Date(b.openDate).getTime());
-  const selected = activeOrUpcoming[0] ?? [...matching].sort(
-    (a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime()
-  )[0];
-
-  if (!selected?.year) return fetchApprovedUidsForCycle("ROTC", msLevel);
-
-  const cycleResult = await fetchApprovedUidsForCycle("ROTC", msLevel, selected.year);
-  const selectedStart = new Date(selected.openDate).getTime();
-  const selectedEnd = new Date(selected.deadline).getTime();
-  const byUid = new Map<string, StudentMsRecord[]>();
-
-  for (const record of cycleResult.msRecords) {
-    if (!byUid.has(record.uid)) byUid.set(record.uid, []);
-    byUid.get(record.uid)!.push(record);
-  }
-
-  for (const [uid, records] of byUid) {
-    if (cycleResult.uids.includes(uid)) continue;
-
-    const hasFallbackApprovedRecord = records
-      .filter((r) => r.status === "approved")
-      .some((r) => {
-        if (msLevel && r.msLevel !== msLevel) return false;
-        if (r.scheduleId) return false;
-        const createdAt = new Date(r.createdAt).getTime();
-        return createdAt >= selectedStart && createdAt <= selectedEnd;
-      });
-
-    if (hasFallbackApprovedRecord) {
-      cycleResult.uids.push(uid);
-    }
-  }
-
-  return cycleResult;
-}
-
-async function fetchApprovedUidsForCurrentEnrollmentCycle(
-  program: NSTProgram,
-  msLevel?: "1" | "2",
-): Promise<{ uids: string[]; msRecords: StudentMsRecord[] }> {
-  const scheduleSnap = await getDocs(
-    query(collection(db, "enrollment_schedules"), where("program", "==", program))
-  );
-  const schedules = scheduleSnap.docs.map((d) => d.data() as EnrollmentSchedule);
-  const matching = schedules.filter((s) => !msLevel || s.msLevel === msLevel);
-  const now = new Date();
-  const activeOrUpcoming = matching
-    .filter((s) => new Date(s.deadline) >= now)
-    .sort((a, b) => new Date(a.openDate).getTime() - new Date(b.openDate).getTime());
-  const selected = activeOrUpcoming[0] ?? [...matching].sort(
-    (a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime()
-  )[0];
-
-  if (!selected?.year) return fetchApprovedUids(program, msLevel);
-
-  return fetchApprovedUidsForCycle(program, selected.msLevel, selected.year);
-}
-
-async function fetchApprovedUidsForCycle(
-  program: NSTProgram,
-  msLevel?: "1" | "2",
-  schoolYear?: string,
-): Promise<{ uids: string[]; msRecords: StudentMsRecord[] }> {
-  const msRecords = await fetchMsRecordsByProgram(program);
-  const byUid = new Map<string, StudentMsRecord[]>();
-  for (const r of msRecords) {
-    if (!byUid.has(r.uid)) byUid.set(r.uid, []);
-    byUid.get(r.uid)!.push(r);
-  }
-
-  const uids: string[] = [];
-  for (const [uid, records] of byUid) {
-    const matching = records
-      .filter((r) => {
-        if (r.status !== "approved") return false;
-        if (msLevel && r.msLevel !== msLevel) return false;
-        if (schoolYear && extractSchoolYearFromScheduleId(r.scheduleId) !== schoolYear) return false;
-        return true;
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    if (matching.length > 0) {
-      uids.push(uid);
-    }
-  }
-
-  return { uids, msRecords };
-}
-
-async function batchFetchProfiles(uids: string[]): Promise<EnrollmentDocument[]> {
-  if (uids.length === 0) return [];
-  const profiles: EnrollmentDocument[] = [];
-  const batchSize = 30;
-  for (let i = 0; i < uids.length; i += batchSize) {
-    const batch = uids.slice(i, i + batchSize);
-    const q = query(collection(db, "account_reservations"), where("uid", "in", batch));
-    const snap = await getDocs(q);
-    profiles.push(...snap.docs.map((d) => d.data() as EnrollmentDocument));
-  }
-  return profiles;
-}
-
-async function findLatestMsRecordDoc(uid: string): Promise<{ docId: string; data: StudentMsRecord } | null> {
-  const snap = await getDocs(query(collection(db, "student_ms_records"), where("uid", "==", uid)));
-  if (snap.empty) return null;
-  let latest: { docId: string; data: StudentMsRecord } | null = null;
-  for (const d of snap.docs) {
-    const data = d.data() as StudentMsRecord;
-    if (!latest || new Date(data.createdAt).getTime() > new Date(latest.data.createdAt).getTime()) {
-      latest = { docId: d.id, data };
-    }
-  }
-  return latest;
+  const body = await res.json();
+  if (!res.ok || body.error) throw new Error(body.error ?? "RPC call failed");
+  return body.result;
 }
 
 export const adminService = {
+
+  /* ---------- Enrollment ---------- */
+
   async getEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentWithMs[]> {
-    const [enrollmentSnap, msRecords] = await Promise.all([
-      getDocs(query(collection(db, "account_reservations"), where("nstpComponent", "==", program))),
-      fetchMsRecordsByProgram(program),
-    ]);
-    const enrollments = enrollmentSnap.docs.map((d) => d.data() as EnrollmentDocument);
-    return enrollments
-      .map((e) => mergeWithMsRecords(e, msRecords))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return (await rpc("getEnrollmentsByProgram", { program })) as EnrollmentWithMs[];
   },
 
   async getEnrollmentSchedule(program: NSTProgram, msLevel: string): Promise<EnrollmentSchedule | null> {
-    const q = query(
-      collection(db, "enrollment_schedules"),
-      where("program", "==", program),
-      where("msLevel", "==", msLevel),
-    );
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
-    const schedules = snapshot.docs
-      .map((d) => d.data() as EnrollmentSchedule)
-      .sort(compareSchedulesDesc);
-    const open = schedules.find((schedule) => isScheduleOpenAt(schedule));
-    return open ?? schedules[0];
+    return (await rpc("getEnrollmentSchedule", { program, msLevel })) as EnrollmentSchedule | null;
   },
 
   async getEnrollmentSchedules(program: NSTProgram): Promise<EnrollmentSchedule[]> {
-    const q = query(
-      collection(db, "enrollment_schedules"),
-      where("program", "==", program),
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => d.data() as EnrollmentSchedule);
+    return (await rpc("getEnrollmentSchedules", { program })) as EnrollmentSchedule[];
   },
 
   async saveEnrollmentSchedule(schedule: EnrollmentSchedule): Promise<void> {
-    const ref = doc(db, "enrollment_schedules", `${schedule.program}_${schedule.msLevel}_${schedule.year}`);
-    const existing = await getDoc(ref);
-    if (existing.exists()) {
-      const levelPrefix = schedule.program === "CWTS" ? "CWTS" : "MS";
-      throw new Error(`Schedule for ${levelPrefix} ${schedule.msLevel} - SY ${schedule.year} already exists.`);
-    }
-    const openDate = schedule.openDate.includes("T")
-      ? schedule.openDate
-      : `${schedule.openDate}T00:00:00`;
-    const deadline = schedule.deadline.includes("T")
-      ? schedule.deadline
-      : `${schedule.deadline}T23:59:59`;
-    await setDoc(ref, { ...schedule, openDate, deadline, updatedAt: new Date().toISOString() });
+    await rpc("saveEnrollmentSchedule", { schedule });
   },
 
   async updateEnrollmentStatus(
     uid: string,
     status: EnrollmentStatus,
     rejectionReason?: string,
-    options?: { resetRotcAssignments?: boolean }
+    options?: { resetRotcAssignments?: boolean },
   ): Promise<void> {
-    const latest = await findLatestMsRecordDoc(uid);
-    if (!latest) return;
-    const data: Record<string, string> = {
-      status,
-      updatedAt: new Date().toISOString(),
-    };
-    if (rejectionReason !== undefined) {
-      data.rejectionReason = rejectionReason;
-    }
-    await updateDoc(doc(db, "student_ms_records", latest.docId), data);
-
-    const shouldResetRotcAssignments = options?.resetRotcAssignments ?? true;
-
-    if (status === "approved" && latest.data.program === "ROTC" && shouldResetRotcAssignments) {
-      await updateDoc(doc(db, "account_reservations", uid), {
-        battalion: deleteField(),
-        rotcCompany: deleteField(),
-        rotcPlatoon: deleteField(),
-        specialUnit: deleteField(),
-        updatedAt: new Date().toISOString(),
-      });
-    }
+    await rpc("updateEnrollmentStatus", { uid, status, rejectionReason, options });
   },
 
-  async getSpecialUnitEnrollments(msLevel: "1" | "2" = "2"): Promise<Record<SpecialUnit, EnrollmentWithMs[]>> {
-    const { uids, msRecords } = await fetchApprovedUids("ROTC", msLevel);
-    const profiles = await batchFetchProfiles(uids);
-    const result: Record<SpecialUnit, EnrollmentWithMs[]> = { Medics: [], HQ: [], MP: [] };
-    for (const p of profiles) {
-      const merged = mergeWithMsRecords(p, msRecords);
-      if (merged.specialUnit && result[merged.specialUnit]) {
-        result[merged.specialUnit].push(merged);
-      }
-    }
-    return result;
+  async getApprovedEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentWithMs[]> {
+    return (await rpc("getApprovedEnrollmentsByProgram", { program })) as EnrollmentWithMs[];
   },
 
-  async getSpecialUnitCount(unit: SpecialUnit, msLevel: "1" | "2" = "2"): Promise<number> {
-    const { uids } = await fetchApprovedUids("ROTC", msLevel);
-    const profiles = await batchFetchProfiles(uids);
-    return profiles.filter((p) => p.specialUnit === unit).length;
+  async updateEnrollmentFields(uid: string, fields: Partial<EnrollmentDocument>): Promise<void> {
+    await rpc("updateEnrollmentFields", { uid, fields });
   },
 
-  async approveWithSpecialUnit(uid: string, specialUnit: SpecialUnit): Promise<string | null> {
-    const count = await this.getSpecialUnitCount(specialUnit);
-    if (count >= SPECIAL_UNIT_SLOT_LIMITS[specialUnit]) return null;
-
-    await updateDoc(doc(db, "account_reservations", uid), {
-      specialUnit,
-      updatedAt: new Date().toISOString(),
-    });
-    await this.updateEnrollmentStatus(uid, "approved", undefined, { resetRotcAssignments: false });
-    return specialUnit;
-  },
+  /* ---------- CWTS ---------- */
 
   async getNextAvailableCWTSCompany(): Promise<CWTSCompany | null> {
-    const { uids } = await fetchApprovedUidsForCurrentEnrollmentCycle("CWTS");
-    const profiles = await batchFetchProfiles(uids);
-
-    const counts: Record<CWTSCompany, number> = {
-      Alpha: 0, Bravo: 0, Charlie: 0, Delta: 0, Echo: 0, Foxtrot: 0,
-    };
-    for (const e of profiles) {
-      if (e.company && counts[e.company] !== undefined) {
-        counts[e.company]++;
-      }
-    }
-
-    return CWTS_COMPANIES.find((c) => counts[c] < CWTS_COMPANY_SLOT_LIMIT) ?? null;
+    return (await rpc("getNextAvailableCWTSCompany")) as CWTSCompany | null;
   },
 
   async getCWTSCompanyCounts(): Promise<Record<CWTSCompany, EnrollmentWithMs[]>> {
-    const { uids, msRecords } = await fetchApprovedUidsForCurrentEnrollmentCycle("CWTS");
-    const profiles = await batchFetchProfiles(uids);
-
-    const grouped: Record<CWTSCompany, EnrollmentWithMs[]> = {
-      Alpha: [], Bravo: [], Charlie: [], Delta: [], Echo: [], Foxtrot: [],
-    };
-    for (const p of profiles) {
-      const merged = mergeWithMsRecords(p, msRecords);
-      if (merged.company && grouped[merged.company]) {
-        grouped[merged.company].push(merged);
-      }
-    }
-    return grouped;
+    return (await rpc("getCWTSCompanyCounts")) as Record<CWTSCompany, EnrollmentWithMs[]>;
   },
 
   async approveCWTSEnrollment(uid: string): Promise<CWTSCompany | null> {
-    const company = await this.getNextAvailableCWTSCompany();
-    if (!company) return null;
-
-    await updateDoc(doc(db, "account_reservations", uid), {
-      company,
-      updatedAt: new Date().toISOString(),
-    });
-    await this.updateEnrollmentStatus(uid, "approved");
-    return company;
+    return (await rpc("approveCWTSEnrollment", { uid })) as CWTSCompany | null;
   },
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ ROTC Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  /* ---------- ROTC ---------- */
 
   async getROTCApprovedEnrollments(msLevel: "1" | "2" = "2"): Promise<EnrollmentWithMs[]> {
-    const { uids, msRecords } = await fetchROTCApprovedUidsForCurrentCycle(msLevel);
-    const profiles = await batchFetchProfiles(uids);
-    return profiles.map((p) => mergeWithMsRecords(p, msRecords));
+    return (await rpc("getROTCApprovedEnrollments", { msLevel })) as EnrollmentWithMs[];
   },
 
   async assignROTCPlatoons(msLevel: "1" | "2" = "2"): Promise<{ assigned: number; alreadyAssigned: number }> {
-    const enrollments = await this.getROTCApprovedEnrollments(msLevel);
-
-    const unassigned = enrollments.filter((e) => !e.rotcCompany && !e.willingToTakeAdvanceCourse && !e.specialUnit && !e.medicalCondition);
-    const alreadyAssigned = enrollments.length - unassigned.length;
-    if (unassigned.length === 0) return { assigned: 0, alreadyAssigned };
-
-    const males = unassigned
-      .filter((e) => e.sex === "Male")
-      .sort((a, b) => a.lastName.localeCompare(b.lastName));
-    const females = unassigned
-      .filter((e) => e.sex === "Female")
-      .sort((a, b) => a.lastName.localeCompare(b.lastName));
-
-    const existingMaleCounts = this.buildROTCSlotCounts(enrollments.filter((e) => e.sex === "Male" && e.rotcCompany && !e.specialUnit && !e.medicalCondition), ROTC_BATTALION_1_COMPANIES);
-    const existingFemaleCounts = this.buildROTCSlotCounts(enrollments.filter((e) => e.sex === "Female" && e.rotcCompany && !e.specialUnit && !e.medicalCondition), ROTC_BATTALION_2_COMPANIES);
-
-    const maleAssignments = this.computeROTCAssignments(males, 1, ROTC_BATTALION_1_COMPANIES, existingMaleCounts);
-    const femaleAssignments = this.computeROTCAssignments(females, 2, ROTC_BATTALION_2_COMPANIES, existingFemaleCounts);
-
-    const all = [...maleAssignments, ...femaleAssignments];
-
-    const batchSize = 500;
-    for (let i = 0; i < all.length; i += batchSize) {
-      const batch = writeBatch(db);
-      const chunk = all.slice(i, i + batchSize);
-      for (const a of chunk) {
-        const ref = doc(db, "account_reservations", a.uid);
-        batch.update(ref, {
-          battalion: a.battalion,
-          rotcCompany: a.rotcCompany,
-          rotcPlatoon: a.rotcPlatoon,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-      await batch.commit();
-    }
-
-    return { assigned: all.length, alreadyAssigned };
+    return (await rpc("assignROTCPlatoons", { msLevel })) as { assigned: number; alreadyAssigned: number };
   },
 
   buildROTCSlotCounts(
     assigned: EnrollmentWithMs[],
-    companies: ROTCCompany[]
+    companies: ROTCCompany[],
   ): Record<string, number> {
     const counts: Record<string, number> = {};
     for (const c of companies) {
@@ -482,13 +102,12 @@ export const adminService = {
     cadets: EnrollmentWithMs[],
     battalion: ROTCBattalion,
     companies: ROTCCompany[],
-    slotCounts: Record<string, number>
+    slotCounts: Record<string, number>,
   ): { uid: string; battalion: ROTCBattalion; rotcCompany: ROTCCompany; rotcPlatoon: ROTCPlatoon }[] {
     const results: { uid: string; battalion: ROTCBattalion; rotcCompany: ROTCCompany; rotcPlatoon: ROTCPlatoon }[] = [];
     let companyIdx = 0;
     let platoonNum = 1;
 
-    // Fast-forward to the first slot with available space
     while (companyIdx < companies.length) {
       const key = `${companies[companyIdx]}-${platoonNum}`;
       if ((slotCounts[key] ?? 0) < ROTC_PLATOON_SLOT_LIMIT) break;
@@ -501,17 +120,14 @@ export const adminService = {
 
     for (const cadet of cadets) {
       if (companyIdx >= companies.length) break;
-
       results.push({
         uid: cadet.uid,
         battalion,
         rotcCompany: companies[companyIdx],
         rotcPlatoon: platoonNum as ROTCPlatoon,
       });
-
       const key = `${companies[companyIdx]}-${platoonNum}`;
       slotCounts[key] = (slotCounts[key] ?? 0) + 1;
-
       if (slotCounts[key] >= ROTC_PLATOON_SLOT_LIMIT) {
         platoonNum++;
         if (platoonNum > ROTC_PLATOONS_PER_COMPANY) {
@@ -530,228 +146,41 @@ export const adminService = {
     advanceCourseMale: EnrollmentWithMs[];
     advanceCourseFemale: EnrollmentWithMs[];
   }> {
-    const enrollments = await this.getROTCApprovedEnrollments(msLevel);
-
-    const buildEmpty = (companies: ROTCCompany[]) => {
-      const result: Record<string, Record<number, EnrollmentWithMs[]>> = {};
-      for (const c of companies) {
-        result[c] = {};
-        for (let p = 1; p <= ROTC_PLATOONS_PER_COMPANY; p++) {
-          result[c][p] = [];
-        }
-      }
-      return result as Record<ROTCCompany, Record<number, EnrollmentWithMs[]>>;
+    return (await rpc("getROTCRosterGrouped", { msLevel })) as {
+      battalion1: Record<ROTCCompany, Record<number, EnrollmentWithMs[]>>;
+      battalion2: Record<ROTCCompany, Record<number, EnrollmentWithMs[]>>;
+      advanceCourseMale: EnrollmentWithMs[];
+      advanceCourseFemale: EnrollmentWithMs[];
     };
-
-    const battalion1 = buildEmpty(ROTC_BATTALION_1_COMPANIES);
-    const battalion2 = buildEmpty(ROTC_BATTALION_2_COMPANIES);
-    const advanceCourseMale: EnrollmentWithMs[] = [];
-    const advanceCourseFemale: EnrollmentWithMs[] = [];
-
-    for (const e of enrollments) {
-      if (e.specialUnit || e.medicalCondition) continue;
-      if (e.willingToTakeAdvanceCourse) {
-        if (e.sex === "Male") advanceCourseMale.push(e);
-        else advanceCourseFemale.push(e);
-        continue;
-      }
-      if (!e.rotcCompany || !e.rotcPlatoon) continue;
-      const target = e.battalion === 1 ? battalion1 : battalion2;
-      if (target[e.rotcCompany]?.[e.rotcPlatoon]) {
-        target[e.rotcCompany][e.rotcPlatoon].push(e);
-      }
-    }
-
-    return { battalion1, battalion2, advanceCourseMale, advanceCourseFemale };
   },
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Attendance Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  async getSpecialUnitEnrollments(msLevel: "1" | "2" = "2"): Promise<Record<SpecialUnit, EnrollmentWithMs[]>> {
+    return (await rpc("getSpecialUnitEnrollments", { msLevel })) as Record<SpecialUnit, EnrollmentWithMs[]>;
+  },
+
+  async getSpecialUnitCount(unit: SpecialUnit, msLevel: "1" | "2" = "2"): Promise<number> {
+    return (await rpc("getSpecialUnitCount", { unit, msLevel })) as number;
+  },
+
+  async approveWithSpecialUnit(uid: string, specialUnit: SpecialUnit): Promise<string | null> {
+    return (await rpc("approveWithSpecialUnit", { uid, specialUnit })) as string | null;
+  },
+
+  /* ---------- Attendance ---------- */
 
   async getSessionsByProgram(program: NSTProgram, isAdvanceCourse?: boolean): Promise<AttendanceSession[]> {
-    const snap = await getDocs(
-      query(collection(db, "create_attendance"), where("program", "==", program))
-    );
-    const sessions = snap.docs.map((d) => d.data() as AttendanceSession);
-    return sessions.filter((s) => {
-      if (isAdvanceCourse) return !!s.isAdvanceCourse;
-      if (program === "ROTC") return !s.isAdvanceCourse;
-      return true;
-    });
+    return (await rpc("getSessionsByProgram", { program, isAdvanceCourse })) as AttendanceSession[];
   },
 
   async getSessionsByProgramForCycle(
     program: NSTProgram,
-    options: { isAdvanceCourse?: boolean; msLevel?: "1" | "2"; schoolYear?: string }
+    options: { isAdvanceCourse?: boolean; msLevel?: "1" | "2"; schoolYear?: string },
   ): Promise<AttendanceSession[]> {
-    const sessions = await this.getSessionsByProgram(program, options.isAdvanceCourse);
-    return sessions.filter((s) => {
-      if (options.msLevel && s.msLevel !== options.msLevel) return false;
-      if (options.schoolYear && (s.schoolYear ?? getSchoolYearFromDate(s.openDate)) !== options.schoolYear) return false;
-      return true;
-    });
-  },
-
-  async autoCloseExpiredSessions(): Promise<number> {
-    const LATE_THRESHOLD_MINUTES = 15;
-    const snap = await getDocs(collection(db, "create_attendance"));
-    const now = new Date();
-    let closed = 0;
-
-    console.log(`[AutoClose] Fetched ${snap.docs.length} session(s). Now = ${now.toISOString()}`);
-
-    for (const d of snap.docs) {
-      const s = d.data() as AttendanceSession;
-      if (s.status === "closed") continue;
-
-      const closeTime = new Date(s.closeDate).getTime();
-      const lateDeadline = new Date(closeTime + LATE_THRESHOLD_MINUTES * 60 * 1000);
-
-      console.log(
-        `[AutoClose] Session ${s.id} | status=${s.status} | closeDate=${s.closeDate} | ` +
-        `parsedClose=${new Date(closeTime).toISOString()} | lateDeadline=${lateDeadline.toISOString()} | ` +
-        `shouldClose=${now >= lateDeadline}`
-      );
-
-      if (now >= lateDeadline) {
-        try {
-          await updateDoc(doc(db, "create_attendance", s.id), { status: "closed" });
-          console.log(`[AutoClose] Updated status to closed for ${s.id}`);
-          await this.markAbsentStudents(s.id, s.program, s.isAdvanceCourse, s.miNumber, s.miType);
-          console.log(`[AutoClose] Marked absents for ${s.id}`);
-          closed++;
-        } catch (err) {
-          console.error(`[AutoClose] Failed to close session ${s.id}:`, err);
-        }
-      }
-    }
-
-    return closed;
+    return (await rpc("getSessionsByProgramForCycle", { program, options })) as AttendanceSession[];
   },
 
   async getAllAttendanceSessions(): Promise<AttendanceSession[]> {
-    const snap = await getDocs(collection(db, "create_attendance"));
-    const sessions = snap.docs.map((d) => d.data() as AttendanceSession);
-    return sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  },
-
-  async markAbsentStudents(sessionId: string, program: string, isAdvanceCourse?: boolean, miNumber?: number, miType?: "in" | "out"): Promise<void> {
-    const sessionSnap = await getDoc(doc(db, "create_attendance", sessionId));
-    const session = sessionSnap.exists() ? (sessionSnap.data() as AttendanceSession) : null;
-    const sessionSchoolYear = session ? (session.schoolYear ?? getSchoolYearFromDate(session.openDate)) : undefined;
-
-    const { uids } = session
-      ? await fetchApprovedUidsForCycle(program as NSTProgram, session.msLevel, sessionSchoolYear)
-      : await fetchApprovedUids(program as NSTProgram);
-
-    const profiles = await batchFetchProfiles(uids);
-    if (profiles.length === 0) return;
-
-    const recordsSnap = await getDocs(
-      query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))
-    );
-    const markedUids = new Set(recordsSnap.docs.map((d) => d.data().studentUid as string));
-
-    const now = new Date().toISOString();
-    const batch = writeBatch(db);
-    let count = 0;
-
-    for (const data of profiles) {
-      if (markedUids.has(data.uid)) continue;
-
-      if (program === "ROTC") {
-        const studentIsAdvance = !!data.willingToTakeAdvanceCourse;
-        if (isAdvanceCourse && !studentIsAdvance) continue;
-        if (!isAdvanceCourse && studentIsAdvance) continue;
-      }
-
-      const ref = doc(collection(db, "attendance_list"));
-      batch.set(ref, {
-        id: ref.id,
-        studentUid: data.uid,
-        attendanceSessionId: sessionId,
-        status: "absent",
-        ...(miNumber != null && { miNumber }),
-        ...(miType != null && { miType }),
-        createdAt: now,
-        updatedAt: now,
-      } satisfies AttendanceRecord);
-      count++;
-    }
-
-    if (count > 0) await batch.commit();
-  },
-
-  async getSessionAttendanceRecords(sessionId: string): Promise<(AttendanceRecord & { student?: EnrollmentWithMs })[]> {
-    const sessionSnap = await getDoc(doc(db, "create_attendance", sessionId));
-    const session = sessionSnap.exists() ? (sessionSnap.data() as AttendanceSession) : null;
-    const sessionSchoolYear = session ? (session.schoolYear ?? getSchoolYearFromDate(session.openDate)) : "";
-
-    const recordsSnap = await getDocs(
-      query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))
-    );
-    const records = recordsSnap.docs.map((d) => d.data() as AttendanceRecord);
-
-    const studentUids = [...new Set(records.map((r) => r.studentUid))];
-    const studentMap = new Map<string, EnrollmentWithMs>();
-
-    for (const uid of studentUids) {
-      const [snap, msRecords] = await Promise.all([
-        getDoc(doc(db, "account_reservations", uid)),
-        fetchMsRecordsByUid(uid),
-      ]);
-      if (snap.exists()) {
-        studentMap.set(uid, mergeWithMsRecords(snap.data() as EnrollmentDocument, msRecords));
-      }
-    }
-
-    return records
-      .map((r) => ({ ...r, student: studentMap.get(r.studentUid) }))
-      .filter((entry) => {
-        if (!session || !entry.student) return true;
-        const approvedRecords = entry.student.msRecords.filter((r) => r.status === "approved");
-        return approvedRecords.some((r) => {
-          if (session.msLevel && r.msLevel !== session.msLevel) return false;
-          return extractSchoolYearFromScheduleId(r.scheduleId) === sessionSchoolYear;
-        });
-      });
-  },
-
-  async getAttendanceSessionsByDate(program: string, date: string): Promise<AttendanceSession[]> {
-    const snap = await getDocs(
-      query(collection(db, "create_attendance"), where("program", "==", program))
-    );
-    return snap.docs
-      .map((d) => d.data() as AttendanceSession)
-      .filter((s) => s.openDate.startsWith(date))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  },
-
-  async getAttendanceSummary(sessionId: string, program: string): Promise<{
-    records: (AttendanceRecord & { student?: EnrollmentWithMs })[];
-    enrolledStudents: EnrollmentWithMs[];
-  }> {
-    const sessionSnap = await getDoc(doc(db, "create_attendance", sessionId));
-    const session = sessionSnap.exists() ? (sessionSnap.data() as AttendanceSession) : null;
-    const sessionSchoolYear = session ? (session.schoolYear ?? getSchoolYearFromDate(session.openDate)) : undefined;
-
-    const { uids, msRecords } = session
-      ? await fetchApprovedUidsForCycle(program as NSTProgram, session.msLevel, sessionSchoolYear)
-      : await fetchApprovedUids(program as NSTProgram);
-
-    const [recordsSnap, profiles] = await Promise.all([
-      getDocs(query(collection(db, "attendance_list"), where("attendanceSessionId", "==", sessionId))),
-      batchFetchProfiles(uids),
-    ]);
-
-    const enrolledStudents = profiles.map((p) => mergeWithMsRecords(p, msRecords));
-    const studentMap = new Map(enrolledStudents.map((s) => [s.uid, s]));
-
-    const records = recordsSnap.docs.map((d) => {
-      const record = d.data() as AttendanceRecord;
-      return { ...record, student: studentMap.get(record.studentUid) };
-    });
-
-    return { records, enrolledStudents };
+    return (await rpc("getAllAttendanceSessions")) as AttendanceSession[];
   },
 
   async createAttendanceSession(data: {
@@ -766,204 +195,95 @@ export const adminService = {
     location: AttendanceLocation;
     createdBy: string;
   }): Promise<string> {
-    await this.autoCloseExpiredSessions();
+    return (await rpc("createAttendanceSession", { data })) as string;
+  },
 
-    const cycle = data.schoolYear
-      ? { schoolYear: data.schoolYear, msLevel: data.msLevel }
-      : await resolveAttendanceCycle(data.program, data.openDate);
+  async autoCloseExpiredSessions(): Promise<number> {
+    return (await rpc("autoCloseExpiredSessions")) as number;
+  },
 
-    const existingSessions = await this.getSessionsByProgram(data.program, data.isAdvanceCourse);
-    const sameCycleSessions = existingSessions.filter((session) => {
-      const sessionCycle = getAttendanceCycleForSession(session);
-      return sessionCycle.schoolYear === cycle.schoolYear && sessionCycle.msLevel === cycle.msLevel;
-    });
+  async markAbsentStudents(
+    sessionId: string,
+    program: string,
+    isAdvanceCourse?: boolean,
+    miNumber?: number,
+    miType?: "in" | "out",
+  ): Promise<void> {
+    await rpc("markAbsentStudents", { sessionId, program, isAdvanceCourse, miNumber, miType });
+  },
 
-    if (data.miNumber && data.miType) {
-      const sameMiSessions = sameCycleSessions.filter(
-        (session) => session.miNumber === data.miNumber
-      );
-      const existingIn = sameMiSessions.find((session) => session.miType === "in");
-      const existingOut = sameMiSessions.find((session) => session.miType === "out");
+  async getSessionAttendanceRecords(sessionId: string): Promise<(AttendanceRecord & { student?: EnrollmentWithMs })[]> {
+    return (await rpc("getSessionAttendanceRecords", { sessionId })) as (AttendanceRecord & { student?: EnrollmentWithMs })[];
+  },
 
-      const duplicateSession = sameMiSessions.find((session) => session.miType === data.miType);
-
-      if (data.miType === "in" && (existingIn || duplicateSession)) {
-        throw new Error(`MI ${data.miNumber} IN already exists for this cycle.`);
-      }
-
-      if (data.miType === "out") {
-        if (!existingIn) {
-          throw new Error(`MI ${data.miNumber} OUT cannot be created before MI ${data.miNumber} IN.`);
-        }
-
-        if (getEffectiveAttendanceStatus(existingIn) !== "closed") {
-          throw new Error(`MI ${data.miNumber} IN must be closed first before creating MI ${data.miNumber} OUT.`);
-        }
-
-        if (existingOut) {
-          throw new Error(`MI ${data.miNumber} OUT already exists for this cycle.`);
-        }
-      }
-    }
-
-    const ref = doc(collection(db, "create_attendance"));
-
-    const now = new Date();
-    const open = new Date(data.openDate);
-    const close = new Date(data.closeDate);
-
-    let status: AttendanceStatus = "scheduled";
-    if (now >= open && now < close) status = "open";
-    else if (now >= close) status = "closed";
-
-    const session: AttendanceSession = {
-      id: ref.id,
-      program: data.program,
-      ...(cycle.msLevel ? { msLevel: cycle.msLevel } : {}),
-      ...(data.isAdvanceCourse ? { isAdvanceCourse: true } : {}),
-      schoolYear: cycle.schoolYear,
-      ...(data.miNumber ? { miNumber: data.miNumber } : {}),
-      ...(data.miType ? { miType: data.miType } : {}),
-      openDate: data.openDate,
-      closeDate: data.closeDate,
-      location: data.location,
-      radiusMeters: ATTENDANCE_RADIUS_METERS,
-      status,
-      createdAt: now.toISOString(),
-      createdBy: data.createdBy,
+  async getAttendanceSummary(sessionId: string, program: string): Promise<{
+    records: (AttendanceRecord & { student?: EnrollmentWithMs })[];
+    enrolledStudents: EnrollmentWithMs[];
+  }> {
+    return (await rpc("getAttendanceSummary", { sessionId, program })) as {
+      records: (AttendanceRecord & { student?: EnrollmentWithMs })[];
+      enrolledStudents: EnrollmentWithMs[];
     };
-
-    await setDoc(ref, session);
-    return ref.id;
   },
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Grades Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-
-  async getApprovedEnrollmentsByProgram(program: NSTProgram): Promise<EnrollmentWithMs[]> {
-    const { uids, msRecords } = await fetchApprovedUids(program);
-    const profiles = await batchFetchProfiles(uids);
-    return profiles
-      .map((p) => mergeWithMsRecords(p, msRecords))
-      .sort((a, b) => a.lastName.localeCompare(b.lastName));
-  },
-
-  async getStudentGradesByMs(msLevel: "ms1" | "ms2", program: NSTProgram): Promise<Map<string, StudentGrade>> {
-    const q = query(
-      collection(db, "student_grades", msLevel, "students"),
-      where("program", "==", program),
-    );
-    const snapshot = await getDocs(q);
-    const map = new Map<string, StudentGrade>();
-    for (const d of snapshot.docs) {
-      const grade = d.data() as StudentGrade;
-      map.set(grade.student_uid, grade);
-    }
-    return map;
-  },
-
-  async saveStudentGrade(uid: string, program: NSTProgram, msLevel: "ms1" | "ms2", grade: number, midterm?: number, finalTerm?: number): Promise<void> {
-    const ref = doc(db, "student_grades", msLevel, "students", uid);
-    const status: "Passed" | "Failed" = grade >= 1.0 && grade <= 3.0 ? "Passed" : "Failed";
-    const now = new Date().toISOString();
-    const existing = await getDoc(ref);
-    const data: Record<string, unknown> = { student_uid: uid, grade, status, program, updatedAt: now };
-    if (midterm !== undefined) data.midterm = midterm;
-    if (finalTerm !== undefined) data.finalTerm = finalTerm;
-    data.createdAt = existing.exists() ? (existing.data().createdAt || now) : now;
-    await setDoc(ref, data);
-  },
-
-  async saveStudentGradesBatch(updates: { uid: string; program: NSTProgram; msLevel: "ms1" | "ms2"; grade: number }[]): Promise<void> {
-    const batchSize = 500;
-    for (let i = 0; i < updates.length; i += batchSize) {
-      const batch = writeBatch(db);
-      const chunk = updates.slice(i, i + batchSize);
-      const now = new Date().toISOString();
-      for (const u of chunk) {
-        const ref = doc(db, "student_grades", u.msLevel, "students", u.uid);
-        const status: "Passed" | "Failed" = u.grade >= 1.0 && u.grade <= 3.0 ? "Passed" : "Failed";
-        batch.set(ref, { student_uid: u.uid, grade: u.grade, status, program: u.program, createdAt: now, updatedAt: now });
-      }
-      await batch.commit();
-    }
+  async getAttendanceSessionsByDate(program: string, date: string): Promise<AttendanceSession[]> {
+    return (await rpc("getAttendanceSessionsByDate", { program, date })) as AttendanceSession[];
   },
 
   async updateAttendanceStatus(recordId: string, newStatus: AttendanceRecordStatus): Promise<void> {
-    const ref = doc(db, "attendance_list", recordId);
-    await updateDoc(ref, { status: newStatus, updatedAt: new Date().toISOString() });
+    await rpc("updateAttendanceStatus", { recordId, newStatus });
   },
 
+  /* ---------- Grades ---------- */
+
+  async getStudentGradesByMs(msLevel: "ms1" | "ms2", program: NSTProgram): Promise<Map<string, StudentGrade>> {
+    const obj = (await rpc("getStudentGradesByMs", { msLevel, program })) as Record<string, StudentGrade>;
+    return new Map(Object.entries(obj));
+  },
+
+  async saveStudentGrade(
+    uid: string,
+    program: NSTProgram,
+    msLevel: "ms1" | "ms2",
+    grade: number,
+    midterm?: number,
+    finalTerm?: number,
+  ): Promise<void> {
+    await rpc("saveStudentGrade", { uid, program, msLevel, grade, midterm, finalTerm });
+  },
+
+  async saveStudentGradesBatch(
+    updates: { uid: string; program: NSTProgram; msLevel: "ms1" | "ms2"; grade: number }[],
+  ): Promise<void> {
+    await rpc("saveStudentGradesBatch", { updates });
+  },
+
+  async getStudentGrades(studentUid: string): Promise<{ ms1?: StudentGrade; ms2?: StudentGrade }> {
+    return (await rpc("getStudentGrades", { studentUid })) as { ms1?: StudentGrade; ms2?: StudentGrade };
+  },
+
+  /* ---------- Offenses ---------- */
+
   async getAllAttendanceOffenses(): Promise<(AttendanceOffense & { student?: EnrollmentWithMs })[]> {
-    const offenseSnap = await getDocs(collection(db, "attendance_offenses"));
-    if (offenseSnap.empty) return [];
-
-    const offenses = offenseSnap.docs.map((d) => d.data() as AttendanceOffense);
-    const uids = offenses.map((o) => o.student_uid);
-
-    const enrollmentMap = new Map<string, EnrollmentWithMs>();
-    const batchSize = 10;
-    for (let i = 0; i < uids.length; i += batchSize) {
-      const batch = uids.slice(i, i + batchSize);
-      const q = query(collection(db, "account_reservations"), where("uid", "in", batch));
-      const snap = await getDocs(q);
-      for (const d of snap.docs) {
-        const data = d.data() as EnrollmentDocument;
-        const msRecords = await fetchMsRecordsByUid(data.uid);
-        enrollmentMap.set(data.uid, mergeWithMsRecords(data, msRecords));
-      }
-    }
-
-    return offenses.map((o) => ({ ...o, student: enrollmentMap.get(o.student_uid) }));
+    return (await rpc("getAllAttendanceOffenses")) as (AttendanceOffense & { student?: EnrollmentWithMs })[];
   },
 
   async getAttendanceOffense(uid: string): Promise<AttendanceOffense | null> {
-    const snap = await getDoc(doc(db, "attendance_offenses", uid));
-    return snap.exists() ? (snap.data() as AttendanceOffense) : null;
+    return (await rpc("getAttendanceOffense", { uid })) as AttendanceOffense | null;
   },
 
   async recordAttendanceOffense(uid: string): Promise<AttendanceOffense> {
-    const ref = doc(db, "attendance_offenses", uid);
-    const now = new Date().toISOString();
-    const existing = await getDoc(ref);
-
-    if (existing.exists()) {
-      const data = existing.data() as AttendanceOffense;
-      const newOffend = Math.min(data.offend + 1, 2);
-      const updated: AttendanceOffense = {
-        ...data,
-        offend: newOffend,
-        settled: newOffend >= 2 ? false : data.settled,
-        updatedAt: now,
-      };
-      await setDoc(ref, updated);
-      return updated;
-    } else {
-      const offense: AttendanceOffense = {
-        student_uid: uid,
-        offend: 1,
-        settled: false,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await setDoc(ref, offense);
-      return offense;
-    }
+    return (await rpc("recordAttendanceOffense", { uid })) as AttendanceOffense;
   },
 
   async settleAttendanceOffense(uid: string): Promise<void> {
-    const ref = doc(db, "attendance_offenses", uid);
-    await updateDoc(ref, { settled: true, updatedAt: new Date().toISOString() });
+    await rpc("settleAttendanceOffense", { uid });
   },
 
-  async updateEnrollmentFields(uid: string, fields: Partial<EnrollmentDocument>): Promise<void> {
-    const ref = doc(db, "account_reservations", uid);
-    await updateDoc(ref, { ...fields, updatedAt: new Date().toISOString() });
-  },
+  /* ---------- Student attendance records ---------- */
 
   async getStudentAttendanceRecords(studentUid: string): Promise<AttendanceRecord[]> {
-    const q = query(collection(db, "attendance_list"), where("studentUid", "==", studentUid));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as AttendanceRecord);
+    return (await rpc("getStudentAttendanceRecords", { studentUid })) as AttendanceRecord[];
   },
 
   async getStudentAttendanceRecordsForCycle(
@@ -972,78 +292,35 @@ export const adminService = {
     msLevel: "1" | "2",
     schoolYear: string,
   ): Promise<AttendanceRecord[]> {
-    const records = await this.getStudentAttendanceRecords(studentUid);
-    if (records.length === 0) return [];
-
-    const sessions = await Promise.all(
-      records.map(async (record) => {
-        const snap = await getDoc(doc(db, "create_attendance", record.attendanceSessionId));
-        return snap.exists() ? ({ record, session: snap.data() as AttendanceSession }) : null;
-      })
-    );
-
-    const matchingRecords = sessions
-      .filter((entry): entry is { record: AttendanceRecord; session: AttendanceSession } => !!entry)
-      .filter(({ session }) => {
-        const sessionSchoolYear = session.schoolYear ?? getSchoolYearFromDate(session.openDate);
-        if (session.program !== program) return false;
-        if (sessionSchoolYear !== schoolYear) return false;
-        return session.msLevel === msLevel;
-      })
-      .sort((a, b) => new Date(b.record.updatedAt).getTime() - new Date(a.record.updatedAt).getTime());
-
-    const dedupedBySlot = new Map<string, AttendanceRecord>();
-    for (const { record, session } of matchingRecords) {
-      const slotKey = buildAttendanceSlotKey(session);
-      if (!dedupedBySlot.has(slotKey)) {
-        dedupedBySlot.set(slotKey, record);
-      }
-    }
-
-    return Array.from(dedupedBySlot.values());
+    return (await rpc("getStudentAttendanceRecordsForCycle", { studentUid, program, msLevel, schoolYear })) as AttendanceRecord[];
   },
 
+  /* ---------- Serial numbers & signatories ---------- */
+
   async saveSignatorySettings(program: NSTProgram, settings: Record<string, string | null>): Promise<void> {
-    const ref = doc(db, "serial_number_settings", program);
-    await setDoc(ref, { ...settings, program, updatedAt: new Date().toISOString() }, { merge: true });
+    await rpc("saveSignatorySettings", { program, settings });
   },
 
   async getSignatorySettings(program: NSTProgram): Promise<Record<string, string> | null> {
-    const snap = await getDoc(doc(db, "serial_number_settings", program));
-    if (!snap.exists()) return null;
-    return snap.data() as Record<string, string>;
+    return (await rpc("getSignatorySettings", { program })) as Record<string, string> | null;
   },
 
-  async saveSerialNumber(uid: string, serialNumber: string, program: NSTProgram, signatories: Record<string, string>): Promise<void> {
-    const ref = doc(db, "serial_number", uid);
-    await setDoc(ref, {
-      uid,
-      serialNumber,
-      program,
-      ...signatories,
-      createdAt: new Date().toISOString(),
-    });
+  async saveSerialNumber(
+    uid: string,
+    serialNumber: string,
+    program: NSTProgram,
+    signatories: Record<string, string>,
+  ): Promise<void> {
+    await rpc("saveSerialNumber", { uid, serialNumber, program, signatories });
   },
 
-  async getSerialNumbersByProgram(program: NSTProgram): Promise<Map<string, { serialNumber: string; createdAt: string; [key: string]: string | undefined }>> {
-    const q = query(collection(db, "serial_number"), where("program", "==", program));
-    const snap = await getDocs(q);
-    const map = new Map<string, { serialNumber: string; createdAt: string; [key: string]: string | undefined }>();
-    for (const d of snap.docs) {
-      const data = d.data();
-      map.set(data.uid, { ...data, serialNumber: data.serialNumber, createdAt: data.createdAt } as { serialNumber: string; createdAt: string; [key: string]: string | undefined });
-    }
-    return map;
-  },
-
-  async getStudentGrades(studentUid: string): Promise<{ ms1?: StudentGrade; ms2?: StudentGrade }> {
-    const [ms1Snap, ms2Snap] = await Promise.all([
-      getDoc(doc(db, "student_grades", "ms1", "students", studentUid)),
-      getDoc(doc(db, "student_grades", "ms2", "students", studentUid)),
-    ]);
-    return {
-      ms1: ms1Snap.exists() ? (ms1Snap.data() as StudentGrade) : undefined,
-      ms2: ms2Snap.exists() ? (ms2Snap.data() as StudentGrade) : undefined,
-    };
+  async getSerialNumbersByProgram(
+    program: NSTProgram,
+  ): Promise<Map<string, { serialNumber: string; createdAt: string; [key: string]: string | undefined }>> {
+    const obj = (await rpc("getSerialNumbersByProgram", { program })) as Record<
+      string,
+      { serialNumber: string; createdAt: string; [key: string]: string | undefined }
+    >;
+    return new Map(Object.entries(obj));
   },
 };

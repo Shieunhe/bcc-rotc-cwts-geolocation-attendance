@@ -12,7 +12,7 @@ async function readApiError(res: Response): Promise<{ message?: string; error?: 
   if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html") || trimmed.startsWith("<!doctype")) {
     return {
       error:
-        `API returned an HTML error page (${res.status}) instead of JSON — usually a server crash in /api/forgot-password/send. Restart dev server after updating next.config (serverExternalPackages). Check the terminal for Node errors related to firebase-admin.`,
+        `API returned an HTML error page (${res.status}) instead of JSON — usually a server crash in /api/forgot-password/send. Restart the dev server and check terminal for Node errors.`,
     };
   }
   try {
@@ -23,9 +23,9 @@ async function readApiError(res: Response): Promise<{ message?: string; error?: 
 }
 
 function fallbackForStatus(status: number): string {
-  if (status === 404) return "No matching Firebase login for password reset.";
-  if (status === 502) return "Email could not be sent. Check Resend API key and sender address.";
-  if (status === 500) return "Server error. Check Firebase Admin credentials in .env and server logs.";
+  if (status === 404) return "No account found with this email.";
+  if (status === 502) return "Email could not be sent. Check GMAIL_USER and GMAIL_APP_PASSWORD in .env.";
+  if (status === 500) return "Server error. Check MySQL connection and server logs.";
   return `Request failed (${status}).`;
 }
 

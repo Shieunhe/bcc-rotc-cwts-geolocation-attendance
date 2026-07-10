@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
-import { auth } from "@/lib/firebase";
 import { adminService } from "@/services/admin.service";
 import { AttendanceLocation, AttendanceSession, ATTENDANCE_RADIUS_METERS, EnrollmentSchedule, MSLevel, getSchoolYearFromDate } from "@/types";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
@@ -145,6 +144,14 @@ export default function OfficerCreateAttendance() {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [miProgress, setMiProgress] = useState<Map<number, MIStatus>>(new Map());
   const [currentCycle, setCurrentCycle] = useState<AttendanceCycle | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState("unknown");
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data?.user?.email) setCurrentUserEmail(data.user.email); })
+      .catch(() => {});
+  }, []);
 
   const fetchSessionsForProgram = useCallback(async (prog: Program) => {
     if (!prog) return;
@@ -287,7 +294,7 @@ export default function OfficerCreateAttendance() {
         openDate,
         closeDate,
         location: location!,
-        createdBy: auth.currentUser?.email ?? "unknown",
+        createdBy: currentUserEmail,
       });
       const label = `${sessionUnitLabel} ${miNumber} ${miType.toUpperCase()}`;
       setSuccessMessage(`${label} attendance session created successfully!`);

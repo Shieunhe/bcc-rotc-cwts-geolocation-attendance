@@ -1,9 +1,5 @@
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, deleteField } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { EnrollmentDocument, EnrollmentSchedule } from "@/types";
+import { EnrollmentDocument } from "@/types";
 import { EnrollmentFormData } from "@/types/enrollmentTypes";
-import { buildScheduleId, compareSchedulesDesc, isScheduleOpenAt } from "@/utils/enrollmentSchedule";
 
 const MAX_WIDTH = 800;
 const MAX_HEIGHT = 800;
@@ -69,218 +65,68 @@ export interface EnrollmentResult {
   error?: string;
 }
 
+async function rpc(method: string, params: Record<string, unknown>): Promise<EnrollmentResult> {
+  const res = await fetch("/api/rpc/enrollment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method, params }),
+  });
+  return res.json();
+}
+
+async function serializeFiles(formData: EnrollmentFormData) {
+  const [photoBase64, corBase64, medicalCertBase64, xrayBase64] =
+    await Promise.all([
+      fileToBase64(formData.photo),
+      fileToBase64(formData.corFile),
+      fileToBase64(formData.medicalCertificate),
+      fileToBase64(formData.xrayFile),
+    ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { photo, corFile, medicalCertificate, xrayFile, confirmPassword, ...fields } = formData;
+
+  return {
+    ...fields,
+    photo: photoBase64,
+    corFile: corBase64,
+    medicalCertificate: medicalCertBase64,
+    xrayFile: xrayBase64,
+  };
+}
+
 export const enrollmentService = {
   async submitEnrollment(formData: EnrollmentFormData): Promise<EnrollmentResult> {
     try {
-      if (formData.nstpComponent === "CWTS" && formData.msLevel !== "1") {
-        return { success: false, error: "First-time CWTS enrollment is only allowed for CWTS 1. Please use re-enrollment to proceed to CWTS 2." };
-      }
-      if (formData.nstpComponent === "ROTC" && formData.msLevel !== "1") {
-        return { success: false, error: "First-time ROTC enrollment is only allowed for MS 1. Please use re-enrollment to proceed to MS 2." };
-      }
-
-      // 1. Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-      const uid = userCredential.user.uid;
-
-      // 2. Convert files to base64 blobs
-      const [photoBase64, corBase64, medicalCertBase64, xrayBase64] = await Promise.all([
-        fileToBase64(formData.photo),
-        fileToBase64(formData.corFile),
-        fileToBase64(formData.medicalCertificate),
-        fileToBase64(formData.xrayFile),
-      ]);
-
-      // 3. Prepare data for Firestore
-      const firestoreData: EnrollmentDocument = {
-        uid,
-        // Personal Info
-        studentId: formData.studentId,
-        lastName: formData.lastName,
-        firstName: formData.firstName,
-        middleName: formData.middleName || "",
-        ...(formData.suffix ? { suffix: formData.suffix } : {}),
-        religion: formData.religion,
-        birthdate: formData.birthdate,
-        sex: formData.sex,
-        contactNumber: formData.contactNumber,
-        placeOfBirth: formData.placeOfBirth,
-        temporaryBarangay: formData.temporaryBarangay,
-        temporaryMunicipality: formData.temporaryMunicipality,
-        temporaryProvince: formData.temporaryProvince,
-        permanentBarangay: formData.permanentBarangay,
-        permanentMunicipality: formData.permanentMunicipality,
-        permanentProvince: formData.permanentProvince,
-        fatherName: formData.fatherName,
-        fatherOccupation: formData.fatherOccupation,
-        motherName: formData.motherName,
-        motherOccupation: formData.motherOccupation,
-        emergencyContactName: formData.emergencyContactName,
-        emergencyContactAddress: formData.emergencyContactAddress,
-        emergencyContactRelationship: formData.emergencyContactRelationship,
-        emergencyContactContactNumber: formData.emergencyContactContactNumber,
-        willingToTakeAdvanceCourse: formData.willingToTakeAdvanceCourse,
-        // Academic Info
-        course: formData.course,
-        yearLevel: formData.yearLevel,
-        nstpComponent: formData.nstpComponent,
-        // Physical & Health
-        height: formData.height,
-        weight: formData.weight,
-        bloodType: formData.bloodType,
-        complexion: formData.complexion,
-        hasMedicalCondition: formData.hasMedicalCondition,
-        medicalCondition: formData.medicalCondition || "",
-        medicalCertificate: medicalCertBase64,
-        xrayFile: xrayBase64,
-        // Account Info
-        email: formData.email,
-        username: formData.username,
-        password: formData.password,
-        photo: photoBase64,
-        corFile: corBase64,
-        // Metadata
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // 4. Save to Firestore with UID as document ID
-      await setDoc(doc(db, "account_reservations", uid), firestoreData);
-
-      // 5. Create student_ms_records document
-      const scheduleId = await this._findOpenScheduleId(formData.nstpComponent, formData.msLevel);
-      const now = new Date().toISOString();
-      await addDoc(collection(db, "student_ms_records"), {
-        uid,
-        scheduleId,
-        msLevel: formData.msLevel,
-        status: "pending",
-        program: formData.nstpComponent,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      return { success: true, uid };
+      const serialized = await serializeFiles(formData);
+      return await rpc("submitEnrollment", { formData: serialized });
     } catch (err: unknown) {
       console.error("Enrollment error:", err);
-      let errorMessage = "Enrollment failed.";
-      
-      if (err instanceof Error) {
-        if (err.message.includes("email-already-in-use")) {
-          errorMessage = "This email is already registered. Please use a different email.";
-        } else if (err.message.includes("weak-password")) {
-          errorMessage = "Password is too weak. Please use a stronger password.";
-        } else if (err.message.includes("invalid-email")) {
-          errorMessage = "Invalid email address.";
-        } else {
-          errorMessage = err.message;
-        }
-      }
-      
-      return { success: false, error: errorMessage };
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Enrollment failed.",
+      };
     }
   },
 
-  async submitReEnrollment(uid: string, formData: EnrollmentFormData, existingDoc: EnrollmentDocument): Promise<EnrollmentResult> {
+  async submitReEnrollment(
+    uid: string,
+    formData: EnrollmentFormData,
+    existingDoc: EnrollmentDocument
+  ): Promise<EnrollmentResult> {
     try {
-      const [photoBase64, corBase64, medicalCertBase64, xrayBase64] = await Promise.all([
-        fileToBase64(formData.photo),
-        fileToBase64(formData.corFile),
-        fileToBase64(formData.medicalCertificate),
-        fileToBase64(formData.xrayFile),
-      ]);
-
-      const updateData: Partial<EnrollmentDocument> = {
-        studentId: formData.studentId,
-        lastName: formData.lastName,
-        firstName: formData.firstName,
-        middleName: formData.middleName || "",
-        suffix: formData.suffix || "",
-        religion: formData.religion,
-        birthdate: formData.birthdate,
-        sex: formData.sex,
-        contactNumber: formData.contactNumber,
-        placeOfBirth: formData.placeOfBirth,
-        temporaryBarangay: formData.temporaryBarangay,
-        temporaryMunicipality: formData.temporaryMunicipality,
-        temporaryProvince: formData.temporaryProvince,
-        permanentBarangay: formData.permanentBarangay,
-        permanentMunicipality: formData.permanentMunicipality,
-        permanentProvince: formData.permanentProvince,
-        fatherName: formData.fatherName,
-        fatherOccupation: formData.fatherOccupation,
-        motherName: formData.motherName,
-        motherOccupation: formData.motherOccupation,
-        emergencyContactName: formData.emergencyContactName,
-        emergencyContactAddress: formData.emergencyContactAddress,
-        emergencyContactRelationship: formData.emergencyContactRelationship,
-        emergencyContactContactNumber: formData.emergencyContactContactNumber,
-        willingToTakeAdvanceCourse: formData.willingToTakeAdvanceCourse,
-        course: formData.course,
-        yearLevel: formData.yearLevel,
-        height: formData.height,
-        weight: formData.weight,
-        bloodType: formData.bloodType,
-        complexion: formData.complexion,
-        hasMedicalCondition: formData.hasMedicalCondition,
-        medicalCondition: formData.medicalCondition || "",
-        photo: photoBase64 || existingDoc.photo,
-        corFile: corBase64 || existingDoc.corFile,
-        medicalCertificate: medicalCertBase64 || existingDoc.medicalCertificate,
-        xrayFile: xrayBase64 || existingDoc.xrayFile,
-        updatedAt: new Date().toISOString(),
-        ...(formData.nstpComponent === "ROTC"
-          ? {
-              battalion: deleteField(),
-              rotcCompany: deleteField(),
-              rotcPlatoon: deleteField(),
-              specialUnit: deleteField(),
-            }
-          : {}),
-      };
-
-      await updateDoc(doc(db, "account_reservations", uid), updateData as Record<string, unknown>);
-
-      // Create student_ms_records document for re-enrollment
-      const scheduleId = await this._findOpenScheduleId(formData.nstpComponent, formData.msLevel);
-      const now = new Date().toISOString();
-      await addDoc(collection(db, "student_ms_records"), {
+      const serialized = await serializeFiles(formData);
+      return await rpc("submitReEnrollment", {
         uid,
-        scheduleId,
-        msLevel: formData.msLevel,
-        status: "pending",
-        program: formData.nstpComponent,
-        createdAt: now,
-        updatedAt: now,
+        formData: serialized,
+        existingDoc,
       });
-
-      return { success: true, uid };
     } catch (err: unknown) {
       console.error("Re-enrollment error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Re-enrollment failed.";
-      return { success: false, error: errorMessage };
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Re-enrollment failed.",
+      };
     }
-  },
-
-  async _findOpenScheduleId(program: string, msLevel: string): Promise<string> {
-    const q = query(
-      collection(db, "enrollment_schedules"),
-      where("program", "==", program),
-      where("msLevel", "==", msLevel),
-    );
-    const snap = await getDocs(q);
-    const schedules = snap.docs
-      .map((d) => d.data() as EnrollmentSchedule)
-      .sort(compareSchedulesDesc);
-    const open = schedules.find((schedule) => isScheduleOpenAt(schedule));
-    if (open) return buildScheduleId(open);
-    const latestStarted = schedules.find((schedule) => new Date() >= new Date(schedule.openDate));
-    if (latestStarted) return buildScheduleId(latestStarted);
-    if (schedules[0]) return buildScheduleId(schedules[0]);
-    return "";
   },
 };

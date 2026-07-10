@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import Logo from "@/components/common/Logo";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 
 export interface NavItem {
   label: string;
@@ -82,7 +80,7 @@ export default function Sidebar({
 
   async function handleLogout() {
     setLoggingOut(true);
-    await signOut(auth);
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   }
 

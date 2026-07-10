@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { studentService } from "@/services/student.service";
 import { StudentGrade } from "@/types";
 
@@ -13,14 +11,21 @@ export default function Grades() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user) { setLoading(false); return; }
-      studentService.getStudentGrades(user.uid).then((g) => {
-        setMs1(g.ms1);
-        setMs2(g.ms2);
-      }).finally(() => setLoading(false));
-    });
-    return unsub;
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then(async (data) => {
+        if (cancelled) return;
+        if (!data?.user) { setLoading(false); return; }
+        try {
+          const g = await studentService.getStudentGrades(String(data.user.id));
+          if (!cancelled) { setMs1(g.ms1); setMs2(g.ms2); }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   const hasGrades = ms1 || ms2;

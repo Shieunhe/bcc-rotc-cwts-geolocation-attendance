@@ -3,7 +3,6 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { AttendanceSession, AttendanceRecord, StudentGrade, StudentMsRecord } from "@/types";
 import { studentService } from "@/services/student.service";
-import { auth } from "@/lib/firebase";
 
 const LocationMap = lazy(() => import("@/components/common/LocationMap"));
 
@@ -112,6 +111,14 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
   const [msRecords, setMsRecords] = useState<StudentMsRecord[]>([]);
   const [showGraduatedModal, setShowGraduatedModal] = useState(false);
   const [showNotEligibleModal, setShowNotEligibleModal] = useState(false);
+  const [currentUid, setCurrentUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setCurrentUid(data?.user?.id ? String(data.user.id) : null))
+      .catch(() => setCurrentUid(null));
+  }, []);
 
   const isGraduated = ms1 !== null && ms2 !== null;
   const hasMs1Grade = ms1 !== null;
@@ -119,26 +126,24 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
   const isNotEligible = hasMs1Grade && !ms2Approved && !isGraduated;
 
   useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
+    if (!currentUid) return;
     Promise.all([
-      studentService.getStudentGrades(uid),
-      studentService.getStudentMsRecords(uid),
+      studentService.getStudentGrades(currentUid),
+      studentService.getStudentMsRecords(currentUid),
     ]).then(([g, records]) => {
       setMs1(g.ms1);
       setMs2(g.ms2);
       setMsRecords(records);
     });
-  }, []);
+  }, [currentUid]);
 
   useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) { setCheckingRecord(false); return; }
-    studentService.getAttendanceRecord(uid, session.id).then((record) => {
+    if (!currentUid) { setCheckingRecord(false); return; }
+    studentService.getAttendanceRecord(currentUid, session.id).then((record) => {
       setExistingRecord(record);
       setCheckingRecord(false);
     }).catch(() => setCheckingRecord(false));
-  }, [session.id]);
+  }, [session.id, currentUid]);
 
   function captureLocation() {
     if (!navigator.geolocation) {
@@ -208,7 +213,7 @@ export default function AttendanceCard({ session }: AttendanceCardProps) {
   const canMark = !isClosed && isWithinRadius && !locLoading && !alreadyMarked && !checkingRecord;
 
   async function handleMarkAttendance() {
-    const uid = auth.currentUser?.uid;
+    const uid = currentUid;
     if (!uid || !canMark) return;
 
     if (isGraduated) {

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
 import { studentService } from "@/services/student.service";
 import { AttendanceOffense } from "@/types";
 
@@ -15,24 +13,25 @@ export default function AttendanceWarningModal() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-      try {
-        const data = await studentService.getAttendanceOffense(user.uid);
-        if (!data) return;
-
-        const isBlocked = data.offend >= 2 && !data.settled;
-        const needsWarningAck = data.offend === 1 && (!data.warningAcknowledgedAt || data.updatedAt > data.warningAcknowledgedAt);
-
-        if (isBlocked || needsWarningAck) {
-          setOffense(data);
-          setVisible(true);
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then(async (data) => {
+        if (cancelled || !data?.user) return;
+        try {
+          const offense = await studentService.getAttendanceOffense(String(data.user.id));
+          if (!offense) return;
+          const isBlocked = offense.offend >= 2 && !offense.settled;
+          const needsWarningAck = offense.offend === 1 && (!offense.warningAcknowledgedAt || offense.updatedAt > offense.warningAcknowledgedAt);
+          if (isBlocked || needsWarningAck) {
+            setOffense(offense);
+            setVisible(true);
+          }
+        } catch {
+          /* silent */
         }
-      } catch {
-        /* silent */
-      }
-    });
-    return () => unsub();
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const handleDismiss = async () => {
@@ -49,7 +48,7 @@ export default function AttendanceWarningModal() {
 
   const handleLogout = async () => {
     setLoggingOut(true);
-    await signOut(auth);
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   };
 

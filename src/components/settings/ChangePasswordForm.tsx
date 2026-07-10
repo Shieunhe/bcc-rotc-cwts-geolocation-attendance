@@ -1,13 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import {
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-  updatePassword,
-  type AuthError,
-} from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 
@@ -16,22 +9,6 @@ const LockIcon = (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
   </svg>
 );
-
-function authErrorMessage(code: string): string {
-  switch (code) {
-    case "auth/wrong-password":
-    case "auth/invalid-credential":
-      return "Current password is incorrect.";
-    case "auth/too-many-requests":
-      return "Too many attempts. Try again later.";
-    case "auth/requires-recent-login":
-      return "Please sign out and sign in again, then change your password.";
-    case "auth/weak-password":
-      return "New password is too weak. Use a stronger password.";
-    default:
-      return "Could not update password. Try again.";
-  }
-}
 
 export default function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -43,21 +20,6 @@ export default function ChangePasswordForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMessage(null);
-
-    const user = auth.currentUser;
-    if (!user?.email) {
-      setMessage({ type: "err", text: "You are not signed in." });
-      return;
-    }
-
-    const hasPasswordProvider = user.providerData.some((p) => p.providerId === "password");
-    if (!hasPasswordProvider) {
-      setMessage({
-        type: "err",
-        text: "This account does not use an email password. Use the provider you signed up with to manage your login.",
-      });
-      return;
-    }
 
     if (newPassword.length < 6) {
       setMessage({ type: "err", text: "New password must be at least 6 characters." });
@@ -74,16 +36,22 @@ export default function ChangePasswordForm() {
 
     setLoading(true);
     try {
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
-      await reauthenticateWithCredential(user, credential);
-      await updatePassword(user, newPassword);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setMessage({ type: "ok", text: "Password updated successfully." });
-    } catch (err) {
-      const code = (err as AuthError)?.code ?? "";
-      setMessage({ type: "err", text: authErrorMessage(code) });
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "err", text: data.error || "Could not update password. Try again." });
+      } else {
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setMessage({ type: "ok", text: data.message || "Password updated successfully." });
+      }
+    } catch {
+      setMessage({ type: "err", text: "Could not update password. Try again." });
     } finally {
       setLoading(false);
     }

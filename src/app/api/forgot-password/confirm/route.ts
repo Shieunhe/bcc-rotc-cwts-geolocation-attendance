@@ -1,29 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import type { Timestamp } from "firebase-admin/firestore";
-import {
-  FIREBASE_ADMIN_CREDENTIAL_HELP,
-  FIREBASE_ADMIN_JWT_TIME_HELP,
-  getAdminAuth,
-  getAdminDb,
-  isFirebaseCredentialRejected,
-  isFirebaseJwtTimeError,
-} from "@/lib/firebaseAdmin";
-import { resolveAuthUserForPasswordReset } from "@/lib/resolveAuthUserForPasswordReset";
+import bcrypt from "bcryptjs";
+import { query, execute } from "@/lib/db";
+import type { RowDataPacket } from "mysql2/promise";
 
 export const runtime = "nodejs";
 
-const PASSWORD_RESET_COLLECTION = "password_reset_codes";
-const CODE_FIELD = "verification-code";
-const EXPIRES_FIELD = "verification-code-expires-at";
-
-function expiresToMillis(value: unknown): number {
-  if (value && typeof value === "object" && "toMillis" in value && typeof (value as Timestamp).toMillis === "function") {
-    return (value as Timestamp).toMillis();
-  }
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  return 0;
-}
 function codesMatch(stored: string, given: string): boolean {
   const a = stored.trim().padStart(6, "0");
   const b = given.trim().padStart(6, "0");
@@ -37,17 +19,12 @@ function codesMatch(stored: string, given: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-    }
+    const body = await req.json().catch(() => null);
     if (typeof body !== "object" || body === null) {
       return NextResponse.json({ error: "Invalid body." }, { status: 400 });
     }
-    const { email: rawEmail, code: rawCode, newPassword: rawPass } = body as Record<string, unknown>;
 
+    const { email: rawEmail, code: rawCode, newPassword: rawPass } = body as Record<string, unknown>;
     const emailRaw = typeof rawEmail === "string" ? rawEmail.trim() : "";
     const code = typeof rawCode === "string" ? rawCode : "";
     const newPassword = typeof rawPass === "string" ? rawPass : "";
@@ -58,27 +35,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 });
     }
 
-    const auth = getAdminAuth();
-    const db = getAdminDb();
+    const emailNorm = emailRaw.toLowerCase();
 
-    const resolved = await resolveAuthUserForPasswordReset(auth, db, emailRaw);
-    if (!resolved) {
+    const rows = await query<(RowDataPacket & { id: number })[]>(
+      "SELECT id FROM students WHERE LOWER(email) = ? LIMIT 1",
+      [emailNorm]
+    );
+    if (rows.length === 0) {
       return NextResponse.json({ error: "Invalid code or email." }, { status: 400 });
     }
-    const { uid } = resolved;
+    const studentId = rows[0].id;
 
-    const resetRef = db.collection(PASSWORD_RESET_COLLECTION).doc(uid);
-    const snap = await resetRef.get();
-    if (!snap.exists) {
+    const resetRows = await query<(RowDataPacket & { verification_code: string; expires_at: string })[]>(
+      "SELECT verification_code, expires_at FROM password_reset_codes WHERE student_id = ? LIMIT 1",
+      [studentId]
+    );
+    if (resetRows.length === 0) {
       return NextResponse.json({ error: "No active verification code. Request a new code." }, { status: 400 });
     }
 
-    const data = snap.data()!;
-    const storedCode = String(data[CODE_FIELD] ?? "");
-    const expiresMs = expiresToMillis(data[EXPIRES_FIELD]);
+    const storedCode = resetRows[0].verification_code;
+    const expiresAt = new Date(resetRows[0].expires_at);
 
-    if (!storedCode || Date.now() > expiresMs) {
-      await resetRef.delete().catch(() => {});
+    if (Date.now() > expiresAt.getTime()) {
+      await execute("DELETE FROM password_reset_codes WHERE student_id = ?", [studentId]);
       return NextResponse.json({ error: "Code expired. Request a new code." }, { status: 400 });
     }
 
@@ -86,40 +66,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Incorrect verification code." }, { status: 400 });
     }
 
-    try {
-      await auth.updateUser(uid, { password: newPassword });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("PASSWORD_DOES_NOT_MEET_REQUIREMENTS") || msg.includes("weak-password")) {
-        return NextResponse.json({ error: "Password is too weak. Try a stronger password." }, { status: 400 });
-      }
-      throw e;
-    }
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await execute("UPDATE students SET password = ? WHERE id = ?", [hashed, studentId]);
 
-    const enrollRef = db.collection("account_reservations").doc(uid);
-    const enrollSnap = await enrollRef.get();
-    if (enrollSnap.exists) {
-      await enrollRef.update({
-        password: newPassword,
-        updatedAt: new Date().toISOString(),
-      });
-    }
-
-    await resetRef.delete().catch(() => {});
+    await execute("DELETE FROM password_reset_codes WHERE student_id = ?", [studentId]);
 
     return NextResponse.json({ ok: true, message: "Password updated. You can sign in now." });
   } catch (e) {
     console.error("[forgot-password/confirm]", e);
-    const message = e instanceof Error ? e.message : "Server error.";
-    if (message.includes("Firebase Admin is not configured")) {
-      return NextResponse.json({ error: message }, { status: 500 });
-    }
-    if (isFirebaseJwtTimeError(message)) {
-      return NextResponse.json({ error: FIREBASE_ADMIN_JWT_TIME_HELP }, { status: 500 });
-    }
-    if (isFirebaseCredentialRejected(message)) {
-      return NextResponse.json({ error: FIREBASE_ADMIN_CREDENTIAL_HELP }, { status: 500 });
-    }
     return NextResponse.json({ error: "Something went wrong. Try again later." }, { status: 500 });
   }
 }

@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import ForgotPasswordFlow, { EmailIcon, LockIcon, FormInput, AlertBox, PrimaryButton } from "./ForgotPasswordFlow";
 
 export default function CwtsLoginForm() {
@@ -28,21 +26,21 @@ export default function CwtsLoginForm() {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/admin/cwts/dashboard");
-    } catch (err: unknown) {
-      setLoading(false);
-      if (err instanceof Error) {
-        if (err.message.includes("user-not-found") || err.message.includes("invalid-credential")) {
-          setError("Invalid credentials. Please try again.");
-        } else if (err.message.includes("wrong-password")) {
-          setError("Incorrect password. Please try again.");
-        } else if (err.message.includes("too-many-requests")) {
-          setError("Too many failed attempts. Please try again later.");
-        } else {
-          setError("Login failed. Please try again.");
-        }
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoading(false);
+        setError(data.error || "Login failed. Please try again.");
+        return;
       }
+      router.push("/admin/cwts/dashboard");
+    } catch {
+      setLoading(false);
+      setError("Login failed. Please try again.");
     }
   }
 

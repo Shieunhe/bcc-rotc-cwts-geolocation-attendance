@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import ForgotPasswordFlow, { EmailIcon, LockIcon, FormInput, AlertBox, PrimaryButton } from "./ForgotPasswordFlow";
 
 export default function LoginForm() {
@@ -30,27 +28,26 @@ export default function LoginForm() {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/student/dashboard");
-    } catch (err: unknown) {
-      setLoading(false);
-      if (err instanceof Error) {
-        if (err.message.includes("user-not-found") || err.message.includes("invalid-credential")) {
-          setError("No account found with this email.");
-        } else if (err.message.includes("wrong-password")) {
-          setError("Incorrect password. Please try again.");
-        } else if (err.message.includes("too-many-requests")) {
-          setError("Too many failed attempts. Please try again later.");
-        } else if (err.message.includes("user-disabled")) {
-          setError("This account has been disabled. Contact support.");
-        } else if (err.message.includes("invalid-email")) {
-          setError("Invalid email address.");
-        } else {
-          setError("Login failed. Please check your credentials.");
-        }
-      } else {
-        setError("Login failed. Please try again.");
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoading(false);
+        setError(data.error || "Login failed. Please check your credentials.");
+        return;
       }
+      if (data.user?.role !== "student") {
+        setLoading(false);
+        setError("This portal is for students only. Admin and officer accounts must use different portal.");
+        return;
+      }
+      router.push("/student/dashboard");
+    } catch {
+      setLoading(false);
+      setError("Login failed. Please try again.");
     }
   }
 

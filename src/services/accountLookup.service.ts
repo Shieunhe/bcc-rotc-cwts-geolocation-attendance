@@ -1,26 +1,11 @@
-/**
- * Looks up enrollment email in Firestore (`account_reservations`) while the user is signed out.
- * Your Firestore security rules must allow this query for unauthenticated clients, or the call will
- * fail (handled as a generic error). Typical options: a Cloud Function + Admin SDK, or narrow rules
- * (e.g. only `email` + `uid` fields via a dedicated collection).
- */
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { EnrollmentDocument } from "@/types";
-
-/**
- * Same emails routed in LoginForm — these users exist in Firebase Auth and may not have a Firestore enrollment doc.
- * Keep in sync with `LoginForm` admin redirects.
- */
-const ADMIN_AUTH_EMAILS = new Set(["bcc.rotc.admin@gmail.com", "bcc.cwts.admin@gmail.com", "bcc.officer.admin@gmail.com"]);
-
 export interface AccountLookupResult {
   found: boolean;
   email?: string;
   displayName?: string;
-  /** Set when Firestore fails (e.g. rules/network), distinct from “no match”. */
   lookupError?: string;
 }
+
+const ADMIN_AUTH_EMAILS = new Set(["bcc.rotc.admin@gmail.com", "bcc.cwts.admin@gmail.com", "bcc.officer.admin@gmail.com"]);
 
 export async function lookupAccountByEmail(rawEmail: string): Promise<AccountLookupResult> {
   const trimmed = rawEmail.trim();
@@ -33,23 +18,25 @@ export async function lookupAccountByEmail(rawEmail: string): Promise<AccountLoo
   }
 
   try {
-    const candidates = [...new Set([trimmed, lower])];
-    for (const candidate of candidates) {
-      const q = query(collection(db, "account_reservations"), where("email", "==", candidate), limit(1));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const data = snap.docs[0].data() as EnrollmentDocument;
-        const name = [data.firstName, data.lastName, data.suffix].filter(Boolean).join(" ").trim();
-        const displayName = name || data.username || data.email || trimmed;
-        return { found: true, email: data.email ?? trimmed, displayName };
-      }
+    const res = await fetch("/api/auth/lookup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: trimmed }),
+    });
+    if (!res.ok) {
+      if (res.status === 404) return { found: false };
+      return { found: false, lookupError: "Unable to check your email right now. Try again later." };
     }
+    const data = await res.json();
+    return {
+      found: true,
+      email: data.email ?? trimmed,
+      displayName: data.displayName ?? trimmed,
+    };
   } catch {
     return {
       found: false,
       lookupError: "Unable to check your email right now. Try again later.",
     };
   }
-
-  return { found: false };
 }
