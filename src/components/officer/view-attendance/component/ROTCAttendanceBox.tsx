@@ -17,10 +17,6 @@ function formatTime(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 const statusConfig: Record<string, { bg: string; text: string; border: string; label: string }> = {
   present: { bg: "bg-green-50 border-green-200", text: "text-green-700", border: "border-l-green-500", label: "Present" },
   late:    { bg: "bg-amber-50 border-amber-200", text: "text-amber-700", border: "border-l-amber-400", label: "Late" },
@@ -63,11 +59,6 @@ function getMIOptionLabel(mi: number, entry?: { in?: AttendanceSession; out?: At
 
 function getSessionSY(s: AttendanceSession): string {
   return s.schoolYear ?? getSchoolYearFromDate(s.openDate);
-}
-
-function getUniqueSYs(sessions: AttendanceSession[]): string[] {
-  const set = new Set(sessions.map(getSessionSY));
-  return Array.from(set).sort().reverse();
 }
 
 type CycleOption = { schoolYear: string; msLevel: "1" | "2" | ""; label: string };
@@ -160,15 +151,19 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
   const isSpecialFilter = filterBattalion === "special";
 
   useEffect(() => {
-    if (!selectedSessionId) { setRecords([]); return; }
+    if (!selectedSessionId) return;
+    let active = true;
     setLoadingRecords(true);
     adminService.getSessionAttendanceRecords(selectedSessionId).then((data) => {
-      setRecords(data.sort((a, b) => {
-        const order = { present: 0, late: 1, absent: 2 };
-        return (order[a.status] ?? 3) - (order[b.status] ?? 3);
-      }));
-      setLoadingRecords(false);
-    }).catch(() => setLoadingRecords(false));
+      if (active) {
+        setRecords(data.sort((a, b) => {
+          const order = { present: 0, late: 1, absent: 2 };
+          return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+        }));
+        setLoadingRecords(false);
+      }
+    }).catch(() => { if (active) setLoadingRecords(false); });
+    return () => { active = false; };
   }, [selectedSessionId]);
 
   const companyOptions: ROTCCompany[] = filterBattalion === "1"
@@ -176,12 +171,6 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
     : filterBattalion === "2"
       ? ROTC_BATTALION_2_COMPANIES
       : [...ROTC_BATTALION_1_COMPANIES, ...ROTC_BATTALION_2_COMPANIES];
-
-  useEffect(() => {
-    setFilterCompany("");
-    setFilterPlatoon("");
-    setFilterSpecialUnit("");
-  }, [filterBattalion]);
 
   const regularRecords = records.filter((r) => !r.student?.willingToTakeAdvanceCourse);
 
@@ -228,7 +217,7 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
   };
   const total = filtered.length;
   const attended = counts.present + counts.late;
-  const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+  const _pct = total > 0 ? Math.round((attended / total) * 100) : 0;
 
   const selectedSession = currentSession;
   const LATE_THRESHOLD_MINUTES = 15;
@@ -352,7 +341,12 @@ export default function ROTCAttendanceBox({ sessions }: Props) {
                       <svg className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </div>
                     <div className="relative">
-                      <select value={filterBattalion} onChange={(e) => setFilterBattalion(e.target.value as BattalionFilter)}
+                      <select value={filterBattalion} onChange={(e) => {
+                          setFilterBattalion(e.target.value as BattalionFilter);
+                          setFilterCompany("");
+                          setFilterPlatoon("");
+                          setFilterSpecialUnit("");
+                        }}
                         className="appearance-none px-3 py-1.5 pr-7 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                         <option value="">All Battalions</option>
                         <option value="1">Battalion 1</option>

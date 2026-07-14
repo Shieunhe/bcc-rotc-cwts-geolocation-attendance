@@ -11,10 +11,6 @@ function formatTime(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 const statusConfig: Record<string, { bg: string; text: string; border: string; label: string }> = {
   present: { bg: "bg-green-50 border-green-200", text: "text-green-700", border: "border-l-green-500", label: "Present" },
   late:    { bg: "bg-amber-50 border-amber-200", text: "text-amber-700", border: "border-l-amber-400", label: "Late" },
@@ -92,18 +88,22 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (!selectedSessionId) { setRecords([]); return; }
+    if (!selectedSessionId) return;
+    let active = true;
     setLoadingRecords(true);
     adminService.getSessionAttendanceRecords(selectedSessionId).then((data) => {
-      const advanceOnly = data
-        .filter((r) => r.student?.willingToTakeAdvanceCourse)
-        .sort((a, b) => {
-          const order = { present: 0, late: 1, absent: 2 };
-          return (order[a.status] ?? 3) - (order[b.status] ?? 3);
-        });
-      setRecords(advanceOnly);
-      setLoadingRecords(false);
-    }).catch(() => setLoadingRecords(false));
+      if (active) {
+        const advanceOnly = data
+          .filter((r) => r.student?.willingToTakeAdvanceCourse)
+          .sort((a, b) => {
+            const order = { present: 0, late: 1, absent: 2 };
+            return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+          });
+        setRecords(advanceOnly);
+        setLoadingRecords(false);
+      }
+    }).catch(() => { if (active) setLoadingRecords(false); });
+    return () => { active = false; };
   }, [selectedSessionId]);
 
   const filtered = records.filter((r) => {
@@ -128,7 +128,7 @@ export default function AdvanceCourseAttendanceBox({ sessions }: Props) {
   };
   const total = filtered.length;
   const attended = counts.present + counts.late;
-  const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+  const _pct = total > 0 ? Math.round((attended / total) * 100) : 0;
 
   const selectedSession = currentSession;
   const LATE_THRESHOLD_MINUTES = 15;

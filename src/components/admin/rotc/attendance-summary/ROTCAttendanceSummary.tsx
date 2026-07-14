@@ -132,23 +132,22 @@ export default function ROTCAttendanceSummary({ section }: Props) {
   const [selectedType, setSelectedType] = useState<"in" | "out">("in");
   const [enrolledStudents, setEnrolledStudents] = useState<EnrollmentDocument[]>([]);
   const [recordMap, setRecordMap] = useState<Map<string, AttendanceRecord>>(new Map());
-  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
-  const selectedMsLevel = parseCycleValue(selectedCycle).msLevel;
-  const [loadingSpecial, setLoadingSpecial] = useState(false);
+  const _selectedMsLevel = parseCycleValue(selectedCycle).msLevel;
+  const [loadingSpecial] = useState(false);
 
   useEffect(() => {
-    setLoadingSessions(true);
-    setSelectedMI(0);
-    setRecordMap(new Map());
-    setEnrolledStudents([]);
     const isAdvance = section === "advance-course";
     Promise.all([
       adminService.getSessionsByProgram("ROTC", isAdvance),
       adminService.getEnrollmentSchedules("ROTC"),
       adminService.getApprovedEnrollmentsByProgram("ROTC"),
     ]).then(([data, , approved]) => {
+      setSelectedMI(0);
+      setRecordMap(new Map());
+      setEnrolledStudents([]);
       const hasSectionRoster = (() => {
         if (section === "battalion-1") {
           return approved.some((student) =>
@@ -210,7 +209,7 @@ export default function ROTCAttendanceSummary({ section }: Props) {
   }
 
   useEffect(() => {
-    if (!selectedSessionId) { setRecordMap(new Map()); setEnrolledStudents([]); return; }
+    if (!selectedSessionId) return;
     setLoadingRecords(true);
     adminService.getAttendanceSummary(selectedSessionId, "ROTC").then(({ records, enrolledStudents: enrolled }) => {
       const map = new Map<string, AttendanceRecord>();

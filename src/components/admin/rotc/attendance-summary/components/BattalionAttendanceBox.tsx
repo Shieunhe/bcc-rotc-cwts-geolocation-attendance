@@ -111,7 +111,7 @@ export default function BattalionAttendanceBox({
   }
   const total = filtered.length;
   const attended = counts.present + counts.late;
-  const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+  const _pct = total > 0 ? Math.round((attended / total) * 100) : 0;
   const hasUnmarked = counts.unmarked > 0;
 
   const statusOptions = [

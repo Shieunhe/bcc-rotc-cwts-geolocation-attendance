@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminServerService } from "@/services/server/admin.server";
+import { getSessionToken, verifyToken } from "@/lib/auth";
 
 type Svc = typeof adminServerService;
 type SvcKey = keyof Svc;
@@ -63,6 +64,15 @@ function serialize(value: unknown): unknown {
 
 export async function POST(req: NextRequest) {
   try {
+    const token = await getSessionToken();
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const payload = verifyToken(token);
+    if (!payload || (payload.role !== "admin" && payload.role !== "officer")) {
+      return NextResponse.json({ error: "Forbidden: admin or officer role required" }, { status: 403 });
+    }
+
     const body = await req.json();
     const { method, params } = body as { method: string; params: Record<string, unknown> };
 

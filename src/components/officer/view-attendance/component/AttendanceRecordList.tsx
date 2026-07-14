@@ -48,7 +48,7 @@ export default function AttendanceRecordList({ sessionId }: Props) {
   };
   const total = filtered.length;
   const attended = counts.present + counts.late;
-  const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+  const _pct = total > 0 ? Math.round((attended / total) * 100) : 0;
 
   if (loading) {
     return (

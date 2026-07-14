@@ -152,7 +152,7 @@ export default function CWTSAttendanceSummary() {
   const [selectedType, setSelectedType] = useState<"in" | "out">("in");
   const [enrolledStudents, setEnrolledStudents] = useState<EnrollmentDocument[]>([]);
   const [recordMap, setRecordMap] = useState<Map<string, AttendanceRecord>>(new Map());
-  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
   const [filterCompany, setFilterCompany] = useState<CWTSCompany | "">("");
@@ -161,14 +161,13 @@ export default function CWTSAttendanceSummary() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    setLoadingSessions(true);
-    setSelectedMI(0);
-    setRecordMap(new Map());
-    setEnrolledStudents([]);
     Promise.all([
       adminService.getSessionsByProgram("CWTS"),
       adminService.getEnrollmentSchedules("CWTS"),
     ]).then(([data, scheds]) => {
+      setSelectedMI(0);
+      setRecordMap(new Map());
+      setEnrolledStudents([]);
       setAllSessions(data);
       setSchedules(scheds);
       const options = buildCycleOptions(data, scheds);
@@ -196,7 +195,7 @@ export default function CWTSAttendanceSummary() {
   }
 
   useEffect(() => {
-    if (!selectedSessionId) { setRecordMap(new Map()); setEnrolledStudents([]); return; }
+    if (!selectedSessionId) return;
     setLoadingRecords(true);
     adminService.getAttendanceSummary(selectedSessionId, "CWTS").then(({ records, enrolledStudents: enrolled }) => {
       const map = new Map<string, AttendanceRecord>();
@@ -253,7 +252,7 @@ export default function CWTSAttendanceSummary() {
   }
   const total = filtered.length;
   const attended = counts.present + counts.late;
-  const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+  const _pct = total > 0 ? Math.round((attended / total) * 100) : 0;
   const hasUnmarked = counts.unmarked > 0;
 
   const statusOptions = [

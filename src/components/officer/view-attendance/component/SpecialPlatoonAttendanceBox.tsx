@@ -59,18 +59,22 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (!selectedSessionId) { setRecords([]); return; }
+    if (!selectedSessionId) return;
+    let active = true;
     setLoadingRecords(true);
     adminService.getSessionAttendanceRecords(selectedSessionId).then((data) => {
-      const specialOnly = data
-        .filter((r) => r.student?.specialUnit && SPECIAL_UNITS.includes(r.student.specialUnit))
-        .sort((a, b) => {
-          const order = { present: 0, late: 1, absent: 2 };
-          return (order[a.status] ?? 3) - (order[b.status] ?? 3);
-        });
-      setRecords(specialOnly);
-      setLoadingRecords(false);
-    }).catch(() => setLoadingRecords(false));
+      if (active) {
+        const specialOnly = data
+          .filter((r) => r.student?.specialUnit && SPECIAL_UNITS.includes(r.student.specialUnit))
+          .sort((a, b) => {
+            const order = { present: 0, late: 1, absent: 2 };
+            return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+          });
+        setRecords(specialOnly);
+        setLoadingRecords(false);
+      }
+    }).catch(() => { if (active) setLoadingRecords(false); });
+    return () => { active = false; };
   }, [selectedSessionId]);
 
   const filtered = records.filter((r) => {
@@ -95,7 +99,7 @@ export default function SpecialPlatoonAttendanceBox({ sessions }: Props) {
   };
   const total = filtered.length;
   const attended = counts.present + counts.late;
-  const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+  const _pct = total > 0 ? Math.round((attended / total) * 100) : 0;
 
   const selectedSession = sessions.find((s) => s.id === selectedSessionId);
   const LATE_THRESHOLD_MINUTES = 15;
