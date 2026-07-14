@@ -1203,26 +1203,37 @@ export const adminServerService = {
 
   async saveSignatorySettings(program: NSTProgram, settings: Record<string, string | null>): Promise<void> {
     const now = new Date().toISOString();
-    const sigMap: Record<string, string> = {
-      signatory1Name: "signatory_1_name", signatory1Position: "signatory_1_position",
-      signatory2Name: "signatory_2_name", signatory2Position: "signatory_2_position",
-      signatory3Name: "signatory_3_name", signatory3Position: "signatory_3_position",
-    };
-    const get = (camel: string) => settings[camel] ?? settings[sigMap[camel]] ?? null;
+    const g = (k: string) => settings[k] ?? null;
 
     await execute(
-      `INSERT INTO serial_number_settings (program, signatory_1_name, signatory_1_position, signatory_2_name, signatory_2_position, signatory_3_name, signatory_3_position, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO serial_number_settings
+        (program, academic_year, ceremony_date, commandant, school_registrar,
+         nstp_coordinator, municipal_mayor, bcc_president,
+         commandant_signature, school_registrar_signature,
+         nstp_coordinator_signature, municipal_mayor_signature, bcc_president_signature,
+         updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
-         signatory_1_name = VALUES(signatory_1_name), signatory_1_position = VALUES(signatory_1_position),
-         signatory_2_name = VALUES(signatory_2_name), signatory_2_position = VALUES(signatory_2_position),
-         signatory_3_name = VALUES(signatory_3_name), signatory_3_position = VALUES(signatory_3_position),
+         academic_year = COALESCE(VALUES(academic_year), academic_year),
+         ceremony_date = COALESCE(VALUES(ceremony_date), ceremony_date),
+         commandant = COALESCE(VALUES(commandant), commandant),
+         school_registrar = COALESCE(VALUES(school_registrar), school_registrar),
+         nstp_coordinator = COALESCE(VALUES(nstp_coordinator), nstp_coordinator),
+         municipal_mayor = COALESCE(VALUES(municipal_mayor), municipal_mayor),
+         bcc_president = COALESCE(VALUES(bcc_president), bcc_president),
+         commandant_signature = COALESCE(VALUES(commandant_signature), commandant_signature),
+         school_registrar_signature = COALESCE(VALUES(school_registrar_signature), school_registrar_signature),
+         nstp_coordinator_signature = COALESCE(VALUES(nstp_coordinator_signature), nstp_coordinator_signature),
+         municipal_mayor_signature = COALESCE(VALUES(municipal_mayor_signature), municipal_mayor_signature),
+         bcc_president_signature = COALESCE(VALUES(bcc_president_signature), bcc_president_signature),
          updated_at = VALUES(updated_at)`,
       [
         program,
-        get("signatory1Name"), get("signatory1Position"),
-        get("signatory2Name"), get("signatory2Position"),
-        get("signatory3Name"), get("signatory3Position"),
+        g("academicYear"), g("ceremonyDate"),
+        g("commandant"), g("schoolRegistrar"),
+        g("nstpCoordinator"), g("municipalMayor"), g("bccPresident"),
+        g("commandantSignature"), g("schoolRegistrarSignature"),
+        g("nstpCoordinatorSignature"), g("municipalMayorSignature"), g("bccPresidentSignature"),
         now,
       ],
     );
@@ -1233,12 +1244,18 @@ export const adminServerService = {
     if (rows.length === 0) return null;
     const r = rows[0];
     const result: Record<string, string> = { program: r.program };
-    if (r.signatory_1_name) result.signatory1Name = r.signatory_1_name;
-    if (r.signatory_1_position) result.signatory1Position = r.signatory_1_position;
-    if (r.signatory_2_name) result.signatory2Name = r.signatory_2_name;
-    if (r.signatory_2_position) result.signatory2Position = r.signatory_2_position;
-    if (r.signatory_3_name) result.signatory3Name = r.signatory_3_name;
-    if (r.signatory_3_position) result.signatory3Position = r.signatory_3_position;
+    if (r.academic_year) result.academicYear = r.academic_year;
+    if (r.ceremony_date) result.ceremonyDate = r.ceremony_date;
+    if (r.commandant) result.commandant = r.commandant;
+    if (r.school_registrar) result.schoolRegistrar = r.school_registrar;
+    if (r.nstp_coordinator) result.nstpCoordinator = r.nstp_coordinator;
+    if (r.municipal_mayor) result.municipalMayor = r.municipal_mayor;
+    if (r.bcc_president) result.bccPresident = r.bcc_president;
+    if (r.commandant_signature) result.commandantSignature = r.commandant_signature;
+    if (r.school_registrar_signature) result.schoolRegistrarSignature = r.school_registrar_signature;
+    if (r.nstp_coordinator_signature) result.nstpCoordinatorSignature = r.nstp_coordinator_signature;
+    if (r.municipal_mayor_signature) result.municipalMayorSignature = r.municipal_mayor_signature;
+    if (r.bcc_president_signature) result.bccPresidentSignature = r.bcc_president_signature;
     if (r.updated_at) result.updatedAt = ts(r.updated_at);
     return result;
   },
@@ -1249,13 +1266,10 @@ export const adminServerService = {
     program: NSTProgram,
     signatories: Record<string, string>,
   ): Promise<void> {
-    const sigMap: Record<string, string> = {
-      signatory1Name: "signatory_1_name", signatory1Position: "signatory_1_position",
-      signatory2Name: "signatory_2_name", signatory2Position: "signatory_2_position",
-      signatory3Name: "signatory_3_name", signatory3Position: "signatory_3_position",
-    };
-    const get = (camel: string) => signatories[camel] ?? signatories[sigMap[camel]] ?? null;
     const now = new Date().toISOString();
+    const g = (k: string) => signatories[k] ?? null;
+
+    const sigJson = JSON.stringify(signatories);
 
     await execute(
       `INSERT INTO serial_numbers (student_id, serial_number, program, signatory_1_name, signatory_1_position, signatory_2_name, signatory_2_position, signatory_3_name, signatory_3_position, created_at)
@@ -1267,9 +1281,12 @@ export const adminServerService = {
          signatory_3_name = VALUES(signatory_3_name), signatory_3_position = VALUES(signatory_3_position)`,
       [
         uid, serialNumber, program,
-        get("signatory1Name"), get("signatory1Position"),
-        get("signatory2Name"), get("signatory2Position"),
-        get("signatory3Name"), get("signatory3Position"),
+        g("commandant") || g("nstpCoordinator") || null,
+        g("academicYear") || null,
+        g("schoolRegistrar") || g("bccPresident") || null,
+        g("ceremonyDate") || null,
+        g("municipalMayor") || null,
+        sigJson,
         now,
       ],
     );
