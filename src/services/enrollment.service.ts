@@ -1,4 +1,4 @@
-import { EnrollmentDocument } from "@/types";
+import { EnrollmentDocument, EnrollmentSchedule, NSTProgram } from "@/types";
 import { EnrollmentFormData } from "@/types/enrollmentTypes";
 
 const MAX_WIDTH = 800;
@@ -96,6 +96,25 @@ async function serializeFiles(formData: EnrollmentFormData) {
 }
 
 export const enrollmentService = {
+  async getEnrollmentSchedule(program: NSTProgram, msLevel: string): Promise<EnrollmentSchedule | null> {
+    const res = await rpc("getEnrollmentSchedule", { program, msLevel });
+    return (res as unknown as { result: EnrollmentSchedule | null }).result;
+  },
+
+  async getEnrollmentSchedules(program: NSTProgram): Promise<EnrollmentSchedule[]> {
+    const res = await rpc("getEnrollmentSchedules", { program });
+    return (res as unknown as { result: EnrollmentSchedule[] }).result;
+  },
+
+  async checkStudentIdExists(studentId: string): Promise<boolean> {
+    try {
+      const result = await rpc("checkStudentIdExists", { studentId });
+      return !!(result as unknown as { exists: boolean }).exists;
+    } catch {
+      return false;
+    }
+  },
+
   async submitEnrollment(formData: EnrollmentFormData): Promise<EnrollmentResult> {
     try {
       const serialized = await serializeFiles(formData);

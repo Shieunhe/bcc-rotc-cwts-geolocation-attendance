@@ -68,8 +68,37 @@ export default function PhysicalHealthStep({ form, updateField, updateBoolean, u
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Input label="Height (cm)" type="number" placeholder="e.g. 165"
-          value={form.height} onChange={(e) => updateField("height", e.target.value)} />
+        <div>
+          <label className={labelClass}>Height (ft)</label>
+          <div className="flex gap-2">
+            <select
+              value={form.height ? form.height.split("'")[0] : ""}
+              onChange={(e) => {
+                const inches = form.height?.match(/'(\d+)"/)?.[1] ?? "0";
+                updateField("height", `${e.target.value}'${inches}"`);
+              }}
+              className={selectClass}
+            >
+              <option value="" disabled>Feet</option>
+              {[3, 4, 5, 6, 7].map((ft) => (
+                <option key={ft} value={ft}>{ft} ft</option>
+              ))}
+            </select>
+            <select
+              value={form.height?.match(/'(\d+)"/)?.[1] ?? ""}
+              onChange={(e) => {
+                const feet = form.height?.split("'")[0] || "";
+                updateField("height", `${feet}'${e.target.value}"`);
+              }}
+              className={selectClass}
+            >
+              <option value="" disabled>Inches</option>
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i} value={i}>{i} in</option>
+              ))}
+            </select>
+          </div>
+        </div>
         <Input label="Weight (kg)" type="number" placeholder="e.g. 60"
           value={form.weight} onChange={(e) => updateField("weight", e.target.value)} />
         <div>

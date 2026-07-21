@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, SpecialUnit, EnrollmentDocument } from "@/types";
+import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, formatSlotLimit, SpecialUnit, EnrollmentDocument } from "@/types";
 import { adminService } from "@/services/admin.service";
 import AdminPageLayout from "@/components/layout/AdminPageLayout";
 
@@ -44,7 +44,7 @@ function UnitSection({ unit, enrollments }: { unit: SpecialUnit; enrollments: En
         </div>
         <div className="flex-1 text-left">
           <h3 className="text-sm font-bold text-gray-800">{unit}</h3>
-          <p className="text-xs text-gray-400">{enrollments.length}/{SPECIAL_UNIT_SLOT_LIMITS[unit]} members</p>
+          <p className="text-xs text-gray-400">{enrollments.length}/{formatSlotLimit(SPECIAL_UNIT_SLOT_LIMITS[unit])} members</p>
         </div>
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${config.badge}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
@@ -129,14 +129,13 @@ export default function SpecialPlatoonList() {
   }, []);
 
   const total = data ? SPECIAL_UNITS.reduce((sum, u) => sum + data[u].length, 0) : 0;
-  const capacity = SPECIAL_UNITS.reduce((sum, u) => sum + SPECIAL_UNIT_SLOT_LIMITS[u], 0);
 
   return (
     <AdminPageLayout program="ROTC">
       <div className="mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Special Platoon List</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Medical assignment units for ROTC cadets &middot; {total}/{capacity} total members
+          Medical assignment units for ROTC cadets &middot; {total} total members
         </p>
       </div>
 

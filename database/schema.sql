@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS `students` (
   `emergency_contact_relationship` VARCHAR(100) NOT NULL DEFAULT '',
   `emergency_contact_contact_number` VARCHAR(30) NOT NULL DEFAULT '',
   `willing_to_take_advance_course` TINYINT(1) NOT NULL DEFAULT 0,
+  `willing_to_be_medics` TINYINT(1) NOT NULL DEFAULT 0,
+  `willing_to_be_military_police` TINYINT(1) NOT NULL DEFAULT 0,
   -- Academic Info
   `course` VARCHAR(255) NOT NULL DEFAULT '',
   `year_level` ENUM('1st Year','2nd Year','3rd Year','4th Year','') NOT NULL DEFAULT '',

@@ -27,6 +27,8 @@ export interface EnrollmentFormData {
   emergencyContactRelationship: string;
   emergencyContactContactNumber: string;
   willingToTakeAdvanceCourse: boolean;
+  willingToBeMedics: boolean;
+  willingToBeMilitaryPolice: boolean;
   // Step 2 — Academic Info
   course: string;
   yearLevel: YearLevel | "";
@@ -76,6 +78,8 @@ export const defaultEnrollmentForm: EnrollmentFormData = {
   emergencyContactRelationship: "",
   emergencyContactContactNumber: "",
   willingToTakeAdvanceCourse: false,
+  willingToBeMedics: false,
+  willingToBeMilitaryPolice: false,
   course: "",
   yearLevel: "",
   nstpComponent: "",

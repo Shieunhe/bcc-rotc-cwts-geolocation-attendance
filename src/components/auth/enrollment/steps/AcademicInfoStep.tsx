@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Input from "@/components/common/Input";
 import { EnrollmentSchedule, MSLevel, NSTProgram } from "@/types";
 import { EnrollmentStepProps } from "@/types/enrollmentTypes";
-import { adminService } from "@/services/admin.service";
+import { enrollmentService } from "@/services/enrollment.service";
 
 const selectClass = "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white";
 const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
@@ -33,9 +33,9 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
     }
     let cancelled = false;
     setLoadingSchedules(true);
-    adminService.getEnrollmentSchedules(form.nstpComponent as NSTProgram).then((schedules) => {
+    enrollmentService.getEnrollmentSchedules(form.nstpComponent as NSTProgram).then((schedules) => {
       if (cancelled) return;
-      const open = schedules.filter(isScheduleOpen).map((s) => s.msLevel);
+      const open = (schedules ?? []).filter(isScheduleOpen).map((s) => s.msLevel);
       const allowedOpen = isFirstTimeLockedProgram
         ? open.filter((ms): ms is MSLevel => ms === "1")
         : open;
@@ -46,6 +46,11 @@ export default function AcademicInfoStep({ form, updateField, updateBoolean }: E
         updateField("msLevel", "");
       }
       setLoadingSchedules(false);
+    }).catch(() => {
+      if (!cancelled) {
+        setOpenMsLevels([]);
+        setLoadingSchedules(false);
+      }
     });
     return () => { cancelled = true; };
   }, [form.nstpComponent]);

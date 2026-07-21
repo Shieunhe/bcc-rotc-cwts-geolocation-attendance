@@ -17,11 +17,14 @@ export type ROTCPlatoon = 1 | 2 | 3 | 4;
 export const ROTC_BATTALION_1_COMPANIES: ROTCCompany[] = ["Alpha", "Bravo", "Charlie", "Delta"];
 export const ROTC_BATTALION_2_COMPANIES: ROTCCompany[] = ["Echo", "Foxtrot", "Golf", "Hotel"];
 export const ROTC_PLATOONS_PER_COMPANY = 4;
-export const ROTC_PLATOON_SLOT_LIMIT = 38;
+export const ROTC_PLATOON_SLOT_LIMIT = 37;
 
 export type SpecialUnit = "Medics" | "HQ" | "MP";
 export const SPECIAL_UNITS: SpecialUnit[] = ["Medics", "HQ", "MP"];
-export const SPECIAL_UNIT_SLOT_LIMITS: Record<SpecialUnit, number> = { Medics: 38, HQ: 50, MP: 38 };
+export const SPECIAL_UNIT_SLOT_LIMITS: Record<SpecialUnit, number> = { Medics: 37, HQ: Infinity, MP: 37 };
+export function formatSlotLimit(limit: number): string {
+  return isFinite(limit) ? String(limit) : "No limit";
+}
 
 export interface EnrollmentSchedule {
   program: NSTProgram;
@@ -60,6 +63,8 @@ export interface EnrollmentDocument {
   emergencyContactRelationship: string;
   emergencyContactContactNumber: string;
   willingToTakeAdvanceCourse: boolean;
+  willingToBeMedics: boolean;
+  willingToBeMilitaryPolice: boolean;
   // Academic Info
   course: string;
   yearLevel: YearLevel | "";

@@ -15,8 +15,8 @@ export function useAutoCloseExpiredSessions() {
       try {
         const closed = await adminService.autoCloseExpiredSessions();
         if (closed > 0) console.log(`[AutoClose] Closed ${closed} expired session(s)`);
-      } catch (err) {
-        console.error("[AutoClose] Error:", err);
+      } catch {
+        // Silently ignore — students don't have permission for this call
       } finally {
         runningRef.current = false;
       }

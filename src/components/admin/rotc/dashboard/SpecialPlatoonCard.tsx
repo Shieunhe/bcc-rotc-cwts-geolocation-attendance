@@ -23,7 +23,8 @@ export default function SpecialPlatoonCard({ base }: SpecialPlatoonCardProps) {
   }, [currentMsLevel]);
 
   const total = data ? SPECIAL_UNITS.reduce((sum, u) => sum + data[u].length, 0) : 0;
-  const capacity = SPECIAL_UNITS.reduce((sum, u) => sum + SPECIAL_UNIT_SLOT_LIMITS[u], 0);
+  const finiteCap = SPECIAL_UNITS.filter((u) => isFinite(SPECIAL_UNIT_SLOT_LIMITS[u]));
+  const capacity = finiteCap.reduce((sum, u) => sum + SPECIAL_UNIT_SLOT_LIMITS[u], 0);
 
   return (
     <Link href={`${base}/special-platoon`} className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
@@ -45,7 +46,7 @@ export default function SpecialPlatoonCard({ base }: SpecialPlatoonCardProps) {
       ) : (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-red-100 text-red-700 border-red-200">
-            {total}/{capacity} Assigned
+            {total} Assigned
           </span>
           {data && SPECIAL_UNITS.map((unit) => data[unit].length > 0 && (
             <span key={unit} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${

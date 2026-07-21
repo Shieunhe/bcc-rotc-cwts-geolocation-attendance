@@ -61,6 +61,8 @@ function mapStudentRow(r: any): EnrollmentDocument {
     emergencyContactRelationship: r.emergency_contact_relationship ?? "",
     emergencyContactContactNumber: r.emergency_contact_contact_number ?? "",
     willingToTakeAdvanceCourse: !!r.willing_to_take_advance_course,
+    willingToBeMedics: !!r.willing_to_be_medics,
+    willingToBeMilitaryPolice: !!r.willing_to_be_military_police,
     course: r.course ?? "",
     yearLevel: r.year_level ?? "",
     nstpComponent: r.nstp_component ?? "",
@@ -540,10 +542,23 @@ export const adminServerService = {
 
     const shouldReset = options?.resetRotcAssignments ?? true;
     if (status === "approved" && latest.data.program === "ROTC" && shouldReset) {
-      await execute(
-        `UPDATE students SET battalion = NULL, rotc_company = NULL, rotc_platoon = NULL, special_unit = NULL, updated_at = ? WHERE id = ?`,
-        [now, uid],
+      const studentRows = await query<RowDataPacket[]>(
+        "SELECT has_medical_condition FROM students WHERE id = ? LIMIT 1",
+        [uid],
       );
+      const hasMedical = studentRows.length > 0 && !!studentRows[0].has_medical_condition;
+
+      if (hasMedical) {
+        await execute(
+          `UPDATE students SET battalion = NULL, rotc_company = NULL, rotc_platoon = NULL, special_unit = 'HQ', updated_at = ? WHERE id = ?`,
+          [now, uid],
+        );
+      } else {
+        await execute(
+          `UPDATE students SET battalion = NULL, rotc_company = NULL, rotc_platoon = NULL, special_unit = NULL, updated_at = ? WHERE id = ?`,
+          [now, uid],
+        );
+      }
     }
   },
 
@@ -881,6 +896,7 @@ export const adminServerService = {
 
     for (const data of profiles) {
       if (markedUids.has(data.uid)) continue;
+      if (data.serialNumber) continue;
 
       if (program === "ROTC") {
         const studentIsAdvance = !!data.willingToTakeAdvanceCourse;

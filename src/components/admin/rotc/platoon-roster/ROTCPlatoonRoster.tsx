@@ -74,7 +74,7 @@ export default function ROTCPlatoonRoster() {
   const b2Total = roster ? countBattalionMembers(roster.battalion2, ROTC_BATTALION_2_COMPANIES) : 0;
   const advanceTotal = roster ? (roster.advanceCourseMale.length + roster.advanceCourseFemale.length) : 0;
   const specialTotal = specialData ? SPECIAL_UNITS.reduce((sum, u) => sum + specialData[u].length, 0) : 0;
-  const specialCapacity = SPECIAL_UNITS.reduce((sum, u) => sum + SPECIAL_UNIT_SLOT_LIMITS[u], 0);
+  const specialCapacity = SPECIAL_UNITS.filter((u) => isFinite(SPECIAL_UNIT_SLOT_LIMITS[u])).reduce((sum, u) => sum + SPECIAL_UNIT_SLOT_LIMITS[u], 0);
   const grandTotal = b1Total + b2Total + advanceTotal + specialTotal;
   const b1Capacity = ROTC_BATTALION_1_COMPANIES.length * ROTC_PLATOONS_PER_COMPANY * ROTC_PLATOON_SLOT_LIMIT;
   const b2Capacity = ROTC_BATTALION_2_COMPANIES.length * ROTC_PLATOONS_PER_COMPANY * ROTC_PLATOON_SLOT_LIMIT;

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:setup": "node database/setup.js"
+    "db:setup": "node database/setup.js && node database/seed-students.js",
+    "db:seed": "node database/seed-students.js"
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",

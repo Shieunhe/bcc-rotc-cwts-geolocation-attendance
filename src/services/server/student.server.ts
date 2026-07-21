@@ -321,6 +321,14 @@ export const studentServerService = {
     miNumber?: number,
     miType?: "in" | "out"
   ): Promise<void> {
+    const snRows = await query<RowDataPacket[]>(
+      "SELECT serial_number FROM students WHERE id = ? LIMIT 1",
+      [studentUid]
+    );
+    if (snRows.length > 0 && snRows[0].serial_number) {
+      throw new Error("You have already graduated and cannot record attendance.");
+    }
+
     const now = new Date().toISOString();
     await execute(
       `INSERT INTO attendance_records (student_id, attendance_session_id, status, mi_number, mi_type, created_at, updated_at)

@@ -24,22 +24,22 @@ export default function PersonalInfoStep({ form, updateField, updateBoolean }: E
       <div>
         <Input label="Last Name" type="text" placeholder="Last Name"
           value={form.lastName}
-          onChange={(e) => updateField("lastName", e.target.value.toUpperCase())} />
+          onChange={(e) => updateField("lastName", e.target.value)} />
       </div>
       <div>
         <Input label="First Name" type="text" placeholder="First Name"
           value={form.firstName}
-          onChange={(e) => updateField("firstName", e.target.value.toUpperCase())} />
+          onChange={(e) => updateField("firstName", e.target.value)} />
       </div>
       <div>
         <Input label="Middle Name" type="text" placeholder="Middle Name"
           value={form.middleName ?? ""}
-          onChange={(e) => updateField("middleName", e.target.value.toUpperCase())} />
+          onChange={(e) => updateField("middleName", e.target.value)} />
       </div>
       <div>
         <Input label="Suffix (optional)" type="text" placeholder="e.g. JR., SR., III"
           value={form.suffix ?? ""}
-          onChange={(e) => updateField("suffix", e.target.value.toUpperCase())} />
+          onChange={(e) => updateField("suffix", e.target.value)} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input label="Contact Number" type="tel" placeholder="09XXXXXXXXX"
@@ -51,7 +51,7 @@ export default function PersonalInfoStep({ form, updateField, updateBoolean }: E
             updateField("contactNumber", digitsOnly);
           }} />
           <Input label="Religion" type="text" placeholder="Religion"
-          value={form.religion} onChange={(e) => updateField("religion", e.target.value.toUpperCase())} />
+          value={form.religion} onChange={(e) => updateField("religion", e.target.value)} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input label="Date of Birth" type="date"
@@ -66,41 +66,41 @@ export default function PersonalInfoStep({ form, updateField, updateBoolean }: E
         </div>
       </div>
       <Input label="Place of Birth" type="text" placeholder="Place of Birth"
-        value={form.placeOfBirth} onChange={(e) => updateField("placeOfBirth", e.target.value.toUpperCase())} />
+        value={form.placeOfBirth} onChange={(e) => updateField("placeOfBirth", e.target.value)} />
       <div>Temporary Address: </div>
       <div className="space-y-3">
         <Input label="No./ St / Vill / Brgy" type="text" placeholder="No./ St / Vill / Brgy"
-          value={form.temporaryBarangay} onChange={(e) => updateField("temporaryBarangay", e.target.value.toUpperCase())} />
+          value={form.temporaryBarangay} onChange={(e) => updateField("temporaryBarangay", e.target.value)} />
         <Input label="Municipality" type="text" placeholder="Municipality"
-          value={form.temporaryMunicipality} onChange={(e) => updateField("temporaryMunicipality", e.target.value.toUpperCase())} />
+          value={form.temporaryMunicipality} onChange={(e) => updateField("temporaryMunicipality", e.target.value)} />
         <Input label="Province" type="text" placeholder="Province"
-          value={form.temporaryProvince} onChange={(e) => updateField("temporaryProvince", e.target.value.toUpperCase())} />
+          value={form.temporaryProvince} onChange={(e) => updateField("temporaryProvince", e.target.value)} />
       </div>
       <div>Permament   Address: </div>
       <div className="space-y-3">
         <Input label="No./ St / Vill / Brgy" type="text" placeholder="No./ St / Vill / Brgy"
-          value={form.permanentBarangay} onChange={(e) => updateField("permanentBarangay", e.target.value.toUpperCase())} />
+          value={form.permanentBarangay} onChange={(e) => updateField("permanentBarangay", e.target.value)} />
         <Input label="Municipality" type="text" placeholder="Municipality"
-          value={form.permanentMunicipality} onChange={(e) => updateField("permanentMunicipality", e.target.value.toUpperCase())} />
+          value={form.permanentMunicipality} onChange={(e) => updateField("permanentMunicipality", e.target.value)} />
         <Input label="Province" type="text" placeholder="Province"
-          value={form.permanentProvince} onChange={(e) => updateField("permanentProvince", e.target.value.toUpperCase())} />
+          value={form.permanentProvince} onChange={(e) => updateField("permanentProvince", e.target.value)} />
         <Input label="Father Name" type="text" placeholder="Father Name"
-          value={form.fatherName} onChange={(e) => updateField("fatherName", e.target.value.toUpperCase())} />
+          value={form.fatherName} onChange={(e) => updateField("fatherName", e.target.value)} />
         <Input label="Father Occupation" type="text" placeholder="Father Occupation"
-          value={form.fatherOccupation} onChange={(e) => updateField("fatherOccupation", e.target.value.toUpperCase())} />
+          value={form.fatherOccupation} onChange={(e) => updateField("fatherOccupation", e.target.value)} />
         <Input label="Mother Name" type="text" placeholder="Mother Name"
-          value={form.motherName} onChange={(e) => updateField("motherName", e.target.value.toUpperCase())} />
+          value={form.motherName} onChange={(e) => updateField("motherName", e.target.value)} />
         <Input label="Mother Occupation" type="text" placeholder="Mother Occupation"
-          value={form.motherOccupation} onChange={(e) => updateField("motherOccupation", e.target.value.toUpperCase())} />
+          value={form.motherOccupation} onChange={(e) => updateField("motherOccupation", e.target.value)} />
       </div>
       <div>Person to be notified in case of emergency:</div>
       <div className="space-y-3">
         <Input label="Name" type="text" placeholder="Emergency Contact Name"
-          value={form.emergencyContactName} onChange={(e) => updateField("emergencyContactName", e.target.value.toUpperCase())} />
+          value={form.emergencyContactName} onChange={(e) => updateField("emergencyContactName", e.target.value)} />
         <Input label="Emergency Contact Address" type="text" placeholder="Emergency Contact Address"
-          value={form.emergencyContactAddress} onChange={(e) => updateField("emergencyContactAddress", e.target.value.toUpperCase())} />
+          value={form.emergencyContactAddress} onChange={(e) => updateField("emergencyContactAddress", e.target.value)} />
         <Input label="Emergency Contact Relationship" type="text" placeholder="Emergency Contact Relationship"
-          value={form.emergencyContactRelationship} onChange={(e) => updateField("emergencyContactRelationship", e.target.value.toUpperCase())} />
+          value={form.emergencyContactRelationship} onChange={(e) => updateField("emergencyContactRelationship", e.target.value)} />
         <Input label="Emergency Contact Contact Number" type="tel" placeholder="09XXXXXXXXX"
           value={form.emergencyContactContactNumber}
           maxLength={11}
@@ -111,16 +111,67 @@ export default function PersonalInfoStep({ form, updateField, updateBoolean }: E
           }} />
       </div>
       {form.nstpComponent !== "CWTS" && (
-        <div className="flex items-center gap-3 mt-8">
-          <input
-            type="checkbox"
-            id="willingToTakeAdvanceCourse"
-            checked={form.willingToTakeAdvanceCourse}
-            onChange={(e) => updateBoolean("willingToTakeAdvanceCourse", e.target.checked)}
-            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label htmlFor="willingToTakeAdvanceCourse" className={labelClass + " mb-0 cursor-pointer"}>
-            Are you willing to take the advance course?
+        <div className="mt-8 space-y-3">
+          <p className="text-sm font-medium text-gray-700">Select one if applicable:</p>
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="radio"
+              name="willingnessOption"
+              checked={form.willingToTakeAdvanceCourse}
+              onChange={() => {
+                updateBoolean("willingToTakeAdvanceCourse", true);
+                updateBoolean("willingToBeMedics", false);
+                updateBoolean("willingToBeMilitaryPolice", false);
+              }}
+              className="w-5 h-5 accent-blue-600 cursor-pointer"
+            />
+            <span className="text-sm text-gray-700">Are you willing to take the advance course?</span>
+          </label>
+          {form.course !== "BS Criminology" && (
+            <>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="radio"
+                  name="willingnessOption"
+                  checked={form.willingToBeMedics}
+                  onChange={() => {
+                    updateBoolean("willingToTakeAdvanceCourse", false);
+                    updateBoolean("willingToBeMedics", true);
+                    updateBoolean("willingToBeMilitaryPolice", false);
+                  }}
+                  className="w-5 h-5 accent-blue-600 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700">Are you willing to be Medics?</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="radio"
+                  name="willingnessOption"
+                  checked={form.willingToBeMilitaryPolice}
+                  onChange={() => {
+                    updateBoolean("willingToTakeAdvanceCourse", false);
+                    updateBoolean("willingToBeMedics", false);
+                    updateBoolean("willingToBeMilitaryPolice", true);
+                  }}
+                  className="w-5 h-5 accent-blue-600 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700">Are you willing to be Military Police?</span>
+              </label>
+            </>
+          )}
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="radio"
+              name="willingnessOption"
+              checked={!form.willingToTakeAdvanceCourse && !form.willingToBeMedics && !form.willingToBeMilitaryPolice}
+              onChange={() => {
+                updateBoolean("willingToTakeAdvanceCourse", false);
+                updateBoolean("willingToBeMedics", false);
+                updateBoolean("willingToBeMilitaryPolice", false);
+              }}
+              className="w-5 h-5 accent-blue-600 cursor-pointer"
+            />
+            <span className="text-sm text-gray-700">None</span>
           </label>
         </div>
       )}

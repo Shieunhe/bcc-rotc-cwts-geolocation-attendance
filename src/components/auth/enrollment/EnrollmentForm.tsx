@@ -6,7 +6,7 @@ import Button from "@/components/common/Button";
 import { EnrollmentFormData, defaultEnrollmentForm } from "@/types/enrollmentTypes";
 import { useEnrollment } from "@/hooks/useEnrollment";
 import { validateFileSize } from "@/utils/fileUtils";
-import { adminService } from "@/services/admin.service";
+import { enrollmentService } from "@/services/enrollment.service";
 import { NSTProgram } from "@/types";
 import PersonalInfoStep from "./steps/PersonalInfoStep";
 import AcademicInfoStep from "./steps/AcademicInfoStep";
@@ -93,7 +93,7 @@ export default function EnrollmentForm() {
       if (formData.emergencyContactContactNumber.length !== 11) return "Emergency contact number must be 11 digits (e.g. 09XXXXXXXXX).";
     }
     if (currentStep === 2) {
-      if (!formData.height) return "Height is required.";
+      if (!formData.height || !/^\d+'\d+"$/.test(formData.height)) return "Height is required. Please select both feet and inches.";
       if (!formData.weight) return "Weight is required."; 
       if (!formData.bloodType) return "Blood type is required.";
       if (!formData.complexion) return "Complexion is required.";
@@ -119,16 +119,34 @@ export default function EnrollmentForm() {
   }
 
   const [isCheckingSchedule, setIsCheckingSchedule] = useState(false);
+  const [isCheckingStudentId, setIsCheckingStudentId] = useState(false);
 
   async function handleNext() {
     const error = validateCurrentStep();
     if (error) { setValidationError(error); return; }
 
+    if (currentStep === 1 && formData.studentId) {
+      setIsCheckingStudentId(true);
+      try {
+        const exists = await enrollmentService.checkStudentIdExists(formData.studentId);
+        if (exists) {
+          setValidationError("This Student ID is already registered. If this is your ID, please use the login page or contact your administrator.");
+          setIsCheckingStudentId(false);
+          return;
+        }
+      } catch {
+        setValidationError("Unable to verify Student ID. Please try again.");
+        setIsCheckingStudentId(false);
+        return;
+      }
+      setIsCheckingStudentId(false);
+    }
+
     if (currentStep === 0 && formData.nstpComponent && formData.msLevel) {
       setIsCheckingSchedule(true);
       const levelLabel = formData.nstpComponent === "CWTS" ? "CWTS" : "MS";
       try {
-        const schedule = await adminService.getEnrollmentSchedule(formData.nstpComponent as NSTProgram, formData.msLevel);
+        const schedule = await enrollmentService.getEnrollmentSchedule(formData.nstpComponent as NSTProgram, formData.msLevel);
         if (!schedule) {
           setValidationError(`${formData.nstpComponent} ${levelLabel} ${formData.msLevel} is not yet open for enrollment.`);
           setIsCheckingSchedule(false);
@@ -279,7 +297,15 @@ export default function EnrollmentForm() {
             </h2>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "BUTTON") {
+                e.preventDefault();
+              }
+            }}
+            className="space-y-4"
+          >
             {stepComponents[currentStep]}
             {/* Error message */}
             {displayError && (
@@ -298,7 +324,7 @@ export default function EnrollmentForm() {
                 </Button>
               )}
               {currentStep < STEPS.length - 1 ? (
-                <Button type="button" fullWidth onClick={handleNext} loading={isCheckingSchedule}>
+                <Button type="button" fullWidth onClick={handleNext} loading={isCheckingSchedule || isCheckingStudentId}>
                   Next
                 </Button>
               ) : (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { EnrollmentDocument, EnrollmentWithMs, EnrollmentStatus, SpecialUnit, SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, Sex } from "@/types";
+import { EnrollmentDocument, EnrollmentWithMs, EnrollmentStatus, SpecialUnit, SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, formatSlotLimit, Sex } from "@/types";
 import { adminService } from "@/services/admin.service";
 import FilePreview from "@/components/common/FilePreview";
 import Button from "@/components/common/Button";
@@ -129,7 +129,7 @@ type EditableFields = Pick<EnrollmentDocument,
   "permanentBarangay" | "permanentMunicipality" | "permanentProvince" |
   "fatherName" | "fatherOccupation" | "motherName" | "motherOccupation" |
   "emergencyContactName" | "emergencyContactRelationship" | "emergencyContactContactNumber" | "emergencyContactAddress" |
-  "willingToTakeAdvanceCourse" | "course" | "yearLevel"
+  "willingToTakeAdvanceCourse" | "willingToBeMedics" | "willingToBeMilitaryPolice" | "course" | "yearLevel"
 >;
 
 function getEditableFields(e: EnrollmentDocument): EditableFields {
@@ -142,7 +142,8 @@ function getEditableFields(e: EnrollmentDocument): EditableFields {
     fatherName: e.fatherName, fatherOccupation: e.fatherOccupation, motherName: e.motherName, motherOccupation: e.motherOccupation,
     emergencyContactName: e.emergencyContactName, emergencyContactRelationship: e.emergencyContactRelationship,
     emergencyContactContactNumber: e.emergencyContactContactNumber, emergencyContactAddress: e.emergencyContactAddress,
-    willingToTakeAdvanceCourse: e.willingToTakeAdvanceCourse, course: e.course, yearLevel: e.yearLevel,
+    willingToTakeAdvanceCourse: e.willingToTakeAdvanceCourse, willingToBeMedics: e.willingToBeMedics, willingToBeMilitaryPolice: e.willingToBeMilitaryPolice,
+    course: e.course, yearLevel: e.yearLevel,
   };
 }
 
@@ -215,7 +216,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
       } else if (hasMedical && selectedUnit) {
         const result = await adminService.approveWithSpecialUnit(enrollment.uid, selectedUnit);
         if (!result) {
-          alert(`${selectedUnit} unit is full (${SPECIAL_UNIT_SLOT_LIMITS[selectedUnit]}/${SPECIAL_UNIT_SLOT_LIMITS[selectedUnit]}). Please select a different unit.`);
+          alert(`${selectedUnit} unit is full (${formatSlotLimit(SPECIAL_UNIT_SLOT_LIMITS[selectedUnit])}). Please select a different unit.`);
           setIsUpdating(false);
           return;
         }
@@ -352,10 +353,82 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
                 enrollment.msLevelTwo && `${enrollment.nstpComponent === "CWTS" ? "CWTS" : "MS"} 2`,
               ].filter(Boolean).join(", ") || "—"}
             />
-            <Field label="Advance Course" value={e.willingToTakeAdvanceCourse ? "Yes" : "No"}
-              editing={isEditing} editValue={formData.willingToTakeAdvanceCourse ? "yes" : "no"}
-              onChange={(v) => updateField("willingToTakeAdvanceCourse", v === "yes")}
-              type="select" options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+            {!isEditing ? (
+              <div className="col-span-2 sm:col-span-3">
+                <p className="text-[11px] text-gray-400 mb-2 tracking-wide">Willingness / Preference</p>
+                <div className="flex flex-wrap gap-2">
+                  {e.willingToTakeAdvanceCourse && (
+                    <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: "#7c3aed", boxShadow: "0 4px 14px rgba(124, 58, 237, 0.35)" }}>
+                      <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                      Advance Course
+                      <svg className="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                    </span>
+                  )}
+                  {e.willingToBeMedics && (
+                    <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: "#dc2626", boxShadow: "0 4px 14px rgba(220, 38, 38, 0.35)" }}>
+                      <svg className="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M10 2v4H6a2 2 0 00-2 2v4h4v4a2 2 0 002 2h4v-4h4a2 2 0 002-2V8h-4V4a2 2 0 00-2-2h-4z" />
+                      </svg>
+                      Medics
+                      <svg className="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                    </span>
+                  )}
+                  {e.willingToBeMilitaryPolice && (
+                    <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: "#059669", boxShadow: "0 4px 14px rgba(5, 150, 105, 0.35)" }}>
+                      <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      Military Police
+                      <svg className="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                    </span>
+                  )}
+                  {!e.willingToTakeAdvanceCourse && !e.willingToBeMedics && !e.willingToBeMilitaryPolice && (
+                    <span className="inline-flex items-center px-4 py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-400 font-medium italic">None selected</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="col-span-2 sm:col-span-3">
+                <p className="text-[11px] text-gray-400 mb-2 tracking-wide">Willingness / Preference</p>
+                <div className="flex flex-wrap gap-3">
+                  <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
+                    formData.willingToTakeAdvanceCourse ? "bg-purple-50 border-purple-300 ring-2 ring-purple-100" : "bg-white border-gray-200 hover:border-gray-300"
+                  }`}>
+                    <input type="radio" name="willingness-edit" checked={formData.willingToTakeAdvanceCourse}
+                      onChange={() => { updateField("willingToTakeAdvanceCourse", true); updateField("willingToBeMedics", false); updateField("willingToBeMilitaryPolice", false); }}
+                      className="w-4 h-4 text-purple-600 focus:ring-purple-500" />
+                    <span className="text-sm font-medium text-gray-700">Advance Course</span>
+                  </label>
+                  <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
+                    formData.willingToBeMedics ? "bg-red-50 border-red-300 ring-2 ring-red-100" : "bg-white border-gray-200 hover:border-gray-300"
+                  }`}>
+                    <input type="radio" name="willingness-edit" checked={formData.willingToBeMedics}
+                      onChange={() => { updateField("willingToTakeAdvanceCourse", false); updateField("willingToBeMedics", true); updateField("willingToBeMilitaryPolice", false); }}
+                      className="w-4 h-4 text-red-600 focus:ring-red-500" />
+                    <span className="text-sm font-medium text-gray-700">Medics</span>
+                  </label>
+                  <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
+                    formData.willingToBeMilitaryPolice ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-100" : "bg-white border-gray-200 hover:border-gray-300"
+                  }`}>
+                    <input type="radio" name="willingness-edit" checked={formData.willingToBeMilitaryPolice}
+                      onChange={() => { updateField("willingToTakeAdvanceCourse", false); updateField("willingToBeMedics", false); updateField("willingToBeMilitaryPolice", true); }}
+                      className="w-4 h-4 text-emerald-600 focus:ring-emerald-500" />
+                    <span className="text-sm font-medium text-gray-700">Military Police</span>
+                  </label>
+                  <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
+                    !formData.willingToTakeAdvanceCourse && !formData.willingToBeMedics && !formData.willingToBeMilitaryPolice ? "bg-gray-100 border-gray-300 ring-2 ring-gray-200" : "bg-white border-gray-200 hover:border-gray-300"
+                  }`}>
+                    <input type="radio" name="willingness-edit"
+                      checked={!formData.willingToTakeAdvanceCourse && !formData.willingToBeMedics && !formData.willingToBeMilitaryPolice}
+                      onChange={() => { updateField("willingToTakeAdvanceCourse", false); updateField("willingToBeMedics", false); updateField("willingToBeMilitaryPolice", false); }}
+                      className="w-4 h-4 text-gray-600 focus:ring-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">None</span>
+                  </label>
+                </div>
+              </div>
+            )}
             {enrollment.company && (
               <Field label="Company" value={
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold">
@@ -464,10 +537,10 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
                     <option value="" disabled>Select a special unit...</option>
                     {SPECIAL_UNITS.map((unit) => {
                       const limit = SPECIAL_UNIT_SLOT_LIMITS[unit];
-                      const isFull = unitCounts[unit] >= limit;
+                      const isFull = isFinite(limit) && unitCounts[unit] >= limit;
                       return (
                         <option key={unit} value={unit} disabled={isFull}>
-                          {unit} ({unitCounts[unit]}/{limit}){isFull ? " — FULL" : ""}
+                          {unit} ({unitCounts[unit]}/{formatSlotLimit(limit)}){isFull ? " — FULL" : ""}
                         </option>
                       );
                     })}

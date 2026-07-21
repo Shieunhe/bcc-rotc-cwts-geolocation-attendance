@@ -30,6 +30,7 @@ export default function AttendancePage() {
   const hasProgram = studentProgram === "ROTC" || studentProgram === "CWTS";
 
   const isAdvanceCourse = studentProgram === "ROTC" && !!profile?.willingToTakeAdvanceCourse;
+  const hasSerialNumber = !!profile?.serialNumber;
 
   const matchingSession = hasProgram
     ? sessions
@@ -65,17 +66,31 @@ export default function AttendancePage() {
       />
 
       <div className="max-w-md">
-        {!hasProgram && <NoProgramCard />}
+        {hasSerialNumber && (
+          <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 mb-1">You have graduated</h3>
+            <p className="text-sm text-gray-500">
+              You have been assigned a serial number and have completed the program. Attendance is no longer required.
+            </p>
+          </div>
+        )}
 
-        {hasProgram && !isApproved && (
+        {!hasSerialNumber && !hasProgram && <NoProgramCard />}
+
+        {!hasSerialNumber && hasProgram && !isApproved && (
           <NotApprovedCard status={enrollmentStatus} />
         )}
 
-        {hasProgram && isApproved && !matchingSession && (
+        {!hasSerialNumber && hasProgram && isApproved && !matchingSession && (
           <NoAttendanceCard program={studentProgram} />
         )}
 
-        {hasProgram && isApproved && matchingSession && (
+        {!hasSerialNumber && hasProgram && isApproved && matchingSession && (
           <AttendanceCard session={matchingSession} />
         )}
       </div>

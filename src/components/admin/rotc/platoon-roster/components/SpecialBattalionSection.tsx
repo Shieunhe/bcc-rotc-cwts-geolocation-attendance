@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, SpecialUnit, EnrollmentDocument } from "@/types";
+import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, formatSlotLimit, SpecialUnit, EnrollmentDocument } from "@/types";
 import ROTCPlatoonTable from "./ROTCPlatoonTable";
 
 const UNIT_CONFIG: Record<SpecialUnit, { bg: string; text: string; dot: string }> = {
@@ -35,7 +35,6 @@ interface SpecialBattalionSectionProps {
 export default function SpecialBattalionSection({ unitData }: SpecialBattalionSectionProps) {
   const [expanded, setExpanded] = useState<SpecialUnit | null>(null);
   const total = SPECIAL_UNITS.reduce((sum, u) => sum + unitData[u].length, 0);
-  const capacity = SPECIAL_UNITS.reduce((sum, u) => sum + SPECIAL_UNIT_SLOT_LIMITS[u], 0);
 
   const toggle = (unit: SpecialUnit) =>
     setExpanded((prev) => (prev === unit ? null : unit));
@@ -48,7 +47,7 @@ export default function SpecialBattalionSection({ unitData }: SpecialBattalionSe
           MEDICAL
         </span>
         <span className="text-xs font-semibold text-gray-400 tabular-nums">
-          {total}/{capacity} members
+          {total} members
         </span>
       </div>
 
@@ -68,7 +67,7 @@ export default function SpecialBattalionSection({ unitData }: SpecialBattalionSe
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-bold text-gray-800">{unit}</h3>
                       <span className="text-xs text-gray-400 tabular-nums ml-auto">
-                        {members.length}/{SPECIAL_UNIT_SLOT_LIMITS[unit]} members
+                        {members.length}/{formatSlotLimit(SPECIAL_UNIT_SLOT_LIMITS[unit])} members
                       </span>
                     </div>
                   </div>

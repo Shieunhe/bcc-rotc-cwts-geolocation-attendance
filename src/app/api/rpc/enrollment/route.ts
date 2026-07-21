@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { enrollmentServer } from "@/services/server/enrollment.server";
+import type { NSTProgram } from "@/types";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,28 @@ export async function POST(req: Request) {
     }
 
     switch (method) {
+      case "getEnrollmentSchedule": {
+        const result = await enrollmentServer.getEnrollmentSchedule(
+          params.program as NSTProgram,
+          params.msLevel as string
+        );
+        return NextResponse.json({ result });
+      }
+
+      case "getEnrollmentSchedules": {
+        const result = await enrollmentServer.getEnrollmentSchedules(
+          params.program as NSTProgram
+        );
+        return NextResponse.json({ result });
+      }
+
+      case "checkStudentIdExists": {
+        const result = await enrollmentServer.checkStudentIdExists(
+          params.studentId as string
+        );
+        return NextResponse.json(result);
+      }
+
       case "submitEnrollment": {
         const result = await enrollmentServer.submitEnrollment(
           params.formData as Parameters<

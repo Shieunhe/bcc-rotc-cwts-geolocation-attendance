@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, SpecialUnit, EnrollmentDocument } from "@/types";
+import { SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, formatSlotLimit, SpecialUnit, EnrollmentDocument } from "@/types";
 import { useCurrentRotcMsLevel } from "@/hooks/useCurrentRotcMsLevel";
 import { adminService } from "@/services/admin.service";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
@@ -95,7 +95,7 @@ export default function OfficerSpecialPlatoon() {
                 <p className={`text-[11px] uppercase tracking-wide font-medium ${theme.text}`}>{unit}</p>
               </div>
               <p className={`text-2xl font-bold mt-1 ${theme.text}`}>{isLoading ? "-" : count}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">of {SPECIAL_UNIT_SLOT_LIMITS[unit]}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">of {formatSlotLimit(SPECIAL_UNIT_SLOT_LIMITS[unit])}</p>
             </div>
           );
         })}

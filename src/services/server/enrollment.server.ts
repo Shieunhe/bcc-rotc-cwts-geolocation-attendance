@@ -1,11 +1,29 @@
 import { query, getConnection } from "@/lib/db";
 import type { RowDataPacket, ResultSetHeader } from "@/lib/db";
-import type { EnrollmentDocument, EnrollmentSchedule } from "@/types";
+import type { EnrollmentDocument, EnrollmentSchedule, NSTProgram, MSLevel } from "@/types";
 import {
   buildScheduleId,
   compareSchedulesDesc,
   isScheduleOpenAt,
 } from "@/utils/enrollmentSchedule";
+
+function ts(val: unknown): string {
+  if (!val) return "";
+  if (val instanceof Date) return val.toISOString();
+  return String(val);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSchedule(r: any): EnrollmentSchedule {
+  return {
+    program: r.program as NSTProgram,
+    msLevel: r.ms_level as MSLevel,
+    year: r.year ?? "",
+    openDate: ts(r.open_date),
+    deadline: ts(r.deadline),
+    updatedAt: ts(r.updated_at),
+  };
+}
 
 export interface EnrollmentResult {
   success: boolean;
@@ -39,6 +57,8 @@ export interface ServerEnrollmentFormData {
   emergencyContactRelationship: string;
   emergencyContactContactNumber: string;
   willingToTakeAdvanceCourse: boolean;
+  willingToBeMedics: boolean;
+  willingToBeMilitaryPolice: boolean;
   course: string;
   yearLevel: string;
   nstpComponent: string;
@@ -77,6 +97,35 @@ function boolToTinyint(val: boolean | null | undefined): number | null {
 }
 
 export const enrollmentServer = {
+  async getEnrollmentSchedule(program: NSTProgram, msLevel: string): Promise<EnrollmentSchedule | null> {
+    const rows = await query<RowDataPacket[]>(
+      "SELECT * FROM enrollment_schedules WHERE program = ? AND ms_level = ?",
+      [program, msLevel]
+    );
+    if (rows.length === 0) return null;
+    const schedules = rows.map(mapSchedule).sort(compareSchedulesDesc);
+    const open = schedules.find((s) => isScheduleOpenAt(s));
+    return open ?? schedules[0];
+  },
+
+  async getEnrollmentSchedules(program: NSTProgram): Promise<EnrollmentSchedule[]> {
+    const rows = await query<RowDataPacket[]>(
+      "SELECT * FROM enrollment_schedules WHERE program = ?",
+      [program]
+    );
+    return rows.map(mapSchedule);
+  },
+
+  async checkStudentIdExists(
+    studentId: string
+  ): Promise<{ exists: boolean }> {
+    const rows = await query<RowDataPacket[]>(
+      "SELECT 1 FROM students WHERE student_id = ? LIMIT 1",
+      [studentId.trim()]
+    );
+    return { exists: rows.length > 0 };
+  },
+
   async submitEnrollment(
     formData: ServerEnrollmentFormData
   ): Promise<EnrollmentResult> {
@@ -111,7 +160,7 @@ export const enrollmentServer = {
             father_name, father_occupation, mother_name, mother_occupation,
             emergency_contact_name, emergency_contact_address,
             emergency_contact_relationship, emergency_contact_contact_number,
-            willing_to_take_advance_course,
+            willing_to_take_advance_course, willing_to_be_medics, willing_to_be_military_police,
             course, year_level, nstp_component,
             height, weight, blood_type, complexion,
             has_medical_condition, medical_condition, medical_certificate, xray_file,
@@ -126,7 +175,7 @@ export const enrollmentServer = {
             ?, ?, ?, ?,
             ?, ?,
             ?, ?,
-            ?,
+            ?, ?, ?,
             ?, ?, ?,
             ?, ?, ?, ?,
             ?, ?, ?, ?,
@@ -160,6 +209,8 @@ export const enrollmentServer = {
             formData.emergencyContactRelationship,
             formData.emergencyContactContactNumber,
             boolToTinyint(formData.willingToTakeAdvanceCourse),
+            boolToTinyint(formData.willingToBeMedics),
+            boolToTinyint(formData.willingToBeMilitaryPolice),
             formData.course,
             formData.yearLevel || null,
             formData.nstpComponent || null,
@@ -257,7 +308,7 @@ export const enrollmentServer = {
             father_name = ?, father_occupation = ?, mother_name = ?, mother_occupation = ?,
             emergency_contact_name = ?, emergency_contact_address = ?,
             emergency_contact_relationship = ?, emergency_contact_contact_number = ?,
-            willing_to_take_advance_course = ?,
+            willing_to_take_advance_course = ?, willing_to_be_medics = ?, willing_to_be_military_police = ?,
             course = ?, year_level = ?,
             height = ?, weight = ?, blood_type = ?, complexion = ?,
             has_medical_condition = ?, medical_condition = ?,
@@ -292,6 +343,8 @@ export const enrollmentServer = {
             formData.emergencyContactRelationship,
             formData.emergencyContactContactNumber,
             boolToTinyint(formData.willingToTakeAdvanceCourse),
+            boolToTinyint(formData.willingToBeMedics),
+            boolToTinyint(formData.willingToBeMilitaryPolice),
             formData.course,
             formData.yearLevel || null,
             formData.height,
