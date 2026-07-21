@@ -8,6 +8,11 @@ export const runtime = "nodejs";
 
 const CODE_TTL_MS = 15 * 60 * 1000;
 
+function toLocalMySQLDatetime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 function getGmailTransporter() {
   const user = process.env.GMAIL_USER?.trim();
   const pass = process.env.GMAIL_APP_PASSWORD?.trim();
@@ -55,7 +60,7 @@ export async function POST(req: Request) {
       `INSERT INTO password_reset_codes (student_id, email, verification_code, expires_at)
        VALUES (?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE verification_code = VALUES(verification_code), expires_at = VALUES(expires_at), updated_at = NOW()`,
-      [student.id, emailNorm, code, expiresAt.toISOString().slice(0, 19).replace("T", " ")]
+      [student.id, emailNorm, code, toLocalMySQLDatetime(expiresAt)]
     );
 
     const fromEmail = process.env.GMAIL_USER!;
