@@ -67,9 +67,28 @@ async function main() {
   await rootConn.query(schemaSql);
   console.log("   Database and tables created!\n");
 
+  console.log("3) Running migrations (adding missing columns)...");
+  const migrations = [
+    { column: "willing_to_be_medics", sql: `ALTER TABLE \`${DB_NAME}\`.\`students\` ADD COLUMN \`willing_to_be_medics\` TINYINT(1) NOT NULL DEFAULT 0 AFTER \`willing_to_take_advance_course\`` },
+    { column: "willing_to_be_military_police", sql: `ALTER TABLE \`${DB_NAME}\`.\`students\` ADD COLUMN \`willing_to_be_military_police\` TINYINT(1) NOT NULL DEFAULT 0 AFTER \`willing_to_be_medics\`` },
+  ];
+  for (const m of migrations) {
+    try {
+      await rootConn.query(m.sql);
+      console.log(`   Added column: ${m.column}`);
+    } catch (err) {
+      if (err.code === "ER_DUP_FIELDNAME") {
+        console.log(`   Column already exists: ${m.column} (skipped)`);
+      } else {
+        console.error(`   Migration error for ${m.column}:`, err.message);
+      }
+    }
+  }
+  console.log("   Migrations complete!\n");
+
   await rootConn.end();
 
-  console.log("3) Seeding admin/officer accounts...");
+  console.log("4) Seeding admin/officer accounts...");
   const conn = await mysql.createConnection({
     host: DB_HOST,
     port: DB_PORT,
