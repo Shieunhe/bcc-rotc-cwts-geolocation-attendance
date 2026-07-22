@@ -65,7 +65,7 @@ const COURSE_ACRONYMS: Record<string, string> = {
   "BS Information Technology": "BSIT",
   "BS Tourism Management": "BSTM",
   "BEED - Bachelor of Elementary Education": "BEED",
-  "BSED - Major in English": "BSED-Engish",
+  "BSED - Major in English": "BSED-English",
   "BSED - Major in Mathematics": "BSED-Mathematics",
 };
 
