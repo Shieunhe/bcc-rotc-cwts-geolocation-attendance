@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useEffect } from "react";
-import { EnrollmentDocument, EnrollmentWithMs, EnrollmentStatus, SpecialUnit, SPECIAL_UNITS, SPECIAL_UNIT_SLOT_LIMITS, formatSlotLimit, Sex } from "@/types";
+import { EnrollmentDocument, EnrollmentWithMs, EnrollmentStatus, Sex } from "@/types";
 import { adminService } from "@/services/admin.service";
 import FilePreview from "@/components/common/FilePreview";
 import Button from "@/components/common/Button";
@@ -158,18 +157,7 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
   const [isSaving, setIsSaving] = useState(false);
 
   const hasMedical = enrollment.hasMedicalCondition === true && enrollment.nstpComponent === "ROTC";
-  const [showMedicalAssign, setShowMedicalAssign] = useState(false);
-  const [selectedUnit, setSelectedUnit] = useState<SpecialUnit | "">("");
-  const [unitCounts, setUnitCounts] = useState<Record<SpecialUnit, number>>({ Medics: 0, HQ: 0, MP: 0 });
-  const [loadingCounts, setLoadingCounts] = useState(false);
-
-  useEffect(() => {
-    if (!showMedicalAssign) return;
-    setLoadingCounts(true);
-    Promise.all(SPECIAL_UNITS.map((u) => adminService.getSpecialUnitCount(u)))
-      .then(([medics, hq, mp]) => setUnitCounts({ Medics: medics, HQ: hq, MP: mp }))
-      .finally(() => setLoadingCounts(false));
-  }, [showMedicalAssign]);
+  const autoUnit = hasMedical ? "HQ" : enrollment.willingToBeMedics ? "Medics" : enrollment.willingToBeMilitaryPolice ? "MP" : null;
 
   function updateField<K extends keyof EditableFields>(key: K, value: EditableFields[K]) {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -205,21 +193,12 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
   );
 
   async function handleApprove() {
-    if (hasMedical && !showMedicalAssign && !isReEnrollment) {
-      setShowMedicalAssign(true);
-      return;
-    }
     setIsUpdating(true);
     try {
       if (isReEnrollment) {
         await adminService.updateEnrollmentStatus(enrollment.uid, "approved");
-      } else if (hasMedical && selectedUnit) {
-        const result = await adminService.approveWithSpecialUnit(enrollment.uid, selectedUnit);
-        if (!result) {
-          alert(`${selectedUnit} unit is full (${formatSlotLimit(SPECIAL_UNIT_SLOT_LIMITS[selectedUnit])}). Please select a different unit.`);
-          setIsUpdating(false);
-          return;
-        }
+      } else if (hasMedical) {
+        await adminService.approveWithSpecialUnit(enrollment.uid, "HQ");
       } else if (enrollment.nstpComponent === "CWTS") {
         const company = await adminService.approveCWTSEnrollment(enrollment.uid);
         if (!company) {
@@ -510,64 +489,6 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
             </div>
           ) : enrollment.status !== "pending" ? (
             <Button variant="secondary" fullWidth className="!py-2 !text-sm" onClick={onClose}>Close</Button>
-          ) : showMedicalAssign ? (
-            <div className="space-y-3">
-              <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
-                <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p className="text-sm font-semibold text-red-700">Medical Condition Detected</p>
-                  <p className="text-xs text-red-600 mt-0.5">
-                    This student has a medical condition: <span className="font-semibold">{enrollment.medicalCondition}</span>.
-                    Please assign them to a special unit.
-                  </p>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Select Assignment</label>
-                {loadingCounts ? (
-                  <div className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-400 bg-gray-50">Loading slots...</div>
-                ) : (
-                  <select
-                    value={selectedUnit}
-                    onChange={(ev) => setSelectedUnit(ev.target.value as SpecialUnit)}
-                    className="w-full border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
-                  >
-                    <option value="" disabled>Select a special unit...</option>
-                    {SPECIAL_UNITS.map((unit) => {
-                      const limit = SPECIAL_UNIT_SLOT_LIMITS[unit];
-                      const isFull = isFinite(limit) && unitCounts[unit] >= limit;
-                      return (
-                        <option key={unit} value={unit} disabled={isFull}>
-                          {unit} ({unitCounts[unit]}/{formatSlotLimit(limit)}){isFull ? " — FULL" : ""}
-                        </option>
-                      );
-                    })}
-                  </select>
-                )}
-              </div>
-              <div className="flex gap-3">
-                <Button
-                  variant="success"
-                  fullWidth
-                  className="!py-2 !text-sm"
-                  disabled={!selectedUnit}
-                  loading={isUpdating}
-                  onClick={handleApprove}
-                >
-                  {selectedUnit ? `Approve & Assign to ${selectedUnit}` : "Select a special unit to approve"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  className="!py-2 !text-sm"
-                  onClick={() => { setShowMedicalAssign(false); setSelectedUnit(""); }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
           ) : showDisapprove ? (
             <div className="space-y-3">
               <div>
@@ -602,9 +523,39 @@ export default function AdminEnrollmentDetailModal({ enrollment, onClose, onStat
               </div>
             </div>
           ) : (
-            <div className="flex gap-3">
-              <Button variant="success" fullWidth className="!py-2 !text-sm" onClick={handleApprove} loading={isUpdating}>Approve</Button>
-              <Button variant="danger" fullWidth className="!py-2 !text-sm" onClick={() => setShowDisapprove(true)}>Disapprove</Button>
+            <div className="space-y-3">
+              {autoUnit && !isReEnrollment && (
+                <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border ${
+                  autoUnit === "HQ" ? "bg-blue-50 border-blue-200" : autoUnit === "Medics" ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"
+                }`}>
+                  <svg className={`w-5 h-5 shrink-0 mt-0.5 ${
+                    autoUnit === "HQ" ? "text-blue-500" : autoUnit === "Medics" ? "text-red-500" : "text-emerald-500"
+                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className={`text-sm font-semibold ${
+                      autoUnit === "HQ" ? "text-blue-700" : autoUnit === "Medics" ? "text-red-700" : "text-emerald-700"
+                    }`}>
+                      {hasMedical ? "Medical Condition" : `Willing to be ${autoUnit}`} — Auto-assign to {autoUnit}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${
+                      autoUnit === "HQ" ? "text-blue-600" : autoUnit === "Medics" ? "text-red-600" : "text-emerald-600"
+                    }`}>
+                      {hasMedical
+                        ? <>This student has: <span className="font-semibold">{enrollment.medicalCondition}</span>. Approving will automatically assign them to <span className="font-bold">HQ</span> (no slot limit).</>
+                        : <>This student chose <span className="font-bold">{autoUnit}</span>. Approving will automatically assign them to the <span className="font-bold">{autoUnit}</span> special unit.</>
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <Button variant="success" fullWidth className="!py-2 !text-sm" onClick={handleApprove} loading={isUpdating}>
+                  {autoUnit && !isReEnrollment ? `Approve & Assign to ${autoUnit}` : "Approve"}
+                </Button>
+                <Button variant="danger" fullWidth className="!py-2 !text-sm" onClick={() => setShowDisapprove(true)}>Disapprove</Button>
+              </div>
             </div>
           )}
         </div>

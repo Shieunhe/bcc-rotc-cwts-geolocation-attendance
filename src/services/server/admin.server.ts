@@ -543,22 +543,23 @@ export const adminServerService = {
     const shouldReset = options?.resetRotcAssignments ?? true;
     if (status === "approved" && latest.data.program === "ROTC" && shouldReset) {
       const studentRows = await query<RowDataPacket[]>(
-        "SELECT has_medical_condition FROM students WHERE id = ? LIMIT 1",
+        "SELECT has_medical_condition, willing_to_be_medics, willing_to_be_military_police FROM students WHERE id = ? LIMIT 1",
         [uid],
       );
-      const hasMedical = studentRows.length > 0 && !!studentRows[0].has_medical_condition;
+      const row = studentRows[0];
+      const hasMedical = row && !!row.has_medical_condition;
+      const willingMedics = row && !!row.willing_to_be_medics;
+      const willingMP = row && !!row.willing_to_be_military_police;
 
-      if (hasMedical) {
-        await execute(
-          `UPDATE students SET battalion = NULL, rotc_company = NULL, rotc_platoon = NULL, special_unit = 'HQ', updated_at = ? WHERE id = ?`,
-          [now, uid],
-        );
-      } else {
-        await execute(
-          `UPDATE students SET battalion = NULL, rotc_company = NULL, rotc_platoon = NULL, special_unit = NULL, updated_at = ? WHERE id = ?`,
-          [now, uid],
-        );
-      }
+      let specialUnit: string | null = null;
+      if (hasMedical) specialUnit = "HQ";
+      else if (willingMedics) specialUnit = "Medics";
+      else if (willingMP) specialUnit = "MP";
+
+      await execute(
+        `UPDATE students SET battalion = NULL, rotc_company = NULL, rotc_platoon = NULL, special_unit = ?, updated_at = ? WHERE id = ?`,
+        [specialUnit, now, uid],
+      );
     }
   },
 
@@ -626,7 +627,7 @@ export const adminServerService = {
 
   async assignROTCPlatoons(msLevel: "1" | "2" = "2"): Promise<{ assigned: number; alreadyAssigned: number }> {
     const enrollments = await this.getROTCApprovedEnrollments(msLevel);
-    const unassigned = enrollments.filter((e) => !e.rotcCompany && !e.willingToTakeAdvanceCourse && !e.specialUnit && !e.medicalCondition);
+    const unassigned = enrollments.filter((e) => !e.rotcCompany && !e.willingToTakeAdvanceCourse && !e.willingToBeMedics && !e.willingToBeMilitaryPolice && !e.specialUnit && !e.medicalCondition);
     const alreadyAssigned = enrollments.length - unassigned.length;
     if (unassigned.length === 0) return { assigned: 0, alreadyAssigned };
 

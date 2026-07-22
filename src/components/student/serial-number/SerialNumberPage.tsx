@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toPng } from "html-to-image";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
@@ -35,7 +36,7 @@ function safeDownloadSegment(text: string, fallback: string) {
 function buildCertificateDownloadFilename(studentName: string, serialNumber: string | undefined) {
   const namePart = safeDownloadSegment(studentName, "student");
   const serialPart = safeDownloadSegment(serialNumber ?? "", "no-serial");
-  return `${namePart}-${serialPart}.png`;
+  return `${namePart}-${serialPart}.pdf`;
 }
 
 function buildCertificateStudentName(profile: {
@@ -52,6 +53,25 @@ function buildCertificateStudentName(profile: {
   const suffix = profile.suffix?.trim() ?? "";
 
   return [firstName, middleInitial ? `${middleInitial}.` : "", lastName, suffix].filter(Boolean).join(" ");
+}
+
+function ProtectedSignature({ src, className }: { src: string; className: string }) {
+  return (
+    <div
+      className={`relative select-none ${className}`}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        className="w-full h-full object-contain pointer-events-none"
+        draggable={false}
+      />
+      <div className="absolute inset-0" />
+    </div>
+  );
 }
 
 /** Same as Tailwind max-w-4xl — export at this width so phone downloads match desktop layout. */
@@ -164,12 +184,7 @@ function ROTCCertificate({ serialData, studentFullName }: {
               <div className="mx-auto grid w-full grid-cols-2 items-end gap-10" dir="ltr">
                 <div className="flex min-w-0 flex-col items-center text-center">
                   {serialData.commandantSignature && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={serialData.commandantSignature}
-                      alt=""
-                      className="mx-auto h-20 max-h-24 w-auto max-w-full object-contain -mb-5"
-                    />
+                    <ProtectedSignature src={serialData.commandantSignature} className="mx-auto h-20 max-h-24 w-auto max-w-full -mb-5" />
                   )}
                   {serialData.commandant && (
                     <p className="mb-0.5 text-sm font-bold text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
@@ -183,12 +198,7 @@ function ROTCCertificate({ serialData, studentFullName }: {
                 </div>
                 <div className="flex min-w-0 flex-col items-center text-center">
                   {serialData.schoolRegistrarSignature && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={serialData.schoolRegistrarSignature}
-                      alt=""
-                      className="mx-auto h-20 max-h-24 w-auto max-w-full object-contain -mb-5"
-                    />
+                    <ProtectedSignature src={serialData.schoolRegistrarSignature} className="mx-auto h-20 max-h-24 w-auto max-w-full -mb-5" />
                   )}
                   {serialData.schoolRegistrar && (
                     <p className="mb-0.5 text-sm font-bold text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
@@ -312,12 +322,7 @@ function CWTSCertificate({ serialData, studentFullName }: {
             <div className="mt-6 flex items-end justify-between px-6" dir="ltr">
               <div className="text-center">
                 {serialData.nstpCoordinatorSignature && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={serialData.nstpCoordinatorSignature}
-                    alt=""
-                    className="mx-auto h-28 object-contain -mb-10"
-                  />
+                  <ProtectedSignature src={serialData.nstpCoordinatorSignature} className="mx-auto h-28 -mb-10" />
                 )}
                 {serialData.nstpCoordinator && (
                   <p className="mb-0 text-sm font-bold leading-tight text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
@@ -331,12 +336,7 @@ function CWTSCertificate({ serialData, studentFullName }: {
               </div>
               <div className="text-center">
                 {serialData.bccPresidentSignature && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={serialData.bccPresidentSignature}
-                    alt=""
-                    className="mx-auto h-28 object-contain -mb-10"
-                  />
+                  <ProtectedSignature src={serialData.bccPresidentSignature} className="mx-auto h-28 -mb-10" />
                 )}
                 {serialData.bccPresident && (
                   <p className="mb-0 text-sm font-bold leading-tight text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
@@ -353,12 +353,7 @@ function CWTSCertificate({ serialData, studentFullName }: {
             <div className="mt-8 flex justify-center">
               <div className="text-center">
                 {serialData.municipalMayorSignature && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={serialData.municipalMayorSignature}
-                    alt=""
-                    className="mx-auto h-28 object-contain -mb-10"
-                  />
+                  <ProtectedSignature src={serialData.municipalMayorSignature} className="mx-auto h-28 -mb-10" />
                 )}
                 {serialData.municipalMayor && (
                   <p className="mb-0 text-sm font-bold leading-tight text-gray-900" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
@@ -420,22 +415,34 @@ export default function SerialNumberPage() {
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
-      const exportHeight = Math.ceil(node.scrollHeight);
-      const dataUrl = await toPng(node, {
+
+      const canvas = await html2canvas(node, {
         width: CERTIFICATE_EXPORT_WIDTH_PX,
-        height: exportHeight,
-        cacheBust: true,
-        pixelRatio: CERTIFICATE_DOWNLOAD_PIXEL_RATIO,
+        scale: CERTIFICATE_DOWNLOAD_PIXEL_RATIO,
         backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
       });
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = buildCertificateDownloadFilename(studentFullName, serialData.serialNumber);
-      link.rel = "noopener";
-      link.click();
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const imgWidthPx = canvas.width;
+      const imgHeightPx = canvas.height;
+
+      const pdfWidthMm = 210;
+      const pdfHeightMm = (imgHeightPx / imgWidthPx) * pdfWidthMm;
+      const orientation = pdfHeightMm > pdfWidthMm ? "portrait" : "landscape";
+
+      const pdf = new jsPDF({
+        orientation: orientation as "portrait" | "landscape",
+        unit: "mm",
+        format: [pdfWidthMm, pdfHeightMm],
+      });
+
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidthMm, pdfHeightMm);
+      pdf.save(buildCertificateDownloadFilename(studentFullName, serialData.serialNumber));
     } catch (err) {
       console.error("Certificate download failed:", err);
-      setDownloadError("Could not save the image. Try again, or take a screenshot if it keeps failing.");
+      setDownloadError("Could not generate the PDF. Try again, or take a screenshot if it keeps failing.");
     } finally {
       setDownloading(false);
     }
@@ -477,7 +484,7 @@ export default function SerialNumberPage() {
             <div className="rounded-xl border border-gray-200 bg-gray-50/90 p-3 sm:p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="order-2 text-xs text-gray-600 leading-relaxed sm:order-1 sm:min-w-0 sm:flex-1">
-                  Download a PNG for your records. On a phone, pan inside the gray frame above if needed.
+                  Download a PDF for your records. On a phone, pan inside the gray frame above if needed.
                 </p>
                 <button
                   type="button"
