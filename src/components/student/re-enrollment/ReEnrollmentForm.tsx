@@ -42,6 +42,8 @@ function profileToFormData(p: EnrollmentDocument, nextMs: string): EnrollmentFor
     emergencyContactRelationship: p.emergencyContactRelationship,
     emergencyContactContactNumber: p.emergencyContactContactNumber,
     willingToTakeAdvanceCourse: p.willingToTakeAdvanceCourse,
+    willingToBeMedics: p.willingToBeMedics,
+    willingToBeMilitaryPolice: p.willingToBeMilitaryPolice,
     course: p.course,
     yearLevel: p.yearLevel,
     nstpComponent: p.nstpComponent,
