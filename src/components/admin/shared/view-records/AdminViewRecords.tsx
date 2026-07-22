@@ -59,12 +59,18 @@ function flattenApproved(enrollments: EnrollmentWithMs[]): FlatStudentRow[] {
   return rows;
 }
 
+const COURSE_ACRONYMS: Record<string, string> = {
+  "BS Criminology": "BSCRIM",
+  "BS Hospitality Management": "BSHM",
+  "BS Information Technology": "BSIT",
+  "BS Tourism Management": "BSTM",
+  "BEED - Bachelor of Elementary Education": "BEED",
+  "BSED - Major in English": "BSED-Engish",
+  "BSED - Major in Mathematics": "BSED-Mathematics",
+};
+
 function getCourseAcronym(course: string): string {
-  return course
-    .split(" ")
-    .map((word) => word[0])
-    .filter((char) => char && char === char.toUpperCase())
-    .join("");
+  return COURSE_ACRONYMS[course] || course;
 }
 
 function formatBirthdate(value: string): string {
