@@ -142,7 +142,8 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
         if (program === "CWTS") {
           const compA = a.enrollment.company ?? "";
           const compB = b.enrollment.company ?? "";
-          return compA.localeCompare(compB);
+          if (compA !== compB) return compA.localeCompare(compB);
+          return a.enrollment.lastName.localeCompare(b.enrollment.lastName);
         }
         const batA = a.enrollment.battalion ?? 0;
         const batB = b.enrollment.battalion ?? 0;
@@ -152,7 +153,8 @@ export default function AdminViewRecords({ program }: AdminViewRecordsProps) {
         if (compA !== compB) return compA.localeCompare(compB);
         const platA = a.enrollment.rotcPlatoon ?? 0;
         const platB = b.enrollment.rotcPlatoon ?? 0;
-        return platA - platB;
+        if (platA !== platB) return platA - platB;
+        return a.enrollment.lastName.localeCompare(b.enrollment.lastName);
       });
   }, [allRows, msFilter, syFilter, search, program]);
 
