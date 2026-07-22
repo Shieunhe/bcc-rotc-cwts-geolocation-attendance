@@ -702,6 +702,16 @@ export const adminServerService = {
       if (target[e.rotcCompany]?.[e.rotcPlatoon]) target[e.rotcCompany][e.rotcPlatoon].push(e);
     }
 
+    const sortByLastName = (a: EnrollmentWithMs, b: EnrollmentWithMs) => a.lastName.localeCompare(b.lastName);
+    for (const company of Object.values(battalion1)) {
+      for (const platoon of Object.keys(company)) company[Number(platoon)].sort(sortByLastName);
+    }
+    for (const company of Object.values(battalion2)) {
+      for (const platoon of Object.keys(company)) company[Number(platoon)].sort(sortByLastName);
+    }
+    advanceCourseMale.sort(sortByLastName);
+    advanceCourseFemale.sort(sortByLastName);
+
     return { battalion1, battalion2, advanceCourseMale, advanceCourseFemale };
   },
 
@@ -713,6 +723,10 @@ export const adminServerService = {
       const merged = mergeWithMsRecords(p, msRecords);
       if (merged.specialUnit && result[merged.specialUnit]) result[merged.specialUnit].push(merged);
     }
+    const sortByLastName = (a: EnrollmentWithMs, b: EnrollmentWithMs) => a.lastName.localeCompare(b.lastName);
+    result.Medics.sort(sortByLastName);
+    result.HQ.sort(sortByLastName);
+    result.MP.sort(sortByLastName);
     return result;
   },
 
