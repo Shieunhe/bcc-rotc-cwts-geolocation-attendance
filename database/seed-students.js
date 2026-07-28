@@ -70,8 +70,30 @@ async function main() {
     database: DB_NAME,
   });
 
-  const scheduleRotc = "ROTC_1_2026-2027";
-  const scheduleCwts = "CWTS_1_2026-2027";
+  const [schedules] = await conn.execute("SELECT * FROM enrollment_schedules");
+  if (schedules.length === 0) {
+    console.log("No enrollment schedules found. Please create at least one enrollment schedule first.");
+    await conn.end();
+    return;
+  }
+
+  const rotcSchedule = schedules.find((s) => s.program === "ROTC" && s.ms_level === "1");
+  const cwtsSchedule = schedules.find((s) => s.program === "CWTS" && s.ms_level === "1");
+
+  if (!rotcSchedule && !cwtsSchedule) {
+    console.log("No MS 1 enrollment schedules found for ROTC or CWTS. Please create one first.");
+    await conn.end();
+    return;
+  }
+
+  const scheduleRotc = rotcSchedule ? `${rotcSchedule.program}_${rotcSchedule.ms_level}_${rotcSchedule.year}` : null;
+  const scheduleCwts = cwtsSchedule ? `${cwtsSchedule.program}_${cwtsSchedule.ms_level}_${cwtsSchedule.year}` : null;
+
+  console.log("  Enrollment schedules found:");
+  if (scheduleRotc) console.log(`    ROTC: ${scheduleRotc}`);
+  if (scheduleCwts) console.log(`    CWTS: ${scheduleCwts}`);
+  console.log("");
+
   const now = new Date().toISOString().slice(0, 19).replace("T", " ");
   const photo = generatePlaceholderImage();
 
@@ -84,7 +106,11 @@ async function main() {
     const middleName = rand(MIDDLE_NAMES);
     const suffix = Math.random() > 0.95 ? "JR." : null;
     const course = rand(COURSES);
-    const nstpComponent = course === "BS Criminology" ? "ROTC" : rand(["ROTC", "CWTS"]);
+    let nstpComponent = course === "BS Criminology" ? "ROTC" : rand(["ROTC", "CWTS"]);
+    if (nstpComponent === "ROTC" && !scheduleRotc) nstpComponent = "CWTS";
+    if (nstpComponent === "CWTS" && !scheduleCwts) nstpComponent = "ROTC";
+    const scheduleId = nstpComponent === "ROTC" ? scheduleRotc : scheduleCwts;
+    if (!scheduleId) continue;
     const studentId = generateStudentId();
     const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randInt(1,999)}@student.bcc.edu.ph`;
     const username = `${firstName.toLowerCase()}${lastName.toLowerCase()}${randInt(1,999)}`;
@@ -120,7 +146,7 @@ async function main() {
           `${rand(FIRST_NAMES_FEMALE)} ${rand(LAST_NAMES)}`, rand(OCCUPATIONS),
           `${rand(FIRST_NAMES_MALE)} ${rand(LAST_NAMES)}`, `${rand(BARANGAYS)}, ${rand(MUNICIPALITIES)}`, rand(RELATIONSHIPS), generatePhone(),
           willingAdvance, willingMedics, willingMP,
-          course, rand(YEAR_LEVELS), nstpComponent,
+          course, "1st Year", nstpComponent,
           generateHeight(), `${randInt(45, 95)}`, rand(BLOOD_TYPES), rand(COMPLEXIONS),
           hasMedical, medicalCondition,
           email, username, password, photo,
@@ -129,7 +155,6 @@ async function main() {
       );
 
       const studentDbId = result.insertId;
-      const scheduleId = nstpComponent === "ROTC" ? scheduleRotc : scheduleCwts;
 
       await conn.execute(
         `INSERT INTO student_ms_records (student_id, schedule_id, ms_level, status, program, created_at, updated_at)
