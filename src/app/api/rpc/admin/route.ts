@@ -55,6 +55,10 @@ const dispatch: Record<SvcKey, (p: any) => Promise<unknown>> = {
   getSignatorySettings: (p) => adminServerService.getSignatorySettings(p.program),
   saveSerialNumber: (p) => adminServerService.saveSerialNumber(p.uid, p.serialNumber, p.program, p.signatories),
   getSerialNumbersByProgram: (p) => adminServerService.getSerialNumbersByProgram(p.program),
+
+  getWithdrawalRequests: () => adminServerService.getWithdrawalRequests(),
+  approveWithdrawal: (p) => adminServerService.approveWithdrawal(p.withdrawalId),
+  rejectWithdrawal: (p) => adminServerService.rejectWithdrawal(p.withdrawalId, p.remarks),
 };
 
 function serialize(value: unknown): unknown {

@@ -270,3 +270,20 @@ CREATE TABLE IF NOT EXISTS `password_reset_codes` (
   UNIQUE KEY `uk_student_reset` (`student_id`),
   CONSTRAINT `fk_reset_student` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 11. advance_course_withdrawals
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `advance_course_withdrawals` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `student_id` INT UNSIGNED NOT NULL,
+  `reason` TEXT NOT NULL,
+  `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `admin_remarks` TEXT DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_withdrawal_student` (`student_id`),
+  KEY `idx_withdrawal_status` (`status`),
+  CONSTRAINT `fk_withdrawal_student` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1343,4 +1343,103 @@ export const adminServerService = {
     }
     return map;
   },
+
+  /* ---------- Advance Course Withdrawals ---------- */
+
+  async getWithdrawalRequests(): Promise<{
+    id: number;
+    studentId: string;
+    studentUid: string;
+    firstName: string;
+    lastName: string;
+    course: string;
+    sex: string;
+    reason: string;
+    status: string;
+    adminRemarks: string | null;
+    createdAt: string;
+  }[]> {
+    const rows = await query<RowDataPacket[]>(
+      `SELECT w.id, w.reason, w.status, w.admin_remarks, w.created_at,
+              s.id AS uid, s.student_id, s.first_name, s.last_name, s.course, s.sex
+       FROM advance_course_withdrawals w
+       JOIN students s ON w.student_id = s.id
+       ORDER BY FIELD(w.status, 'pending', 'rejected', 'approved'), w.created_at DESC`,
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      studentId: r.student_id,
+      studentUid: String(r.uid),
+      firstName: r.first_name,
+      lastName: r.last_name,
+      course: r.course,
+      sex: r.sex,
+      reason: r.reason,
+      status: r.status,
+      adminRemarks: r.admin_remarks ?? null,
+      createdAt: ts(r.created_at),
+    }));
+  },
+
+  async approveWithdrawal(withdrawalId: number): Promise<void> {
+    const rows = await query<RowDataPacket[]>(
+      "SELECT student_id FROM advance_course_withdrawals WHERE id = ? AND status = 'pending' LIMIT 1",
+      [withdrawalId],
+    );
+    if (rows.length === 0) throw new Error("Withdrawal request not found or already processed");
+    const studentDbId = rows[0].student_id;
+
+    const now = new Date().toISOString();
+    await execute(
+      "UPDATE advance_course_withdrawals SET status = 'approved', updated_at = ? WHERE id = ?",
+      [now, withdrawalId],
+    );
+
+    await execute(
+      "UPDATE students SET willing_to_take_advance_course = 0, updated_at = ? WHERE id = ?",
+      [now, studentDbId],
+    );
+
+    const studentRows = await query<RowDataPacket[]>(
+      `SELECT s.id, s.sex, COALESCE(m.ms_level, '1') AS ms_level
+       FROM students s
+       LEFT JOIN student_ms_records m ON m.student_id = s.id AND m.program = 'ROTC'
+       WHERE s.id = ?
+       ORDER BY m.created_at DESC LIMIT 1`,
+      [studentDbId],
+    );
+    if (studentRows.length === 0) return;
+
+    const sex = studentRows[0].sex;
+    const msLevel: "1" | "2" = studentRows[0].ms_level === "2" ? "2" : "1";
+    const enrollments = await this.getROTCApprovedEnrollments(msLevel);
+
+    const battalion = sex === "Male" ? 1 : 2;
+    const companies = sex === "Male" ? ROTC_BATTALION_1_COMPANIES : ROTC_BATTALION_2_COMPANIES;
+
+    const existingCounts = buildROTCSlotCounts(
+      enrollments.filter((e) => e.sex === sex && e.rotcCompany && !e.specialUnit && !e.medicalCondition),
+      companies,
+    );
+
+    const studentProfile = enrollments.find((e) => String(e.uid) === String(studentDbId));
+    if (!studentProfile) return;
+
+    const assignments = computeROTCAssignments([studentProfile], battalion as ROTCBattalion, companies, existingCounts);
+    if (assignments.length > 0) {
+      const a = assignments[0];
+      await execute(
+        "UPDATE students SET battalion = ?, rotc_company = ?, rotc_platoon = ?, updated_at = ? WHERE id = ?",
+        [a.battalion, a.rotcCompany, a.rotcPlatoon, now, studentDbId],
+      );
+    }
+  },
+
+  async rejectWithdrawal(withdrawalId: number, remarks: string): Promise<void> {
+    const now = new Date().toISOString();
+    await execute(
+      "UPDATE advance_course_withdrawals SET status = 'rejected', admin_remarks = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
+      [remarks, now, withdrawalId],
+    );
+  },
 };

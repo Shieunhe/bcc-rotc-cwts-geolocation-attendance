@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
+import { studentService } from "@/services/student.service";
 import { EnrollmentStatus } from "@/types";
 
 const STATUS_CONFIG: Record<EnrollmentStatus, { label: string; className: string; dot: string }> = {
@@ -11,9 +13,55 @@ const STATUS_CONFIG: Record<EnrollmentStatus, { label: string; className: string
   rejected: { label: "Rejected", className: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500" },
 };
 
+type WithdrawalRequest = {
+  id: number;
+  reason: string;
+  status: string;
+  adminRemarks: string | null;
+  createdAt: string;
+};
+
 export default function AssignedPlatoon() {
   const { profile, authLoading, dataLoading } = useStudentProfile();
   const isLoading = authLoading || dataLoading;
+
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [withdrawError, setWithdrawError] = useState("");
+  const [withdrawalRequest, setWithdrawalRequest] = useState<WithdrawalRequest | null>(null);
+
+  const fetchWithdrawal = useCallback(async () => {
+    try {
+      const req = await studentService.getWithdrawalRequest();
+      setWithdrawalRequest(req);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    if (profile?.willingToTakeAdvanceCourse && profile.status === "approved") {
+      fetchWithdrawal();
+    }
+  }, [profile, fetchWithdrawal]);
+
+  const handleSubmitWithdrawal = async () => {
+    if (!withdrawReason.trim()) {
+      setWithdrawError("Please enter a reason for withdrawal.");
+      return;
+    }
+    setWithdrawLoading(true);
+    setWithdrawError("");
+    try {
+      await studentService.submitWithdrawalRequest(withdrawReason.trim());
+      setShowWithdrawModal(false);
+      setWithdrawReason("");
+      await fetchWithdrawal();
+    } catch (err) {
+      setWithdrawError(err instanceof Error ? err.message : "Failed to submit request");
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
 
   const isCWTS = profile?.nstpComponent === "CWTS";
   const isAdvanceCourse = !isCWTS && profile?.status === "approved" && !!profile?.willingToTakeAdvanceCourse;
@@ -148,6 +196,52 @@ export default function AssignedPlatoon() {
                   </span>
                 </div>
               )}
+
+              {/* Withdrawal request status banners */}
+              {isAdvanceCourse && !isSpecialUnit && withdrawalRequest && (
+                <div className="col-span-2">
+                  {withdrawalRequest.status === "pending" && (
+                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-semibold text-yellow-800">Withdrawal Request Pending</h4>
+                          <p className="text-xs text-yellow-700 mt-1">Submitted on {new Date(withdrawalRequest.createdAt).toLocaleDateString()}</p>
+                          <p className="text-xs text-yellow-600 mt-2 italic">&ldquo;{withdrawalRequest.reason}&rdquo;</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {withdrawalRequest.status === "rejected" && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-semibold text-red-800">Withdrawal Request Rejected</h4>
+                          {withdrawalRequest.adminRemarks && (
+                            <p className="text-xs text-red-700 mt-1">Admin remarks: {withdrawalRequest.adminRemarks}</p>
+                          )}
+                          <p className="text-xs text-red-600 mt-2 italic">Your reason: &ldquo;{withdrawalRequest.reason}&rdquo;</p>
+                          <button
+                            onClick={() => { setShowWithdrawModal(true); setWithdrawReason(""); setWithdrawError(""); }}
+                            className="mt-3 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                          >
+                            Submit New Request
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {!isCWTS && !isAdvanceCourse && isAssigned && (
                 <>
                   <div>
@@ -160,6 +254,61 @@ export default function AssignedPlatoon() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+
+          {/* Withdrawal request button */}
+          {isAdvanceCourse && !isSpecialUnit && (!withdrawalRequest || withdrawalRequest.status === "rejected") && (
+            <div className="border-t border-gray-100 px-6 py-4">
+              <button
+                onClick={() => { setShowWithdrawModal(true); setWithdrawReason(""); setWithdrawError(""); }}
+                className="w-full px-4 py-2.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors"
+              >
+                Request Withdrawal from Advance Course
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Withdrawal modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-800">Request Advance Course Withdrawal</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Please provide your reason for wanting to withdraw from the Advance Course. Your request will be reviewed by an admin.
+              </p>
+            </div>
+            <div className="px-6 py-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Withdrawal</label>
+              <textarea
+                value={withdrawReason}
+                onChange={(e) => setWithdrawReason(e.target.value)}
+                rows={4}
+                placeholder="Enter your reason..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+              />
+              {withdrawError && (
+                <p className="text-xs text-red-600 mt-2">{withdrawError}</p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                onClick={() => setShowWithdrawModal(false)}
+                disabled={withdrawLoading}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitWithdrawal}
+                disabled={withdrawLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {withdrawLoading ? "Submitting..." : "Submit Request"}
+              </button>
             </div>
           </div>
         </div>

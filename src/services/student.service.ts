@@ -68,4 +68,24 @@ export const studentService = {
   async getSignatorySettings(program: string): Promise<Record<string, string> | null> {
     return rpc<Record<string, string> | null>("getSignatorySettings", { program });
   },
+
+  async submitWithdrawalRequest(reason: string): Promise<void> {
+    await rpc<void>("submitWithdrawalRequest", { reason });
+  },
+
+  async getWithdrawalRequest(): Promise<{
+    id: number;
+    reason: string;
+    status: string;
+    adminRemarks: string | null;
+    createdAt: string;
+  } | null> {
+    return rpc<{
+      id: number;
+      reason: string;
+      status: string;
+      adminRemarks: string | null;
+      createdAt: string;
+    } | null>("getWithdrawalRequest", {});
+  },
 };

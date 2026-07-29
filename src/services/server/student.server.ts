@@ -427,4 +427,52 @@ export const studentServerService = {
       updatedAt: row.updated_at ?? "",
     };
   },
+
+  /* ---------- Advance Course Withdrawals ---------- */
+
+  async submitWithdrawalRequest(studentUid: string, reason: string): Promise<void> {
+    const student = await query<RowDataPacket[]>(
+      "SELECT id, willing_to_take_advance_course FROM students WHERE id = ? LIMIT 1",
+      [studentUid],
+    );
+    if (student.length === 0) throw new Error("Student not found");
+    if (!student[0].willing_to_take_advance_course) {
+      throw new Error("You are not enrolled in the Advance Course");
+    }
+
+    const pending = await query<RowDataPacket[]>(
+      "SELECT id FROM advance_course_withdrawals WHERE student_id = ? AND status = 'pending' LIMIT 1",
+      [studentUid],
+    );
+    if (pending.length > 0) {
+      throw new Error("You already have a pending withdrawal request");
+    }
+
+    await execute(
+      "INSERT INTO advance_course_withdrawals (student_id, reason) VALUES (?, ?)",
+      [studentUid, reason],
+    );
+  },
+
+  async getWithdrawalRequest(studentUid: string): Promise<{
+    id: number;
+    reason: string;
+    status: string;
+    adminRemarks: string | null;
+    createdAt: string;
+  } | null> {
+    const rows = await query<RowDataPacket[]>(
+      "SELECT id, reason, status, admin_remarks, created_at FROM advance_course_withdrawals WHERE student_id = ? ORDER BY created_at DESC LIMIT 1",
+      [studentUid],
+    );
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      reason: r.reason,
+      status: r.status,
+      adminRemarks: r.admin_remarks ?? null,
+      createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    };
+  },
 };

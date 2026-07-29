@@ -65,6 +65,12 @@ export async function POST(req: NextRequest) {
       case "getSignatorySettings":
         result = await fn.call(studentServerService, params.program);
         break;
+      case "submitWithdrawalRequest":
+        result = await fn.call(studentServerService, uid, params.reason);
+        break;
+      case "getWithdrawalRequest":
+        result = await fn.call(studentServerService, uid);
+        break;
       default:
         return NextResponse.json({ error: "Unknown method" }, { status: 400 });
     }

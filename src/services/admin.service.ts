@@ -323,4 +323,28 @@ export const adminService = {
     >;
     return new Map(Object.entries(obj));
   },
+
+  async getWithdrawalRequests(): Promise<{
+    id: number;
+    studentId: string;
+    studentUid: string;
+    firstName: string;
+    lastName: string;
+    course: string;
+    sex: string;
+    reason: string;
+    status: string;
+    adminRemarks: string | null;
+    createdAt: string;
+  }[]> {
+    return rpc("getWithdrawalRequests", {});
+  },
+
+  async approveWithdrawal(withdrawalId: number): Promise<void> {
+    await rpc("approveWithdrawal", { withdrawalId });
+  },
+
+  async rejectWithdrawal(withdrawalId: number, remarks: string): Promise<void> {
+    await rpc("rejectWithdrawal", { withdrawalId, remarks });
+  },
 };
