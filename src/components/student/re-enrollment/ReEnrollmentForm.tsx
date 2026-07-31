@@ -6,7 +6,6 @@ import { useMutation } from "@tanstack/react-query";
 import StudentPageLayout from "@/components/layout/StudentPageLayout";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { enrollmentService } from "@/services/enrollment.service";
-import { adminService } from "@/services/admin.service";
 import { EnrollmentFormData } from "@/types/enrollmentTypes";
 import { NSTProgram, EnrollmentDocument } from "@/types";
 import Button from "@/components/common/Button";
@@ -101,7 +100,7 @@ export default function ReEnrollmentForm() {
   useEffect(() => {
     if (!nextMs || !profile?.nstpComponent) return;
     setIsCheckingSchedule(true);
-    adminService
+    enrollmentService
       .getEnrollmentSchedule(profile.nstpComponent as NSTProgram, nextMs)
       .then((schedule) => {
         if (!schedule) {
@@ -231,8 +230,8 @@ export default function ReEnrollmentForm() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-base font-semibold text-gray-700">Re-enrollment not available</p>
-            <p className="text-sm text-gray-400 mt-1">You are not eligible for re-enrollment at this time.</p>
+            <p className="text-base font-semibold text-gray-700">Enrollment not available</p>
+            <p className="text-sm text-gray-400 mt-1">You are not eligible for enrollment at this time.</p>
             <button onClick={() => router.push("/student/dashboard")} className="mt-5 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
               Back to Dashboard
             </button>
@@ -283,7 +282,7 @@ export default function ReEnrollmentForm() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-gray-800">Re-enrollment Submitted!</h2>
+            <h2 className="text-xl font-bold text-gray-800">Enrollment Submitted!</h2>
             <p className="text-sm text-gray-500 mt-2">
               Your MS {nextMs} enrollment has been submitted and is now pending admin approval. You will be notified once it is approved.
             </p>
@@ -314,7 +313,7 @@ export default function ReEnrollmentForm() {
       <div className="max-w-xl mx-auto mt-4 sm:mt-8 px-2">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Re-enrollment for MS {nextMs}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Apply Enrollment for MS {nextMs}</h1>
           <p className="text-sm text-gray-500 mt-1">Review and update your information below.</p>
         </div>
 
@@ -393,7 +392,7 @@ export default function ReEnrollmentForm() {
                 </Button>
               ) : (
                 <Button type="button" fullWidth onClick={handleSubmit} loading={mutation.isPending}>
-                  Submit Re-enrollment
+                  Submit Enrollment
                 </Button>
               )}
             </div>
@@ -425,7 +424,7 @@ function AcademicInfoReadOnly({
         <div className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 bg-gray-50">
           {nstpComponent}
         </div>
-        <p className="text-xs text-gray-400 mt-1">Cannot be changed during re-enrollment.</p>
+        <p className="text-xs text-gray-400 mt-1">Cannot be changed during enrollment.</p>
       </div>
 
       {/* Level - Read only */}
@@ -434,7 +433,7 @@ function AcademicInfoReadOnly({
         <div className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 bg-gray-50">
           {`${nstpComponent === "CWTS" ? "CWTS" : "MS"} ${nextMs}`}
         </div>
-        <p className="text-xs text-gray-400 mt-1">Automatically set for re-enrollment.</p>
+        <p className="text-xs text-gray-400 mt-1">Automatically set for enrollment.</p>
       </div>
 
       {/* Course - Editable */}

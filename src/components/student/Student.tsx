@@ -11,6 +11,7 @@ import Attendance from "./dashboard/Attendance";
 import Grades from "./dashboard/Grades";
 import SerialNumber from "./dashboard/SerialNumber";
 import SettingsDashboardCard from "@/components/settings/SettingsDashboardCard";
+import ReEnrollCard from "./dashboard/ReEnrollCard";
 import AttendanceWarningModal from "./AttendanceWarningModal";
 import { useAutoCloseExpiredSessions } from "@/hooks/useAutoCloseExpiredSessions";
 import PageIntroPanel from "@/components/common/PageIntroPanel";
@@ -80,6 +81,7 @@ export default function Student() {
 
   const latestRecord = [...profile.msRecords].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   const currentStatus = latestRecord?.status ?? profile.status;
+  const currentMsLevel = latestRecord?.msLevel ?? "";
   const status = statusConfig[currentStatus] ?? statusConfig.pending;
   const lastName = profile.lastName ?? "Student";
 
@@ -138,6 +140,12 @@ export default function Student() {
             <Grades />
             {/* Serial Number */}
             <SerialNumber serialNumber={serialNumber}/>
+            {/* Re-enrollment */}
+            <ReEnrollCard
+              currentMsLevel={currentMsLevel}
+              nstpComponent={profile.nstpComponent}
+              enrollmentStatus={currentStatus}
+            />
             <SettingsDashboardCard href="/student/settings" />
           </div>
         </main>

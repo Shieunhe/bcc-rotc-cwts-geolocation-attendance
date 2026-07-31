@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { adminService } from "@/services/admin.service";
+import { enrollmentService } from "@/services/enrollment.service";
 import { NSTProgram, MSLevel } from "@/types";
 
 interface ReEnrollCardProps {
@@ -22,7 +22,7 @@ export default function ReEnrollCard({ currentMsLevel, nstpComponent, enrollment
       setLoading(false);
       return;
     }
-    adminService
+    enrollmentService
       .getEnrollmentSchedule(nstpComponent as NSTProgram, nextMs)
       .then((schedule) => {
         if (!schedule) { setIsOpen(false); return; }
@@ -49,7 +49,7 @@ export default function ReEnrollCard({ currentMsLevel, nstpComponent, enrollment
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </div>
-      <p className="text-xs font-medium text-indigo-500 uppercase tracking-wide mb-1">Re-enrollment Available</p>
+      <p className="text-xs font-medium text-indigo-500 uppercase tracking-wide mb-1">Apply Enrollment</p>
       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-indigo-100 text-indigo-700 border-indigo-200">
         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
         MS {nextMs} Enrollment Open
